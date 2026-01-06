@@ -6,6 +6,11 @@ module ReactiveView
 
     config.reactive_view = ActiveSupport::OrderedOptions.new
 
+    # Insert the dev proxy middleware in development to forward asset requests to Vinxi
+    initializer 'reactive_view.dev_proxy', before: :build_middleware_stack do |app|
+      app.middleware.insert_before ActionDispatch::Static, ReactiveView::DevProxy if Rails.env.development?
+    end
+
     initializer 'reactive_view.configuration' do |app|
       # Allow configuration via Rails config
       app.config.reactive_view.each do |key, value|

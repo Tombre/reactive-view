@@ -87,6 +87,7 @@ require 'reactive_view/types'
 require 'reactive_view/types/dsl'
 require 'reactive_view/types/validator'
 require 'reactive_view/request_context'
+require 'reactive_view/dev_proxy'
 
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|
