@@ -2,6 +2,8 @@
 
 ReactiveView is a Ruby on Rails view framework that replaces the view layer with TSX components (TypeScript + SolidJS). All data, auth, and business logic remain in Rails.
 
+Read the README.md document for when you need more context on how the gem works and the motivation behind it.
+
 ## Project Structure
 
 - `reactive_view/` - Ruby gem (Rails Engine, routing, loaders)
