@@ -1,1 +1,4 @@
 examples/reactive_view_example/.reactive_view/**/*
+
+examples/reactive_view_example/log/**/*
+examples/reactive_view_example/tmp/**/*
