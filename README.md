@@ -1,0 +1,438 @@
+# ReactiveView
+
+ReactiveView is a Ruby on Rails "view framework" gem for creating modern reactive frontends for your Rails application. ReactiveView essentially replaces the view layer of your Rails application - think of it as a rendering engine, a router, and a data loader all in one.
+
+Build your frontend with TSX components (TypeScript + SolidJS), with all data, auth, and business logic still handled by Rails!
+
+## Features
+
+- **SSR with Reactive Interactivity** - Server-side rendered pages that hydrate into fully interactive SolidJS applications
+- **Type Safety** - Automatic TypeScript type generation from your Ruby loader signatures
+- **Directory-Based Routing** - SolidStart-style file-based routing from `app/pages/`
+- **Rails Integration** - Use Rails for auth, models, business logic - SolidJS for the UI
+
+## Motivation
+
+There has been an explosion of "frontend-first" JS frameworks (Next.js, Remix, SolidStart, etc.) that have made it easier than ever to build highly reactive frontends. These frameworks do incredible things: loading minimal JavaScript, building in reusable components, and enabling reactive stateful UIs.
+
+Rails has historically opted for simpler frontend tooling to reduce complexity - at the expense of not having modern frontend capabilities. But Rails excels at backend stuff: data models, business logic, and application architecture.
+
+**ReactiveView bridges this gap** - use Rails for what it's great at (backend) and SolidJS for what it's great at (frontend), without the maintenance overhead of two separate services.
+
+## How It Works
+
+ReactiveView coordinates between two components:
+
+1. **Rails Engine** - Handles routing and requests, coordinates with SolidStart
+2. **SolidStart Daemon** - Server-side renders TSX components
+
+```
+Client Request
+      │
+      ▼
+┌─────────────────────────────────────────┐
+│           Rails Application              │
+│  ┌────────────────────────────────────┐ │
+│  │  ReactiveView::Loader              │ │
+│  │  - Auth (before_action)            │ │
+│  │  - Generate request token          │ │
+│  └────────────────────────────────────┘ │
+│                  │                       │
+│                  ▼                       │
+│  ┌────────────────────────────────────┐ │
+│  │  SolidStart Daemon                 │ │
+│  │  - SSR render page                 │ │
+│  │  - Calls back to Rails for data    │ │
+│  └────────────────────────────────────┘ │
+│                  │                       │
+│                  ▼                       │
+│  ┌────────────────────────────────────┐ │
+│  │  ReactiveView::LoaderDataController│ │
+│  │  - Validates token                 │ │
+│  │  - Returns loader data as JSON     │ │
+│  └────────────────────────────────────┘ │
+└─────────────────────────────────────────┘
+      │
+      ▼
+   HTML Response (SSR + hydration scripts)
+```
+
+## Project Structure
+
+```
+reactive-view-ai/
+├── reactive_view/              # The gem
+│   ├── lib/
+│   │   └── reactive_view/      # Core Ruby code
+│   ├── app/
+│   │   └── controllers/        # Engine controllers
+│   ├── template/               # SolidStart template
+│   │   └── src/
+│   │       ├── lib/reactive-view/  # Frontend library
+│   │       └── routes/api/     # Render endpoint
+│   └── spec/                   # Tests
+│
+├── examples/
+│   └── reactive_view_example/  # Example Rails app
+│       └── app/pages/          # ReactiveView pages
+│
+└── docs/
+    ├── design/overview.md      # Design document
+    └── agent/tasks/            # Follow-up tasks
+```
+
+## Quick Start
+
+### Using the Example App
+
+The fastest way to explore ReactiveView is via the included example:
+
+```bash
+# Clone the repository
+git clone <repo-url>
+cd reactive-view-ai
+
+# Navigate to example app
+cd examples/reactive_view_example
+
+# Install Ruby dependencies
+bundle install
+
+# Setup database
+bin/rails db:create db:migrate db:seed
+
+# Setup ReactiveView (creates .reactive_view directory, installs npm packages)
+bin/rails reactive_view:setup
+
+# Start development servers
+bin/dev
+```
+
+Visit http://localhost:3000 to see the example application.
+
+### Example Pages
+
+| Route | File | Description |
+|-------|------|-------------|
+| `/` | `app/pages/index.tsx` | Home page with interactive counter |
+| `/about` | `app/pages/about.tsx` | Static about page |
+| `/counter` | `app/pages/counter.tsx` | SolidJS signals & effects demo |
+| `/users` | `app/pages/users/index.tsx` | User list (data from loader) |
+| `/users/:id` | `app/pages/users/[id].tsx` | User detail (dynamic route) |
+
+### Creating Pages
+
+Pages are TSX files in `app/pages/`:
+
+```tsx
+// app/pages/hello.tsx
+export default function HelloPage() {
+  return <h1>Hello, World!</h1>;
+}
+```
+
+This creates a route at `/hello`.
+
+### Loading Data
+
+Create a loader file alongside your page:
+
+```ruby
+# app/pages/users/[id].loader.rb
+module Pages
+  module Users
+    class IdLoader < ReactiveView::Loader
+      loader_sig do
+        param :user, ReactiveView::Types::Hash.schema(
+          id: ReactiveView::Types::Integer,
+          name: ReactiveView::Types::String
+        )
+      end
+
+      def load
+        user = User.find(params[:id])
+        { user: { id: user.id, name: user.name } }
+      end
+    end
+  end
+end
+```
+
+```tsx
+// app/pages/users/[id].tsx
+import { useLoaderData } from "~/lib/reactive-view";
+
+export default function UserPage() {
+  const data = useLoaderData<{ user: { id: number; name: string } }>();
+
+  return <h1>Hello, {data()?.user.name}</h1>;
+}
+```
+
+### Authentication
+
+Loaders are regular Rails controllers - use `before_action` for auth:
+
+```ruby
+class Pages::Admin::DashboardLoader < ReactiveView::Loader
+  before_action :authenticate_admin!
+
+  def load
+    { stats: AdminStats.current }
+  end
+
+  private
+
+  def authenticate_admin!
+    redirect_to login_path unless current_user&.admin?
+  end
+end
+```
+
+## Development
+
+### Prerequisites
+
+- Ruby 3.1+
+- Rails 7.0+
+- Node.js 18+
+- npm
+
+### Working on the Gem
+
+```bash
+cd reactive_view
+
+# Install dependencies
+bundle install
+
+# Run tests
+bundle exec rspec
+
+# Run specific tests
+bundle exec rspec spec/reactive_view/types/
+```
+
+### Gem Structure
+
+| File | Purpose |
+|------|---------|
+| `lib/reactive_view.rb` | Main entry point |
+| `lib/reactive_view/engine.rb` | Rails Engine |
+| `lib/reactive_view/loader.rb` | Base controller class |
+| `lib/reactive_view/router.rb` | File-based route generation |
+| `lib/reactive_view/renderer.rb` | HTTP client to SolidStart |
+| `lib/reactive_view/daemon.rb` | SolidStart process manager |
+| `lib/reactive_view/request_context.rb` | Token-based auth for callbacks |
+| `lib/reactive_view/types/` | Type system (Dry::Types) |
+
+### SolidStart Template
+
+The `reactive_view/template/` directory contains the SolidStart project template:
+
+| File | Purpose |
+|------|---------|
+| `src/lib/reactive-view/loader.ts` | `useLoaderData` hook |
+| `src/lib/reactive-view/context.tsx` | Request token context |
+| `src/routes/api/render.ts` | Endpoint Rails calls for SSR |
+
+### Working on the Example App
+
+```bash
+cd examples/reactive_view_example
+
+# Start both Rails and SolidStart
+bin/dev
+
+# Or start them separately:
+bin/rails server                    # Rails on :3000
+cd .reactive_view && npm run dev    # SolidStart on :3001
+```
+
+### Useful Rake Tasks
+
+```bash
+# Show all ReactiveView routes
+bin/rails reactive_view:routes
+
+# Sync TSX files to .reactive_view
+bin/rails reactive_view:sync
+
+# Generate TypeScript types from loaders
+bin/rails reactive_view:types:generate
+
+# Daemon management
+bin/rails reactive_view:daemon:start
+bin/rails reactive_view:daemon:stop
+bin/rails reactive_view:daemon:status
+
+# Production build
+bin/rails reactive_view:build
+```
+
+## Testing
+
+### Running Gem Tests
+
+```bash
+cd reactive_view
+bundle exec rspec
+```
+
+### Test Coverage
+
+Current tests cover:
+- `RequestContext` - Token generation, storage, retrieval, validation
+- `Types::SignatureBuilder` - DSL for defining loader signatures
+- `Types::Validator` - Response validation against schemas
+
+### Testing Your Application
+
+Since loaders are Rails controllers, test them like any controller:
+
+```ruby
+RSpec.describe Pages::Users::IndexLoader do
+  describe "#load" do
+    it "returns users" do
+      create(:user, name: "Alice")
+      
+      loader = described_class.new
+      result = loader.load
+      
+      expect(result[:users].first[:name]).to eq("Alice")
+    end
+  end
+end
+```
+
+## Configuration
+
+```ruby
+# config/initializers/reactive_view.rb
+ReactiveView.configure do |config|
+  # SolidStart daemon settings
+  config.daemon_host = "localhost"
+  config.daemon_port = 3001
+  config.daemon_timeout = 30
+
+  # Auto-start daemon with Rails (development only)
+  config.auto_start_daemon = Rails.env.development?
+
+  # External daemon (production - managed separately)
+  config.external_daemon = Rails.env.production?
+
+  # Paths
+  config.pages_path = "app/pages"
+  config.working_directory = ".reactive_view"
+
+  # Validate loader responses in dev/test
+  config.validate_responses = true
+end
+```
+
+## Routing Conventions
+
+ReactiveView uses SolidStart-style file-based routing:
+
+| File | Route |
+|------|-------|
+| `app/pages/index.tsx` | `/` |
+| `app/pages/about.tsx` | `/about` |
+| `app/pages/users/index.tsx` | `/users` |
+| `app/pages/users/[id].tsx` | `/users/:id` |
+| `app/pages/blog/[...slug].tsx` | `/blog/*slug` |
+| `app/pages/users/[[id]].tsx` | `/users(/:id)` (optional) |
+
+### Nested Layouts
+
+Create a file with the same name as a folder to make it a layout:
+
+```
+app/pages/
+├── blog.tsx              # Layout for /blog/*
+└── blog/
+    ├── article-1.tsx     # /blog/article-1
+    └── article-2.tsx     # /blog/article-2
+```
+
+```tsx
+// app/pages/blog.tsx
+import { RouteSectionProps } from "@solidjs/router";
+
+export default function BlogLayout(props: RouteSectionProps) {
+  return (
+    <div class="blog-layout">
+      <nav>Blog Navigation</nav>
+      {props.children}
+    </div>
+  );
+}
+```
+
+## Type System
+
+ReactiveView uses [Dry::Types](https://dry-rb.org/gems/dry-types/) for type definitions:
+
+```ruby
+loader_sig do
+  param :id, ReactiveView::Types::Integer
+  param :name, ReactiveView::Types::String
+  param :email, ReactiveView::Types::Optional[ReactiveView::Types::String]
+  param :tags, ReactiveView::Types::Array[ReactiveView::Types::String]
+  param :metadata, ReactiveView::Types::Hash.schema(
+    created_at: ReactiveView::Types::String,
+    updated_at: ReactiveView::Types::String
+  )
+end
+```
+
+### Response Validation
+
+In development and test modes, loader responses are validated against their signatures:
+
+```ruby
+def load
+  { id: "not an integer" }  # ValidationError: id must be Integer
+end
+```
+
+### TypeScript Generation
+
+Generate TypeScript types from your loaders:
+
+```bash
+bin/rails reactive_view:types:generate
+```
+
+This creates `.reactive_view/src/lib/reactive-view/types/generated.d.ts` with interfaces matching your loader signatures.
+
+## Current Limitations (MVP)
+
+This is an MVP implementation. Known limitations:
+
+1. **Client-side navigation** - After hydration, client navigation needs manual data fetching setup
+2. **No mutations** - Only read operations (loaders), no action/mutation support yet
+3. **Zeitwerk incompatibility** - Loader files are manually loaded due to `[param].loader.rb` naming
+4. **Basic error handling** - No error boundary components yet
+
+See [docs/agent/tasks/post-mvp.md](docs/agent/tasks/post-mvp.md) for the full roadmap.
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Run tests (`bundle exec rspec`)
+4. Commit your changes (`git commit -am 'Add amazing feature'`)
+5. Push to the branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Acknowledgments
+
+- [SolidJS](https://www.solidjs.com/) - The reactive UI library powering the frontend
+- [SolidStart](https://start.solidjs.com/) - The meta-framework providing SSR and routing
+- [Dry::Types](https://dry-rb.org/gems/dry-types/) - The type system for Ruby
+- [Ruby on Rails](https://rubyonrails.org/) - The web framework that makes it all possible
