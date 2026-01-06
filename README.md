@@ -162,14 +162,17 @@ end
 
 ```tsx
 // app/pages/users/[id].tsx
-import { useLoaderData } from "@reactive-view/core";
+import { useLoaderData } from "#loaders/users/[id]";
 
 export default function UserPage() {
-  const data = useLoaderData<{ user: { id: number; name: string } }>();
+  // Types are automatically inferred from the Ruby loader_sig!
+  const data = useLoaderData();
 
   return <h1>Hello, {data()?.user.name}</h1>;
 }
 ```
+
+The `#loaders/*` import path maps to auto-generated TypeScript files that provide full type safety based on your Ruby `loader_sig` definitions.
 
 ### Authentication
 
@@ -406,25 +409,16 @@ Generate TypeScript types from your loaders:
 bin/rails reactive_view:types:generate
 ```
 
-This creates `.reactive_view/types/loader-data.d.ts` with interfaces matching your loader signatures. The generated types augment the `@reactive-view/core` module, enabling full autocomplete:
-
-```tsx
-// After running types:generate, TypeScript knows the loader data shape
-import { useLoaderData } from "@reactive-view/core";
-
-export default function UserPage() {
-  // TypeScript provides autocomplete for "users/[id]" loader
-  const data = useLoaderData<"users/[id]">();
-  return <h1>{data()?.user.name}</h1>;
-}
-```
+This creates:
+1. **Per-route loader files** in `.reactive_view/types/loaders/` - auto-typed `useLoaderData()` hooks
+2. **Central route map** in `.reactive_view/types/loader-data.d.ts` - for cross-route loading
 
 ## TypeScript & Editor Setup
 
 ReactiveView provides full TypeScript support for your TSX pages. After running `rails reactive_view:install`, your project will have:
 
 - `package.json` - with `@reactive-view/core` and SolidJS dependencies
-- `tsconfig.json` - configured for SolidJS JSX and proper module resolution
+- `tsconfig.json` - configured for SolidJS JSX and `#loaders/*` path resolution
 
 ### Installation
 
@@ -435,6 +429,9 @@ rails reactive_view:install
 # This creates package.json and tsconfig.json at your project root
 # Then install npm dependencies:
 npm install
+
+# Generate TypeScript types for your loaders
+bin/rails reactive_view:types:generate
 ```
 
 ### Editor Support
@@ -442,15 +439,49 @@ npm install
 Your editor (VSCode, etc.) should now:
 - Recognize TSX files in `app/pages/`
 - Provide autocomplete for SolidJS primitives
-- Show proper types for `useLoaderData()` after running `rails reactive_view:types:generate`
+- Show fully-typed `useLoaderData()` with automatic type inference
 
-### Importing from @reactive-view/core
+### Loading Data - Two Approaches
 
-All ReactiveView utilities should be imported from `@reactive-view/core`:
+#### 1. Auto-typed Imports (Recommended)
+
+Import from the route-specific loader path. Types are automatically inferred:
+
+```tsx
+// app/pages/users/index.tsx
+import { useLoaderData } from "#loaders/users/index";
+
+export default function UsersPage() {
+  const data = useLoaderData();  // Fully typed!
+  return <div>{data()?.total} users</div>;
+}
+```
+
+#### 2. Cross-Route Loading
+
+Load data from a different route by specifying the route path:
 
 ```tsx
 import { useLoaderData } from "@reactive-view/core";
+
+export default function DashboardPage() {
+  // Load users data from the users/index route
+  const usersData = useLoaderData("users/index");
+  
+  // Load a specific user with params
+  const userData = useLoaderData("users/[id]", { id: "123" });
+  
+  return (
+    <div>
+      <h1>Dashboard</h1>
+      <p>Total users: {usersData()?.total}</p>
+      <p>Featured user: {userData()?.user.name}</p>
+    </div>
+  );
+}
 ```
+
+### SolidJS Primitives
 
 For SolidJS primitives, import directly from `solid-js`:
 

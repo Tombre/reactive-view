@@ -11,7 +11,11 @@
     "noEmit": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "baseUrl": ".",
+    "paths": {
+      "#loaders/*": [".reactive_view/types/loaders/*"]
+    }
   },
   "include": [
     "app/pages/**/*",

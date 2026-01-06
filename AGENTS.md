@@ -84,7 +84,10 @@ npm run build                 # Production build
 ## Essential Automation Hooks
 
 - `bin/rails reactive_view:routes`: Inspect generated routes when debugging mismatches.
-- `bin/rails reactive_view:types:generate`: Emit `.reactive_view/src/lib/reactive-view/types/generated.d.ts` – run after modifying loader signatures.
+- `bin/rails reactive_view:types:generate`: Generate TypeScript types in `.reactive_view/types/`:
+  - Per-route loader files in `.reactive_view/types/loaders/` for auto-typed `useLoaderData()`
+  - Central route map in `.reactive_view/types/loader-data.d.ts` for cross-route loading
+  - Run after modifying `loader_sig` definitions in `.loader.rb` files
 - `bin/rails reactive_view:sync`: Mirrors TSX files for SolidStart; required when editing under `app/pages`.
 - `bin/rails reactive_view:daemon:*`: Start/stop/status for the SSR daemon when not relying on `bin/dev`.
 - Bundle exec wrappers (`bundle exec rails`, `bundle exec rake`) are mandatory inside `reactive_view/` to ensure the gemspec load path is respected.
@@ -108,7 +111,7 @@ npm run build                 # Production build
 ## Coding Style Guidelines (TypeScript / SolidStart)
 
 1. Stick to ES modules; use named imports when importing multiple utilities from a file.
-2. Order imports: Node built-ins, npm deps, shared lib utilities (`~/lib/reactive-view`), then relative components.
+2. Order imports: Node built-ins, npm deps (`solid-js`, `@solidjs/router`), loader imports (`#loaders/*`), then relative components.
 3. Use TypeScript interfaces for public contracts and `type` aliases for unions / utility shapes.
 4. Prefer explicit return types for exported functions, loaders, and hooks.
 5. Enforce immutability where possible (`const` by default, `let` only when reassignment is required).
@@ -117,6 +120,8 @@ npm run build                 # Production build
 8. Error boundaries are not baked in yet; wrap risky UI in local `try/catch` plus fallback UI until global boundaries ship (see `docs/agent/tasks/06-error-boundaries.md`).
 9. Use async/await with `try/catch` for fetches; surface errors via UI-friendly states rather than `alert`.
 10. Keep CSS inline classes utility-first; global styles belong in `app/assets/stylesheets/application.css` or template CSS files.
+11. For loader data, import from `#loaders/{route}` for auto-typed hooks (e.g., `import { useLoaderData } from "#loaders/users/index"`).
+12. For cross-route loading, import from `@reactive-view/core` and specify the route: `useLoaderData("users/[id]", { id })`.
 
 ## Shared Naming & Organization Rules
 

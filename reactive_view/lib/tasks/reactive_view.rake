@@ -28,11 +28,12 @@ namespace :reactive_view do
       ReactiveView::LoaderRegistry.load_all
 
       # Generate types
-      ReactiveView::Types::TypescriptGenerator.generate
+      result = ReactiveView::Types::TypescriptGenerator.generate
 
-      puts 'Types generated at:'
-      puts "  #{ReactiveView.configuration.working_directory}/" \
-           'src/lib/reactive-view/types/generated.d.ts'
+      puts 'Types generated:'
+      puts "  Per-route loaders: #{ReactiveView.configuration.working_directory}/types/loaders/"
+      puts "  Route map: #{ReactiveView.configuration.working_directory}/types/loader-data.d.ts"
+      puts "  Files created: #{result[:loader_files].count}"
     end
   end
 

@@ -13,9 +13,11 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "baseUrl": ".",
     "paths": {
-      "~/*": ["./src/*"]
+      "~/*": ["./src/*"],
+      "#loaders/*": ["./types/loaders/*"]
     }
   },
-  "include": ["src/**/*", "app.config.ts"]
+  "include": ["src/**/*", "types/**/*", "app.config.ts"]
 }
