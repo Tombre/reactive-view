@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'faraday'
+require 'uri'
 
 module ReactiveView
   # Rack middleware that proxies development asset requests to the Vinxi dev server.
@@ -40,7 +41,10 @@ module ReactiveView
       request_path = env['PATH_INFO']
       query_string = env['QUERY_STRING']
 
-      target_url = "#{daemon_url}#{request_path}"
+      # URI-encode the path to handle special characters like square brackets in [id].tsx
+      # We encode individual path segments to preserve the path structure
+      encoded_path = encode_path(request_path)
+      target_url = "#{daemon_url}#{encoded_path}"
 
       # Parse query string to preserve duplicate keys (e.g., pick=default&pick=$css)
       # Faraday doesn't handle duplicate query params correctly when passed in URL
@@ -133,6 +137,12 @@ module ReactiveView
       ]
 
       headers.to_h.reject { |k, _| hop_by_hop.include?(k.downcase) }
+    end
+
+    # Encode path segments to handle special characters like square brackets
+    # in dynamic route files (e.g., [id].tsx)
+    def encode_path(path)
+      path.split('/').map { |segment| URI.encode_www_form_component(segment) }.join('/')
     end
   end
 end

@@ -121,6 +121,45 @@ RSpec.describe ReactiveView::DevProxy do
       end
     end
 
+    context 'when paths contain special characters' do
+      before do
+        # Dynamic route files use square brackets like [id].tsx
+        stub_request(:get, 'http://localhost:3001/_build/@fs/src/routes/users/%5Bid%5D.tsx')
+          .to_return(status: 200, body: 'dynamic route component', headers: { 'Content-Type' => 'text/javascript' })
+
+        stub_request(:get, 'http://localhost:3001/@fs/path/to/%5Bslug%5D/page.tsx')
+          .to_return(status: 200, body: 'nested dynamic route', headers: { 'Content-Type' => 'text/javascript' })
+      end
+
+      it 'properly encodes square brackets in dynamic route paths' do
+        # Build env manually since Rack::MockRequest.env_for chokes on square brackets
+        env = {
+          'REQUEST_METHOD' => 'GET',
+          'PATH_INFO' => '/_build/@fs/src/routes/users/[id].tsx',
+          'QUERY_STRING' => '',
+          'rack.input' => StringIO.new
+        }
+        status, _, body = middleware.call(env)
+
+        expect(status).to eq(200)
+        expect(body).to eq(['dynamic route component'])
+      end
+
+      it 'handles nested paths with square brackets' do
+        # Build env manually since Rack::MockRequest.env_for chokes on square brackets
+        env = {
+          'REQUEST_METHOD' => 'GET',
+          'PATH_INFO' => '/@fs/path/to/[slug]/page.tsx',
+          'QUERY_STRING' => '',
+          'rack.input' => StringIO.new
+        }
+        status, _, body = middleware.call(env)
+
+        expect(status).to eq(200)
+        expect(body).to eq(['nested dynamic route'])
+      end
+    end
+
     context 'when daemon is unavailable' do
       before do
         stub_request(:get, 'http://localhost:3001/_build/@vite/client')
