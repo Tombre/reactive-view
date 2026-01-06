@@ -1,0 +1,112 @@
+# frozen_string_literal: true
+
+require 'spec_helper'
+
+RSpec.describe ReactiveView::Types::SignatureBuilder do
+  describe '#param' do
+    it 'adds a parameter to the schema' do
+      builder = described_class.new do
+        param :name, ReactiveView::Types::String
+      end
+
+      schema = builder.schema
+      expect(schema).to have_key(:name)
+    end
+
+    it 'supports multiple parameters' do
+      builder = described_class.new do
+        param :id, ReactiveView::Types::Integer
+        param :name, ReactiveView::Types::String
+        param :active, ReactiveView::Types::Boolean
+      end
+
+      schema = builder.schema
+      expect(schema.keys).to contain_exactly(:id, :name, :active)
+    end
+  end
+
+  describe '#build' do
+    it 'returns an empty Hash type when no params defined' do
+      builder = described_class.new
+      schema = builder.build
+
+      expect(schema).to eq(ReactiveView::Types::Hash)
+    end
+
+    it 'returns a Hash schema type with params' do
+      builder = described_class.new do
+        param :id, ReactiveView::Types::Integer
+        param :name, ReactiveView::Types::String
+      end
+
+      schema = builder.build
+
+      # Should be able to validate matching data
+      result = schema.try({ id: 1, name: 'Test' })
+      expect(result.success?).to be true
+    end
+
+    it 'validates against mismatched types' do
+      builder = described_class.new do
+        param :id, ReactiveView::Types::Integer
+      end
+
+      schema = builder.build
+
+      # String when Integer expected
+      result = schema.try({ id: 'not an integer' })
+      expect(result.failure?).to be true
+    end
+  end
+end
+
+RSpec.describe ReactiveView::Types do
+  describe 'primitive types' do
+    it 'provides String type' do
+      expect(ReactiveView::Types::String['hello']).to eq('hello')
+      expect { ReactiveView::Types::String[123] }.to raise_error(Dry::Types::ConstraintError)
+    end
+
+    it 'provides Integer type' do
+      expect(ReactiveView::Types::Integer[42]).to eq(42)
+      expect { ReactiveView::Types::Integer['not int'] }.to raise_error(Dry::Types::ConstraintError)
+    end
+
+    it 'provides Boolean type' do
+      expect(ReactiveView::Types::Boolean[true]).to eq(true)
+      expect(ReactiveView::Types::Boolean[false]).to eq(false)
+      expect { ReactiveView::Types::Boolean['yes'] }.to raise_error(Dry::Types::ConstraintError)
+    end
+
+    it 'provides Float type' do
+      expect(ReactiveView::Types::Float[3.14]).to eq(3.14)
+      expect { ReactiveView::Types::Float['pi'] }.to raise_error(Dry::Types::ConstraintError)
+    end
+  end
+
+  describe 'compound types' do
+    it 'supports Optional types' do
+      optional_string = ReactiveView::Types::Optional[ReactiveView::Types::String]
+
+      expect(optional_string['hello']).to eq('hello')
+      expect(optional_string[nil]).to be_nil
+    end
+
+    it 'supports Array types' do
+      string_array = ReactiveView::Types::Array[ReactiveView::Types::String]
+
+      expect(string_array[%w[a b c]]).to eq(%w[a b c])
+      expect { string_array[[1, 2, 3]] }.to raise_error(Dry::Types::ConstraintError)
+    end
+
+    it 'supports Hash schema types' do
+      user_type = ReactiveView::Types::Hash.schema(
+        id: ReactiveView::Types::Integer,
+        name: ReactiveView::Types::String
+      )
+
+      valid_data = { id: 1, name: 'Alice' }
+      expect(user_type[valid_data]).to eq(valid_data)
+    end
+  end
+end

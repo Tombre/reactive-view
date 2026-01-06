@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+# Development startup script for ReactiveView
+# Starts both Rails and the SolidStart daemon
+
+if ! command -v foreman &> /dev/null; then
+  echo "Installing foreman..."
+  gem install foreman
+fi
+
+# Sync files before starting
+echo "Syncing ReactiveView files..."
+bin/rails reactive_view:sync
+
+# Start both processes
+exec foreman start -f Procfile.dev "$@"
