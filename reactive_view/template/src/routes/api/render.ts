@@ -27,8 +27,10 @@ export async function POST(event: APIEvent): Promise<Response> {
     (globalThis as any).__REACTIVE_VIEW_TOKEN__ = request_token;
     (globalThis as any).__RAILS_BASE_URL__ = rails_base_url;
 
-    // Build the internal URL to render
-    const renderUrl = new URL(path, `http://localhost:${process.env.PORT || 3001}`);
+    // Build the internal URL to render using the request's own origin
+    // This ensures we use the same host/port that successfully received this request
+    const requestUrl = new URL(event.request.url);
+    const renderUrl = new URL(path, requestUrl.origin);
     
     // Add the token as a query parameter for the SSR context
     if (request_token) {

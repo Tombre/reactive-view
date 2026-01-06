@@ -192,8 +192,8 @@ module ReactiveView
         # Use match with GET (and HEAD) for page routes
         router.match(
           route[:route_path],
-          to: "#{loader_class.name.underscore}#call",
-          via: [:get],
+          to: loader_class.action(:call),
+          via: %i[get head],
           defaults: { reactive_view_loader_path: route[:loader_path] }
         )
       rescue StandardError => e
