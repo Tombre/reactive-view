@@ -104,6 +104,23 @@ RSpec.describe ReactiveView::DevProxy do
       end
     end
 
+    context 'when query strings have duplicate keys' do
+      before do
+        # Vinxi uses pick=default&pick=$css for lazy route loading
+        stub_request(:get, 'http://localhost:3001/_build/@fs/src/routes/index.tsx')
+          .with(query: { 'pick' => %w[default $css] })
+          .to_return(status: 200, body: 'export default Component', headers: { 'Content-Type' => 'text/javascript' })
+      end
+
+      it 'preserves duplicate query parameters' do
+        env = Rack::MockRequest.env_for('/_build/@fs/src/routes/index.tsx?pick=default&pick=$css')
+        status, _, body = middleware.call(env)
+
+        expect(status).to eq(200)
+        expect(body).to eq(['export default Component'])
+      end
+    end
+
     context 'when daemon is unavailable' do
       before do
         stub_request(:get, 'http://localhost:3001/_build/@vite/client')

@@ -41,11 +41,14 @@ module ReactiveView
       query_string = env['QUERY_STRING']
 
       target_url = "#{daemon_url}#{request_path}"
-      target_url += "?#{query_string}" if query_string && !query_string.empty?
+
+      # Parse query string to preserve duplicate keys (e.g., pick=default&pick=$css)
+      # Faraday doesn't handle duplicate query params correctly when passed in URL
+      query_params = query_string && !query_string.empty? ? Rack::Utils.parse_query(query_string) : {}
 
       begin
         connection = build_connection
-        response = make_request(connection, env, target_url)
+        response = make_request(connection, env, target_url, query_params)
 
         build_response(response)
       rescue Faraday::ConnectionFailed, Faraday::TimeoutError => e
@@ -65,10 +68,13 @@ module ReactiveView
       end
     end
 
-    def make_request(connection, env, target_url)
+    def make_request(connection, env, target_url, query_params = {})
       method = env['REQUEST_METHOD'].downcase.to_sym
 
       connection.run_request(method, target_url, nil, {}) do |req|
+        # Set query params separately to preserve duplicate keys
+        req.params = query_params unless query_params.empty?
+
         # Forward relevant headers
         forward_headers(env, req)
 
