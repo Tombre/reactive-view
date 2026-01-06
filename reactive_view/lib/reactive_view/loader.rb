@@ -63,17 +63,16 @@ module ReactiveView
       # Determine the loader path from the request
       loader_path = extract_loader_path
 
-      # Generate request token for this render cycle
-      token = RequestContext.store(request, loader_path, self.class)
-
       # Determine Rails base URL for callbacks
       rails_base_url = ReactiveView.configuration.rails_base_url || request.base_url
 
       # Ask SolidStart to render the page
+      # Forward cookies so SolidStart can pass them back for authenticated loader requests
       html = renderer.render(
         path: request.fullpath,
-        request_token: token,
-        rails_base_url: rails_base_url
+        loader_path: loader_path,
+        rails_base_url: rails_base_url,
+        cookies: request.headers['Cookie']
       )
 
       render html: html.html_safe, layout: false

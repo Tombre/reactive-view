@@ -7,6 +7,7 @@
     "start": "vinxi start"
   },
   "dependencies": {
+    "@reactive-view/core": "file:../npm",
     "@solidjs/router": "^0.15.3",
     "@solidjs/start": "^1.0.12",
     "solid-js": "^1.9.4",

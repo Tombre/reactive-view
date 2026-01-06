@@ -1,27 +1,23 @@
 # frozen_string_literal: true
 
 module ReactiveView
-  # Internal controller that handles data requests from the SolidStart daemon.
-  # This is called when useLoaderData() is invoked during SSR.
+  # Internal controller that handles data requests for loader data.
+  # This is called when useLoaderData() is invoked during:
+  # - SSR: SolidStart daemon calls back to Rails with forwarded cookies
+  # - Client-side navigation: Browser calls directly with session cookies
   #
-  # Security: Only requests with valid tokens (generated during the initial page request)
-  # can access this endpoint. Tokens are single-use and short-lived.
+  # Authentication is handled via Rails session cookies in both cases.
   class LoaderDataController < ActionController::Base
-    # Skip CSRF for API-style requests from SolidStart
+    # Skip CSRF for API-style requests
     skip_forgery_protection
-
-    before_action :validate_token!
 
     # GET /_reactive_view/loaders/:path/load
     def show
-      # Retrieve stored context using the token
-      context = RequestContext.retrieve(params[:token])
-
-      # Get the loader class
-      loader_class = resolve_loader_class(context)
+      # Get the loader class from the path
+      loader_class = LoaderRegistry.class_for_path(loader_path)
 
       # Instantiate and configure the loader
-      loader = build_loader(loader_class, context)
+      loader = build_loader(loader_class)
 
       # Call the load method
       data = loader.load
@@ -30,41 +26,41 @@ module ReactiveView
       validate_response!(loader_class, data)
 
       render json: data
-    rescue InvalidTokenError => e
-      render json: { error: e.message }, status: :forbidden
     rescue ValidationError => e
       render json: { error: e.message }, status: :unprocessable_entity
+    rescue LoaderNotFoundError => e
+      render json: { error: e.message }, status: :not_found
     rescue StandardError => e
       handle_loader_error(e)
     end
 
     private
 
-    def validate_token!
-      return if params[:token].present?
-
-      render json: { error: 'Token required' }, status: :forbidden
+    # Extract the loader path from the URL
+    # The path comes from the route: /_reactive_view/loaders/:path/load
+    # where :path can contain slashes (e.g., "users/index" or "users/[id]")
+    def loader_path
+      params[:path]
     end
 
-    def resolve_loader_class(context)
-      if context[:loader_class]
-        context[:loader_class].constantize
-      else
-        LoaderRegistry.class_for_path(context[:loader_path])
-      end
-    end
-
-    def build_loader(loader_class, context)
+    def build_loader(loader_class)
       loader = loader_class.new
 
-      # Set up the params from the stored context
-      loader.params = ActionController::Parameters.new(context[:params])
+      # Set up params from the request query parameters
+      # Route params (like :id) are passed as query params by the frontend
+      loader.params = ActionController::Parameters.new(loader_params)
 
-      # Set the request/response if needed (for helpers)
+      # Set the request/response for helpers (current_user, etc.)
       loader.request = request
       loader.response = response
 
       loader
+    end
+
+    # Extract loader-relevant params from the request
+    # Excludes internal routing params
+    def loader_params
+      params.to_unsafe_h.except('controller', 'action', 'path')
     end
 
     def validate_response!(loader_class, data)

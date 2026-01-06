@@ -1,6 +1,6 @@
 import { Suspense, Show } from "solid-js";
 import { A, useParams } from "@solidjs/router";
-import { useLoaderData } from "~/lib/reactive-view";
+import { useLoaderData } from "@reactive-view/core";
 
 interface User {
   id: number;

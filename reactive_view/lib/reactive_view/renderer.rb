@@ -15,19 +15,21 @@ module ReactiveView
     # Render a page via the SolidStart daemon
     #
     # @param path [String] The URL path to render
-    # @param request_token [String] Token for SolidStart to fetch loader data
+    # @param loader_path [String] The loader path (e.g., "users/index")
     # @param rails_base_url [String] URL for SolidStart to call back to Rails
+    # @param cookies [String, nil] Cookie header to forward for authenticated requests
     # @return [String] Rendered HTML
     # @raise [DaemonUnavailableError] If the daemon is not responding
     # @raise [RenderError] If rendering fails
-    def render(path:, request_token:, rails_base_url:)
+    def render(path:, loader_path:, rails_base_url:, cookies: nil)
       response = connection.post(RENDER_PATH) do |req|
         req.headers['Content-Type'] = 'application/json'
         req.headers['Accept'] = 'text/html'
         req.body = {
           path: path,
-          request_token: request_token,
-          rails_base_url: rails_base_url
+          loader_path: loader_path,
+          rails_base_url: rails_base_url,
+          cookies: cookies
         }.to_json
       end
 

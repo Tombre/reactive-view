@@ -34,6 +34,22 @@ module ReactiveView
         say 'Created .reactive_view directory', :green
       end
 
+      def create_typescript_config
+        say 'Setting up TypeScript configuration...', :yellow
+
+        # Create tsconfig.json at project root for editor support
+        template 'tsconfig.json.tt', 'tsconfig.json'
+        say 'Created tsconfig.json for TypeScript/editor support', :green
+      end
+
+      def create_package_json
+        say 'Setting up package.json...', :yellow
+
+        # Create package.json at project root with @reactive-view/core dependency
+        template 'package.json.tt', 'package.json'
+        say 'Created package.json with @reactive-view/core dependency', :green
+      end
+
       def add_to_gitignore
         gitignore_path = Rails.root.join('.gitignore')
 
@@ -45,7 +61,10 @@ module ReactiveView
           '.reactive_view/node_modules/',
           '.reactive_view/.vinxi/',
           '.reactive_view/.output/',
-          '.reactive_view/daemon.log'
+          '.reactive_view/daemon.log',
+          '',
+          '# Node.js',
+          'node_modules/'
         ]
 
         append_to_file '.gitignore', gitignore_entries.join("\n")
@@ -66,9 +85,13 @@ module ReactiveView
       def install_npm_dependencies
         say 'Installing npm dependencies...', :yellow
 
+        # Install dependencies in .reactive_view
         inside '.reactive_view' do
           run 'npm install'
         end
+
+        # Install dependencies at project root (for TypeScript/editor support)
+        run 'npm install'
 
         say 'npm dependencies installed', :green
       end
@@ -95,6 +118,11 @@ module ReactiveView
         say '4. Generate TypeScript types:'
         say '   rails reactive_view:types:generate'
         say ''
+        say 'TypeScript Support:', :yellow
+        say '  Your editor should now recognize TypeScript types in app/pages/.'
+        say '  Import from @reactive-view/core:'
+        say '  import { useLoaderData } from "@reactive-view/core";'
+        say ''
         say 'Documentation: https://github.com/reactiveview/reactive_view'
         say ''
       end
@@ -103,6 +131,21 @@ module ReactiveView
 
       def gem_template_path
         File.expand_path('../../../../template', __dir__)
+      end
+
+      # Path to @reactive-view/core npm package relative to the gem
+      # This uses a file: link for local development
+      def reactive_view_core_path
+        # Calculate relative path from Rails.root to the npm package
+        gem_root = File.expand_path('../../../../..', __dir__)
+        npm_package_path = File.join(gem_root, 'npm')
+
+        # Return relative path from Rails.root
+        Pathname.new(npm_package_path).relative_path_from(Rails.root).to_s
+      end
+
+      def app_name
+        Rails.application.class.module_parent_name.underscore
       end
     end
   end

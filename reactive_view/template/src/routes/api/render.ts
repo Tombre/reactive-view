@@ -2,18 +2,18 @@ import type { APIEvent } from "@solidjs/start/server";
 
 /**
  * API endpoint for Rails to request page renders.
- * Rails calls this endpoint with the path to render and a request token.
+ * Rails calls this endpoint with the path to render and cookies for authentication.
  * 
  * This endpoint:
  * 1. Receives the render request from Rails
- * 2. Sets up the request token for useLoaderData to use
+ * 2. Stores cookies for authenticated loader data requests
  * 3. Internally renders the requested route
  * 4. Returns the HTML to Rails
  */
 export async function POST(event: APIEvent): Promise<Response> {
   try {
     const body = await event.request.json();
-    const { path, request_token, rails_base_url } = body;
+    const { path, loader_path, rails_base_url, cookies } = body;
 
     if (!path) {
       return new Response(
@@ -22,20 +22,15 @@ export async function POST(event: APIEvent): Promise<Response> {
       );
     }
 
-    // Store the token and Rails URL for this request
+    // Store the cookies and Rails URL for this request
     // These will be accessed by useLoaderData during SSR
-    (globalThis as any).__REACTIVE_VIEW_TOKEN__ = request_token;
+    (globalThis as any).__REACTIVE_VIEW_COOKIES__ = cookies;
     (globalThis as any).__RAILS_BASE_URL__ = rails_base_url;
 
     // Build the internal URL to render using the request's own origin
     // This ensures we use the same host/port that successfully received this request
     const requestUrl = new URL(event.request.url);
     const renderUrl = new URL(path, requestUrl.origin);
-    
-    // Add the token as a query parameter for the SSR context
-    if (request_token) {
-      renderUrl.searchParams.set("_rv_token", request_token);
-    }
 
     // Make an internal request to render the page
     const renderResponse = await fetch(renderUrl.toString(), {
@@ -81,7 +76,7 @@ export async function POST(event: APIEvent): Promise<Response> {
     );
   } finally {
     // Clean up global state
-    delete (globalThis as any).__REACTIVE_VIEW_TOKEN__;
+    delete (globalThis as any).__REACTIVE_VIEW_COOKIES__;
     delete (globalThis as any).__RAILS_BASE_URL__;
   }
 }

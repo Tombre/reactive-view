@@ -1,6 +1,5 @@
 // ReactiveView client library
-// Provides hooks and utilities for connecting SolidStart pages to Rails loaders
+// Re-exports from @reactive-view/core for backwards compatibility with ~/lib/reactive-view imports
 
-export { useLoaderData } from "./loader";
-export { RequestTokenProvider, useRequestToken } from "./context";
-export type { LoaderData, LoaderDataMap } from "./types/generated";
+export { useLoaderData } from "@reactive-view/core";
+export type { LoaderData, LoaderDataMap } from "@reactive-view/core";

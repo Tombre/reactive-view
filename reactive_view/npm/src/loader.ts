@@ -5,7 +5,19 @@ import { useLocation, useParams } from "@solidjs/router";
 // Get the Rails base URL from environment or default
 const getRailsBaseUrl = (): string => {
   if (isServer) {
-    return (globalThis as any).__RAILS_BASE_URL__ || process.env.RAILS_BASE_URL || "http://localhost:3000";
+    // Server-side: check globalThis first, then environment variable, then default
+    const globalRailsUrl = (globalThis as any).__RAILS_BASE_URL__;
+    if (globalRailsUrl) return globalRailsUrl;
+    
+    // Try to access process.env safely (may not exist in all environments)
+    try {
+      const envUrl = (globalThis as any).process?.env?.RAILS_BASE_URL;
+      if (envUrl) return envUrl;
+    } catch {
+      // Ignore - process.env not available
+    }
+    
+    return "http://localhost:3000";
   }
   // On client, use the current origin (same-origin request)
   return window.location.origin;
@@ -25,12 +37,28 @@ const getSSRCookies = (): string | undefined => {
  * 
  * @example
  * ```tsx
- * // In app/pages/users/[id].tsx
- * import { useLoaderData } from "~/lib/reactive-view";
+ * // With generated types (recommended):
+ * import { useLoaderData } from "@reactive-view/core";
  * 
  * export default function UserPage() {
- *   const user = useLoaderData<{ id: number; name: string }>();
- *   return <div>Hello, {user()?.name}</div>;
+ *   // TypeScript knows the type from LoaderDataMap
+ *   const data = useLoaderData<"users/[id]">();
+ *   return <div>Hello, {data()?.user.name}</div>;
+ * }
+ * ```
+ * 
+ * @example
+ * ```tsx
+ * // With inline type definition:
+ * import { useLoaderData } from "@reactive-view/core";
+ * 
+ * interface UserData {
+ *   user: { id: number; name: string };
+ * }
+ * 
+ * export default function UserPage() {
+ *   const data = useLoaderData<UserData>();
+ *   return <div>Hello, {data()?.user.name}</div>;
  * }
  * ```
  */

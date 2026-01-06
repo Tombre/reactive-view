@@ -66,6 +66,8 @@ reactive-view-ai/
 │   │   └── reactive_view/      # Core Ruby code
 │   ├── app/
 │   │   └── controllers/        # Engine controllers
+│   ├── npm/                    # @reactive-view/core npm package
+│   │   └── src/                # TypeScript source
 │   ├── template/               # SolidStart template
 │   │   └── src/
 │   │       ├── lib/reactive-view/  # Frontend library
@@ -160,7 +162,7 @@ end
 
 ```tsx
 // app/pages/users/[id].tsx
-import { useLoaderData } from "~/lib/reactive-view";
+import { useLoaderData } from "@reactive-view/core";
 
 export default function UserPage() {
   const data = useLoaderData<{ user: { id: number; name: string } }>();
@@ -404,7 +406,58 @@ Generate TypeScript types from your loaders:
 bin/rails reactive_view:types:generate
 ```
 
-This creates `.reactive_view/src/lib/reactive-view/types/generated.d.ts` with interfaces matching your loader signatures.
+This creates `.reactive_view/types/loader-data.d.ts` with interfaces matching your loader signatures. The generated types augment the `@reactive-view/core` module, enabling full autocomplete:
+
+```tsx
+// After running types:generate, TypeScript knows the loader data shape
+import { useLoaderData } from "@reactive-view/core";
+
+export default function UserPage() {
+  // TypeScript provides autocomplete for "users/[id]" loader
+  const data = useLoaderData<"users/[id]">();
+  return <h1>{data()?.user.name}</h1>;
+}
+```
+
+## TypeScript & Editor Setup
+
+ReactiveView provides full TypeScript support for your TSX pages. After running `rails reactive_view:install`, your project will have:
+
+- `package.json` - with `@reactive-view/core` and SolidJS dependencies
+- `tsconfig.json` - configured for SolidJS JSX and proper module resolution
+
+### Installation
+
+```bash
+# After adding reactive_view to your Gemfile and running bundle install
+rails reactive_view:install
+
+# This creates package.json and tsconfig.json at your project root
+# Then install npm dependencies:
+npm install
+```
+
+### Editor Support
+
+Your editor (VSCode, etc.) should now:
+- Recognize TSX files in `app/pages/`
+- Provide autocomplete for SolidJS primitives
+- Show proper types for `useLoaderData()` after running `rails reactive_view:types:generate`
+
+### Importing from @reactive-view/core
+
+All ReactiveView utilities should be imported from `@reactive-view/core`:
+
+```tsx
+import { useLoaderData } from "@reactive-view/core";
+```
+
+For SolidJS primitives, import directly from `solid-js`:
+
+```tsx
+import { createSignal, createEffect, For, Show } from "solid-js";
+import { A, useParams } from "@solidjs/router";
+```
 
 ## Current Limitations (MVP)
 

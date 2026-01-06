@@ -1,0 +1,48 @@
+{
+  "name": "@reactive-view/core",
+  "version": "0.1.0",
+  "description": "TypeScript library for ReactiveView - SolidJS components with Rails backends",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "@solidjs/router": "^0.15.0",
+    "solid-js": "^1.9.0"
+  },
+  "devDependencies": {
+    "@solidjs/router": "^0.15.3",
+    "solid-js": "^1.9.4",
+    "typescript": "^5.7.2"
+  },
+  "keywords": [
+    "reactive-view",
+    "solidjs",
+    "rails",
+    "ssr",
+    "typescript"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/reactiveview/reactive_view"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

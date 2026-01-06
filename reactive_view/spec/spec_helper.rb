@@ -57,7 +57,6 @@ module ReactiveView
   class Error < StandardError; end
   class RenderError < Error; end
   class DaemonUnavailableError < Error; end
-  class InvalidTokenError < Error; end
   class ValidationError < Error; end
   class LoaderNotFoundError < Error; end
 
@@ -86,7 +85,6 @@ end
 require 'reactive_view/types'
 require 'reactive_view/types/dsl'
 require 'reactive_view/types/validator'
-require 'reactive_view/request_context'
 require 'reactive_view/dev_proxy'
 
 RSpec.configure do |config|

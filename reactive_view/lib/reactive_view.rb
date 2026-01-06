@@ -14,7 +14,6 @@ module ReactiveView
   class Error < StandardError; end
   class RenderError < Error; end
   class DaemonUnavailableError < Error; end
-  class InvalidTokenError < Error; end
   class ValidationError < Error; end
   class LoaderNotFoundError < Error; end
 
@@ -45,7 +44,6 @@ require_relative 'reactive_view/types'
 require_relative 'reactive_view/types/dsl'
 require_relative 'reactive_view/types/validator'
 require_relative 'reactive_view/types/typescript_generator'
-require_relative 'reactive_view/request_context'
 require_relative 'reactive_view/loader_registry'
 require_relative 'reactive_view/loader'
 require_relative 'reactive_view/router'
