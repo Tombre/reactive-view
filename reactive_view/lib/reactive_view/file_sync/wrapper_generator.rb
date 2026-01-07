@@ -1,0 +1,197 @@
+# frozen_string_literal: true
+
+module ReactiveView
+  class FileSync
+    # Generates thin wrapper files in src/routes that re-export page components.
+    # This pattern enables HMR to work correctly - edits to page components
+    # don't trigger full page reloads because the route files remain unchanged.
+    class WrapperGenerator
+      class << self
+        # Generate route wrappers for all pages
+        #
+        # @return [void]
+        def generate_all
+          pages_path = ReactiveView.configuration.pages_absolute_path
+          return unless pages_path.exist?
+
+          FileUtils.mkdir_p(routes_path)
+
+          # Clean old wrappers except api directory
+          Dir.glob(routes_path.join('*')).each do |path|
+            next if File.basename(path) == 'api'
+
+            FileUtils.rm_rf(path)
+          end
+
+          Dir.glob(pages_path.join('**', '*.tsx')).each do |source|
+            relative = Pathname.new(source).relative_path_from(pages_path)
+            generate_wrapper(relative, pages_path)
+          end
+
+          ReactiveView.logger.debug "[ReactiveView] Generated route wrappers in #{routes_path}"
+        end
+
+        # Generate a wrapper for a single page
+        #
+        # @param relative_path [Pathname] Relative path to the TSX file
+        # @param pages_path [Pathname] Base pages directory
+        # @return [void]
+        def generate_wrapper(relative_path, pages_path)
+          dest = routes_path.join(relative_path)
+          import_path = calculate_import_path(relative_path)
+          component_path = relative_path.to_s.sub(/\.tsx$/, '')
+          has_loader = loader_exists?(relative_path, pages_path)
+
+          wrapper_content = if layout?(relative_path, pages_path)
+                              layout_wrapper_template(import_path, component_path)
+                            else
+                              page_wrapper_template(import_path, component_path, has_loader)
+                            end
+
+          FileUtils.mkdir_p(dest.dirname)
+          File.write(dest, wrapper_content)
+        end
+
+        # Remove a wrapper file
+        #
+        # @param relative [Pathname] Relative path from pages directory
+        # @return [void]
+        def remove_wrapper(relative)
+          dest = routes_path.join(relative)
+          return unless dest.exist?
+
+          FileUtils.rm(dest)
+          cleanup_empty_directories(dest.dirname, routes_path)
+        end
+
+        # Regenerate the parent layout wrapper when children change
+        #
+        # @param relative_path [Pathname] Path of the changed file
+        # @param pages_path [Pathname] Base pages directory
+        # @return [void]
+        def regenerate_parent_layout(relative_path, pages_path)
+          parent = relative_path.dirname
+          return if parent.to_s.empty? || parent.to_s == '.'
+
+          layout_candidate = Pathname.new("#{parent}.tsx")
+          layout_source = pages_path.join(layout_candidate)
+          return unless layout_source.exist?
+
+          generate_wrapper(layout_candidate, pages_path)
+        end
+
+        # Path where route wrappers are stored
+        #
+        # @return [Pathname]
+        def routes_path
+          ReactiveView.configuration.working_directory_absolute_path.join('src', 'routes')
+        end
+
+        private
+
+        # Calculate the import path from a route to its page component
+        #
+        # @param relative_path [Pathname] Relative path to the TSX file
+        # @return [String] Import path for the component
+        def calculate_import_path(relative_path)
+          route_dir = routes_path.join(relative_path).dirname
+          page_file = ComponentSyncer.destination_path.join(relative_path)
+          path = page_file.relative_path_from(route_dir).to_s
+          path = path.sub(/\.tsx$/, '')
+          path.tr('\\', '/')
+        end
+
+        # Check if a file is a layout (has a folder with the same name)
+        #
+        # @param relative_path [Pathname] Path to the file
+        # @param pages_path [Pathname] Base pages directory
+        # @return [Boolean]
+        def layout?(relative_path, pages_path)
+          dir_name = relative_path.to_s.sub(/\.tsx$/, '')
+          pages_path.join(dir_name).directory?
+        end
+
+        # Check if a loader file exists for the given route
+        #
+        # @param relative_path [Pathname] Path to the TSX file
+        # @param pages_path [Pathname] Base pages directory
+        # @return [Boolean]
+        def loader_exists?(relative_path, pages_path)
+          loader_path = relative_path.to_s.sub(/\.tsx$/, '.loader.rb')
+          pages_path.join(loader_path).exist?
+        end
+
+        # Convert a TSX relative path to its loader type import path
+        #
+        # @param relative_path [Pathname] Path to the TSX file
+        # @return [String] Loader type import path
+        def loader_type_path(relative_path)
+          route_path = relative_path.to_s.sub(/\.tsx$/, '')
+          "#loaders/#{route_path}"
+        end
+
+        # Remove empty directories up to the base path
+        def cleanup_empty_directories(dir, base)
+          return if dir == base || !dir.to_s.start_with?(base.to_s)
+          return unless dir.directory? && dir.empty?
+
+          FileUtils.rmdir(dir)
+          cleanup_empty_directories(dir.parent, base)
+        end
+
+        # Template for page wrapper files
+        #
+        # @param import_path [String] Import path to the component
+        # @param component_path [String] Path for comments
+        # @param has_loader [Boolean] Whether the page has a loader
+        # @return [String] TypeScript wrapper content
+        def page_wrapper_template(import_path, component_path, has_loader)
+          loader_import = if has_loader
+                            <<~TSX.strip
+                              import { preloadData } from "#{loader_type_path(Pathname.new(component_path + '.tsx'))}";
+
+                              export const route = {
+                                preload: ({ params }: { params: Record<string, string> }) => preloadData(params),
+                              };
+                            TSX
+                          else
+                            ''
+                          end
+
+          <<~TSX
+            // Auto-generated route wrapper - DO NOT EDIT
+            // Actual component: src/pages/#{component_path}.tsx
+            // Edits here will be overwritten. Edit the source file instead.
+
+            import Page from "#{import_path}";
+            export * from "#{import_path}";
+            #{loader_import}
+            export default Page;
+          TSX
+        end
+
+        # Template for layout wrapper files
+        #
+        # @param import_path [String] Import path to the component
+        # @param component_path [String] Path for comments
+        # @return [String] TypeScript wrapper content
+        def layout_wrapper_template(import_path, component_path)
+          <<~TSX
+            // Auto-generated layout wrapper - DO NOT EDIT
+            // Actual layout: src/pages/#{component_path}.tsx
+            // Edits here will be overwritten. Edit the source file instead.
+
+            import Layout from "#{import_path}";
+            import type { RouteSectionProps } from "@solidjs/router";
+
+            export * from "#{import_path}";
+
+            export default function LayoutWrapper(props: RouteSectionProps) {
+              return <Layout {...props} />;
+            }
+          TSX
+        end
+      end
+    end
+  end
+end
