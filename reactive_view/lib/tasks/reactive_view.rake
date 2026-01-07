@@ -139,4 +139,55 @@ namespace :reactive_view do
       puts "  #{route.ljust(30)} -> #{relative}#{loader_indicator}"
     end
   end
+
+  namespace :benchmark do
+    desc 'Run full benchmark suite (development and production modes)'
+    task run: :environment do
+      ReactiveView::Benchmark::Runner.new.run
+    end
+
+    desc 'Quick benchmark (fewer iterations, production only)'
+    task quick: :environment do
+      ReactiveView::Benchmark::Runner.new(
+        iterations: 20,
+        warmup: 5,
+        concurrency: [1, 5],
+        modes: [:production]
+      ).run
+    end
+
+    desc 'Benchmark production mode only'
+    task production: :environment do
+      ReactiveView::Benchmark::Runner.new(
+        iterations: 100,
+        warmup: 10,
+        concurrency: [1, 5, 10],
+        modes: [:production]
+      ).run
+    end
+
+    desc 'Benchmark development mode only'
+    task development: :environment do
+      ReactiveView::Benchmark::Runner.new(
+        iterations: 100,
+        warmup: 10,
+        concurrency: [1, 5, 10],
+        modes: [:development]
+      ).run
+    end
+
+    desc 'Benchmark a specific route (usage: rake reactive_view:benchmark:route[/users,50])'
+    task :route, %i[path iterations] => :environment do |_t, args|
+      path = args[:path] || '/about'
+      iterations = (args[:iterations] || 50).to_i
+
+      ReactiveView::Benchmark::Runner.new(
+        iterations: iterations,
+        warmup: 5,
+        concurrency: [1, 5],
+        scenarios: [{ name: 'custom', path: path, description: "Custom route: #{path}" }],
+        modes: [:production]
+      ).run
+    end
+  end
 end

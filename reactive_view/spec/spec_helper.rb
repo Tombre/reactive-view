@@ -59,6 +59,7 @@ module ReactiveView
   class DaemonUnavailableError < Error; end
   class ValidationError < Error; end
   class LoaderNotFoundError < Error; end
+  class BenchmarkError < Error; end
 
   class << self
     def configuration
@@ -86,6 +87,14 @@ require 'reactive_view/types'
 require 'reactive_view/types/dsl'
 require 'reactive_view/types/validator'
 require 'reactive_view/dev_proxy'
+
+# Load benchmark components
+require 'reactive_view/benchmark/statistics'
+require 'reactive_view/benchmark/scenario'
+require 'reactive_view/benchmark/concurrent_runner'
+require 'reactive_view/benchmark/server_manager'
+require 'reactive_view/benchmark/reporter'
+require 'reactive_view/benchmark/runner'
 
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|

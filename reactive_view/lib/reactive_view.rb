@@ -16,6 +16,7 @@ module ReactiveView
   class DaemonUnavailableError < Error; end
   class ValidationError < Error; end
   class LoaderNotFoundError < Error; end
+  class BenchmarkError < Error; end
 
   class << self
     def configuration
@@ -52,3 +53,11 @@ require_relative 'reactive_view/file_sync'
 require_relative 'reactive_view/daemon'
 require_relative 'reactive_view/dev_proxy'
 require_relative 'reactive_view/engine'
+
+# Benchmark module (loaded on demand via rake tasks)
+require_relative 'reactive_view/benchmark/statistics'
+require_relative 'reactive_view/benchmark/scenario'
+require_relative 'reactive_view/benchmark/concurrent_runner'
+require_relative 'reactive_view/benchmark/server_manager'
+require_relative 'reactive_view/benchmark/reporter'
+require_relative 'reactive_view/benchmark/runner'
