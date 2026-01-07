@@ -1,11 +1,38 @@
 # frozen_string_literal: true
 
 module ReactiveView
-  # HTTP client that communicates with the SolidStart daemon.
-  # Requests page renders and returns the HTML.
+  # HTTP client that communicates with the SolidStart daemon for server-side rendering.
+  #
+  # The Renderer sends render requests to the SolidStart daemon, which:
+  # 1. Receives the request with path and loader information
+  # 2. Calls back to Rails to fetch loader data
+  # 3. Renders the SolidJS component to HTML
+  # 4. Returns the HTML to be sent to the browser
+  #
+  # @example Basic usage (typically called by Loader#call)
+  #   renderer = ReactiveView::Renderer.new
+  #   html = renderer.render(
+  #     path: '/users/123',
+  #     loader_path: 'users/[id]',
+  #     rails_base_url: 'http://localhost:3000',
+  #     cookies: request.headers['Cookie']
+  #   )
+  #
+  # @example Checking daemon health
+  #   renderer = ReactiveView::Renderer.new
+  #   if renderer.healthy?
+  #     # Daemon is running
+  #   end
+  #
   class Renderer
+    # @return [String] The API endpoint path for render requests
     RENDER_PATH = '/api/render'
 
+    # Creates a new Renderer instance.
+    #
+    # @param host [String, nil] Daemon host (defaults to configuration)
+    # @param port [Integer, nil] Daemon port (defaults to configuration)
+    # @param timeout [Integer, nil] Request timeout in seconds (defaults to configuration)
     def initialize(host: nil, port: nil, timeout: nil)
       @host = host || ReactiveView.configuration.daemon_host
       @port = port || ReactiveView.configuration.daemon_port
@@ -38,9 +65,13 @@ module ReactiveView
       raise DaemonUnavailableError, "SolidStart daemon is not available: #{e.message}"
     end
 
-    # Check if the daemon is healthy
+    # Checks if the SolidStart daemon is running and healthy.
     #
-    # @return [Boolean]
+    # @return [Boolean] true if daemon responds successfully, false otherwise
+    #
+    # @example
+    #   renderer = ReactiveView::Renderer.new
+    #   renderer.healthy? # => true
     def healthy?
       response = connection.get(RENDER_PATH)
       response.success?

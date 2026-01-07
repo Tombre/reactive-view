@@ -2,21 +2,49 @@
 
 module ReactiveView
   # Scans the app/pages directory and generates Rails routes for ReactiveView pages.
-  # Handles SolidStart-style file-based routing patterns.
   #
-  # Route patterns:
-  #   index.tsx         -> /
-  #   about.tsx         -> /about
-  #   users/index.tsx   -> /users
-  #   users/[id].tsx    -> /users/:id
-  #   blog/[...slug].tsx -> /blog/*slug
-  #   users/[[id]].tsx  -> /users(/:id) (optional param)
+  # Implements SolidStart-style file-based routing, automatically mapping TSX files
+  # to Rails routes with the appropriate loader controllers.
+  #
+  # ## Route Patterns
+  #
+  # | File Path | Rails Route | Description |
+  # |-----------|-------------|-------------|
+  # | `index.tsx` | `/` | Root route |
+  # | `about.tsx` | `/about` | Static route |
+  # | `users/index.tsx` | `/users` | Nested index |
+  # | `users/[id].tsx` | `/users/:id` | Dynamic segment |
+  # | `blog/[...slug].tsx` | `/blog/*slug` | Catch-all segment |
+  # | `users/[[id]].tsx` | `/users(/:id)` | Optional segment |
+  #
+  # ## Route Priority
+  #
+  # Routes are sorted so that more specific routes match before less specific ones:
+  # 1. Static routes (e.g., `/users/new`)
+  # 2. Dynamic routes (e.g., `/users/:id`)
+  # 3. Optional routes (e.g., `/users(/:id)`)
+  # 4. Catch-all routes (e.g., `/blog/*slug`)
+  #
+  # @example Drawing routes in config/routes.rb
+  #   Rails.application.routes.draw do
+  #     ReactiveView::Router.draw(self)
+  #   end
   #
   class Router
     class << self
-      # Draw routes from the pages directory into the Rails router
+      # Draws routes from the pages directory into the Rails router.
       #
-      # @param router [ActionDispatch::Routing::Mapper] The Rails router
+      # Scans app/pages for TSX files and creates corresponding Rails routes.
+      # Each route is mapped to its loader controller's `call` action.
+      #
+      # @param router [ActionDispatch::Routing::Mapper] The Rails router instance
+      # @return [void]
+      #
+      # @example
+      #   # In config/routes.rb
+      #   Rails.application.routes.draw do
+      #     ReactiveView::Router.draw(self)
+      #   end
       def draw(router)
         pages_path = ReactiveView.configuration.pages_absolute_path
         return unless pages_path.exist?

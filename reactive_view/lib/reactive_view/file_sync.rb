@@ -24,10 +24,22 @@ module ReactiveView
   #
   class FileSync
     class << self
-      # Sync all files from app/pages to the SolidStart working directory.
-      # Sets up the directory, syncs components, generates wrappers, and generates types.
+      # Syncs all files from app/pages to the SolidStart working directory.
+      #
+      # This method performs a full sync:
+      # 1. Sets up the .reactive_view directory (copies template, runs npm install)
+      # 2. Syncs TSX/TS components to .reactive_view/src/pages
+      # 3. Generates route wrappers in .reactive_view/src/routes
+      # 4. Generates TypeScript types from loader signatures
       #
       # @return [void]
+      #
+      # @example Manual sync via rake task
+      #   # From command line:
+      #   bin/rails reactive_view:sync
+      #
+      # @example Programmatic sync
+      #   ReactiveView::FileSync.sync_all
       def sync_all
         DirectorySetup.setup
         ComponentSyncer.sync_all
@@ -35,14 +47,22 @@ module ReactiveView
         sync_loader_types
       end
 
-      # Start watching for file changes (development only)
+      # Starts watching for file changes in app/pages (development only).
+      #
+      # When files change:
+      # - TSX/TS files are synced to .reactive_view/src/pages
+      # - Route wrappers are regenerated as needed
+      # - Loader changes trigger TypeScript type regeneration and Vite HMR
       #
       # @return [void]
+      #
+      # @example Starting the watcher (typically done by the Engine)
+      #   ReactiveView::FileSync.start_watching
       def start_watching
         FileWatcher.start
       end
 
-      # Stop the file watcher
+      # Stops the file watcher.
       #
       # @return [void]
       def stop_watching

@@ -57,8 +57,22 @@ module ReactiveView
       end
     end
 
-    # Main action - called when the route is hit
-    # Handles auth (via before_actions), then delegates to SolidStart for rendering
+    # Renders the page via the SolidStart daemon.
+    #
+    # This is the main controller action that:
+    # 1. Runs any before_action callbacks (authentication, authorization, etc.)
+    # 2. Forwards the request to the SolidStart daemon for SSR
+    # 3. Returns the rendered HTML to the browser
+    #
+    # The daemon calls back to Rails to fetch loader data via LoaderDataController.
+    #
+    # @return [void] Renders HTML response directly
+    # @raise [ReactiveView::DaemonUnavailableError] if the SolidStart daemon is not running
+    # @raise [ReactiveView::RenderError] if SSR rendering fails
+    #
+    # @example In routes, this is called automatically:
+    #   # The Router maps /users/:id to Pages::Users::IdLoader.action(:call)
+    #   get '/users/:id', to: Pages::Users::IdLoader.action(:call)
     def call
       # Determine the loader path from the request
       loader_path = extract_loader_path
@@ -82,10 +96,30 @@ module ReactiveView
       handle_render_error(e)
     end
 
-    # Override in subclasses to provide data to your pages
-    # Called by LoaderDataController when SolidStart requests data
+    # Provides data to the page component.
     #
-    # @return [Hash] Data to pass to the page component
+    # Override this method in subclasses to fetch and return data for your pages.
+    # This is called by LoaderDataController when SolidStart requests data during SSR
+    # or client-side navigation.
+    #
+    # @return [Hash] Data to pass to the page component as props
+    #
+    # @example Fetching a user
+    #   def load
+    #     user = User.find(params[:id])
+    #     { id: user.id, name: user.name, email: user.email }
+    #   end
+    #
+    # @example Using memoization for complex queries
+    #   def load
+    #     { user: user_data, posts: user_posts }
+    #   end
+    #
+    #   private
+    #
+    #   def user_data
+    #     @user_data ||= User.find(params[:id]).as_json(only: [:id, :name])
+    #   end
     def load
       {}
     end
