@@ -140,51 +140,14 @@ module ReactiveView
     end
 
     def daemon_error_html(error)
-      <<~HTML
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>ReactiveView - Daemon Unavailable</title>
-          <style>
-            body { font-family: system-ui, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
-            h1 { color: #e53e3e; }
-            pre { background: #f7f7f7; padding: 20px; overflow-x: auto; border-radius: 8px; }
-            .hint { background: #fffbeb; border: 1px solid #fbbf24; padding: 16px; border-radius: 8px; margin-top: 20px; }
-          </style>
-        </head>
-        <body>
-          <h1>ReactiveView Daemon Unavailable</h1>
-          <p>The SolidStart rendering daemon is not responding.</p>
-          <pre>#{ERB::Util.html_escape(error.message)}</pre>
-          <div class="hint">
-            <strong>Hint:</strong> Make sure the daemon is running. You can start it manually with:
-            <pre>cd #{ReactiveView.configuration.working_directory} && npm run dev</pre>
-            Or ensure <code>auto_start_daemon</code> is enabled in your ReactiveView configuration.
-          </div>
-        </body>
-        </html>
-      HTML
+      Templates.render('error_pages/daemon_unavailable.html',
+                       error_message: ERB::Util.html_escape(error.message),
+                       working_directory: ReactiveView.configuration.working_directory)
     end
 
     def render_error_html(error)
-      <<~HTML
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>ReactiveView - Render Error</title>
-          <style>
-            body { font-family: system-ui, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
-            h1 { color: #e53e3e; }
-            pre { background: #f7f7f7; padding: 20px; overflow-x: auto; border-radius: 8px; }
-          </style>
-        </head>
-        <body>
-          <h1>ReactiveView Render Error</h1>
-          <p>An error occurred while rendering the page.</p>
-          <pre>#{ERB::Util.html_escape(error.message)}</pre>
-        </body>
-        </html>
-      HTML
+      Templates.render('error_pages/render_error.html',
+                       error_message: ERB::Util.html_escape(error.message))
     end
   end
 end

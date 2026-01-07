@@ -41,6 +41,7 @@ module ReactiveView
 end
 
 # Load components after the module is defined
+require_relative 'reactive_view/templates'
 require_relative 'reactive_view/types'
 require_relative 'reactive_view/types/dsl'
 require_relative 'reactive_view/types/validator'

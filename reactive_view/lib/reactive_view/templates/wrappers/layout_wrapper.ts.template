@@ -1,0 +1,12 @@
+// Auto-generated layout wrapper - DO NOT EDIT
+// Actual layout: src/pages/%{component_path}.tsx
+// Edits here will be overwritten. Edit the source file instead.
+
+import Layout from "%{import_path}";
+import type { RouteSectionProps } from "@solidjs/router";
+
+export * from "%{import_path}";
+
+export default function LayoutWrapper(props: RouteSectionProps) {
+  return <Layout {...props} />;
+}

@@ -1,0 +1,8 @@
+// Auto-generated route wrapper - DO NOT EDIT
+// Actual component: src/pages/%{component_path}.tsx
+// Edits here will be overwritten. Edit the source file instead.
+
+import Page from "%{import_path}";
+export * from "%{import_path}";
+%{loader_import}
+export default Page;

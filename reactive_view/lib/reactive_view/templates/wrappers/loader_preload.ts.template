@@ -1,0 +1,5 @@
+import { preloadData } from "%{loader_type_path}";
+
+export const route = {
+  preload: ({ params }: { params: Record<string, string> }) => preloadData(params),
+};

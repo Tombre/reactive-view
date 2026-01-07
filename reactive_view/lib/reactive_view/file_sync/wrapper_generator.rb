@@ -147,27 +147,16 @@ module ReactiveView
         # @return [String] TypeScript wrapper content
         def page_wrapper_template(import_path, component_path, has_loader)
           loader_import = if has_loader
-                            <<~TSX.strip
-                              import { preloadData } from "#{loader_type_path(Pathname.new(component_path + '.tsx'))}";
-
-                              export const route = {
-                                preload: ({ params }: { params: Record<string, string> }) => preloadData(params),
-                              };
-                            TSX
+                            Templates.render('wrappers/loader_preload.ts.template',
+                                             loader_type_path: loader_type_path(Pathname.new(component_path + '.tsx')))
                           else
                             ''
                           end
 
-          <<~TSX
-            // Auto-generated route wrapper - DO NOT EDIT
-            // Actual component: src/pages/#{component_path}.tsx
-            // Edits here will be overwritten. Edit the source file instead.
-
-            import Page from "#{import_path}";
-            export * from "#{import_path}";
-            #{loader_import}
-            export default Page;
-          TSX
+          Templates.render('wrappers/page_wrapper.ts.template',
+                           component_path: component_path,
+                           import_path: import_path,
+                           loader_import: loader_import)
         end
 
         # Template for layout wrapper files
@@ -176,20 +165,9 @@ module ReactiveView
         # @param component_path [String] Path for comments
         # @return [String] TypeScript wrapper content
         def layout_wrapper_template(import_path, component_path)
-          <<~TSX
-            // Auto-generated layout wrapper - DO NOT EDIT
-            // Actual layout: src/pages/#{component_path}.tsx
-            // Edits here will be overwritten. Edit the source file instead.
-
-            import Layout from "#{import_path}";
-            import type { RouteSectionProps } from "@solidjs/router";
-
-            export * from "#{import_path}";
-
-            export default function LayoutWrapper(props: RouteSectionProps) {
-              return <Layout {...props} />;
-            }
-          TSX
+          Templates.render('wrappers/layout_wrapper.ts.template',
+                           component_path: component_path,
+                           import_path: import_path)
         end
       end
     end
