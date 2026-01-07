@@ -20,7 +20,7 @@
  * ```
  */
 
-import { posix as pathPosix } from "node:path";
+import { posix as pathPosix, resolve as pathResolve } from "node:path";
 import type { Plugin, ViteDevServer, HmrContext } from "vite";
 
 export interface ReactiveViewPluginOptions {
@@ -78,7 +78,6 @@ export function reactiveViewPlugin(
   options: ReactiveViewPluginOptions = {}
 ): Plugin {
   const { debug = false } = options;
-  let resolvedCorePath: string | null = null;
   let viteServer: ViteDevServer | null = null;
 
   const log = (message: string, ...args: unknown[]) => {
@@ -200,25 +199,26 @@ export function reactiveViewPlugin(
     },
 
     /**
-     * Resolve #loaders/* imports to @reactive-view/core at runtime.
-     * TypeScript will resolve types via tsconfig paths to .reactive_view/types/loaders/*
+     * Resolve #loaders/* imports to the generated loader type files.
+     * These files contain route-specific preloadData() and useLoaderData() functions.
+     *
+     * For example:
+     * - #loaders/users/index -> ./types/loaders/users/index.ts
+     * - #loaders/users/[id] -> ./types/loaders/users/[id].ts
      */
     async resolveId(id: string, importer: string | undefined) {
       if (id.startsWith("#loaders/")) {
-        // Resolve @reactive-view/core to its actual path (cache for performance)
-        if (!resolvedCorePath) {
-          const resolved = await this.resolve("@reactive-view/core", importer, {
-            skipSelf: true,
-          });
-          if (resolved) {
-            resolvedCorePath = resolved.id;
-          }
-        }
+        // Extract the route path from the import
+        const routePath = id.slice("#loaders/".length);
 
-        log(`Resolving ${id} from ${importer} -> ${resolvedCorePath}`);
+        // Build the absolute path to the generated loader file
+        // The types/loaders directory is at the root of the .reactive_view project
+        const loaderPath = pathResolve(process.cwd(), `types/loaders/${routePath}.ts`);
 
-        // Return the resolved path to the @reactive-view/core package
-        return resolvedCorePath;
+        log(`Resolving ${id} from ${importer} -> ${loaderPath}`);
+
+        // Return the absolute resolved path to the generated loader type file
+        return loaderPath;
       }
       return null;
     },

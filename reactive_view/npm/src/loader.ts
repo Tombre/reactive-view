@@ -1,6 +1,6 @@
-import { createResource, createSignal, type Resource } from "solid-js";
+import { createResource, createSignal, type Resource, type Accessor } from "solid-js";
 import { isServer } from "solid-js/web";
-import { useLocation, useParams } from "@solidjs/router";
+import { useLocation, useParams, query, createAsync } from "@solidjs/router";
 import type { LoaderDataMap } from "./types";
 
 // Get the Rails base URL from environment or default
@@ -86,6 +86,91 @@ function setupLoaderHMR(): void {
 // Initialize HMR on module load (client-side only)
 if (!isServer) {
   setupLoaderHMR();
+}
+
+// ============================================================================
+// Loader Query Functions (for preloading)
+// ============================================================================
+
+/**
+ * Fetch loader data from Rails.
+ * This is the core fetch function used by both query-based and resource-based loaders.
+ *
+ * @param loaderPath - The route path (e.g., "users/index", "users/[id]")
+ * @param params - Route parameters to pass to the loader
+ */
+async function fetchLoaderData<T>(
+  loaderPath: string,
+  params: Record<string, string>
+): Promise<T> {
+  const railsBaseUrl = getRailsBaseUrl();
+  const url = new URL(
+    `/_reactive_view/loaders/${loaderPath}/load`,
+    railsBaseUrl
+  );
+
+  // Add route params as query parameters
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) {
+      url.searchParams.set(key, value);
+    }
+  });
+
+  // Build headers
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  };
+
+  // For SSR, forward the cookies from Rails
+  const ssrCookies = getSSRCookies();
+  if (ssrCookies) {
+    headers["Cookie"] = ssrCookies;
+  }
+
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    headers,
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      errorData.error || `Loader request failed: ${response.statusText}`
+    );
+  }
+
+  return response.json() as Promise<T>;
+}
+
+/**
+ * Create a cached query function for a loader.
+ * This query is cached by the router and can be preloaded before navigation.
+ *
+ * @param loaderPath - The route path (e.g., "users/index", "users/[id]")
+ * @returns A query function that can be called to fetch/cache data
+ *
+ * @example
+ * // In a generated loader file:
+ * const getUsersQuery = createLoaderQuery<LoaderData>("users/index");
+ *
+ * export function preloadData() {
+ *   getUsersQuery({});
+ * }
+ *
+ * export function useLoaderData() {
+ *   return createAsync(() => getUsersQuery({}));
+ * }
+ */
+export function createLoaderQuery<T>(loaderPath: string): (params: Record<string, string>) => Promise<T> {
+  const queryFn = query(
+    async (params: Record<string, string>) => fetchLoaderData<T>(loaderPath, params),
+    `loader:${loaderPath}`
+  );
+  // Cast to the expected return type - the router's NarrowResponse is compatible
+  // with our data type since we're not using Response objects
+  return queryFn as (params: Record<string, string>) => Promise<T>;
 }
 
 // ============================================================================

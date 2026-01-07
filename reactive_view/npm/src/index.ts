@@ -2,7 +2,7 @@
 // TypeScript library for ReactiveView - SolidJS components with Rails backends
 
 // Core hook for loading data from Rails loaders
-export { useLoaderData } from "./loader.js";
+export { useLoaderData, createLoaderQuery } from "./loader.js";
 
 // Type exports for loader data
 export type { LoaderDataMap, LoaderData, HasLoaderData } from "./types/index.js";

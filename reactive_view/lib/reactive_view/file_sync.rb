@@ -260,10 +260,11 @@ module ReactiveView
         dest = routes_path.join(relative_path)
         import_path = page_import_path_for(relative_path)
         component_path = relative_path.to_s.sub(/\.tsx$/, '')
+        has_loader = loader_file_exists?(relative_path, pages_path)
         wrapper_content = if layout_file?(relative_path, pages_path)
                             generate_layout_wrapper(import_path, component_path)
                           else
-                            generate_page_wrapper(import_path, component_path)
+                            generate_page_wrapper(import_path, component_path, has_loader)
                           end
 
         FileUtils.mkdir_p(dest.dirname)
@@ -296,7 +297,32 @@ module ReactiveView
         pages_path.join(dir_name).directory?
       end
 
-      def generate_page_wrapper(import_path, component_path)
+      # Check if a loader file exists for the given route
+      def loader_file_exists?(relative_path, pages_path)
+        loader_path = relative_path.to_s.sub(/\.tsx$/, '.loader.rb')
+        pages_path.join(loader_path).exist?
+      end
+
+      # Convert a TSX relative path to its loader type import path
+      # e.g., "users/index.tsx" -> "#loaders/users/index"
+      def loader_type_path_for(relative_path)
+        route_path = relative_path.to_s.sub(/\.tsx$/, '')
+        "#loaders/#{route_path}"
+      end
+
+      def generate_page_wrapper(import_path, component_path, has_loader)
+        loader_import = if has_loader
+                          <<~TSX.strip
+                            import { preloadData } from "#{loader_type_path_for(Pathname.new(component_path + '.tsx'))}";
+
+                            export const route = {
+                              preload: ({ params }: { params: Record<string, string> }) => preloadData(params),
+                            };
+                          TSX
+                        else
+                          ''
+                        end
+
         <<~TSX
           // Auto-generated route wrapper - DO NOT EDIT
           // Actual component: src/pages/#{component_path}.tsx
@@ -304,6 +330,7 @@ module ReactiveView
 
           import Page from "#{import_path}";
           export * from "#{import_path}";
+          #{loader_import}
           export default Page;
         TSX
       end
