@@ -35,6 +35,18 @@ module ReactiveView
       @rails_base_url = nil # Auto-detected from request if nil
     end
 
+    # Set the daemon port with validation
+    #
+    # @param value [Integer] Port number (must be positive)
+    # @raise [ArgumentError] if port is not a positive integer
+    def daemon_port=(value)
+      unless value.is_a?(Integer) && value.positive?
+        raise ArgumentError, "daemon_port must be a positive integer, got: #{value.inspect}"
+      end
+
+      @daemon_port = value
+    end
+
     # Determines if daemon should be auto-started based on configuration and environment
     def should_auto_start_daemon?
       auto_start_daemon && !external_daemon

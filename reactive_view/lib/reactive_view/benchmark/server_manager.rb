@@ -210,7 +210,7 @@ module ReactiveView
       end
 
       def log(message)
-        puts "[ServerManager] #{message}"
+        ReactiveView.logger.info "[ServerManager] #{message}"
         @output_buffer << "[#{Time.now.strftime('%H:%M:%S')}] #{message}"
       end
     end
