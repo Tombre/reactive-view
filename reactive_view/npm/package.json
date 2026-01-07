@@ -37,6 +37,7 @@
   },
   "devDependencies": {
     "@solidjs/router": "^0.15.3",
+    "@types/node": "^22.0.0",
     "solid-js": "^1.9.4",
     "typescript": "^5.7.2",
     "vite": "^6.0.0"

@@ -13,7 +13,12 @@ module ReactiveView
   #   /@vite/*  - Vite HMR and client
   #   /@fs/*    - Vite filesystem access
   #
+  # Note: WebSocket connections for HMR are NOT proxied through Rails.
+  # Instead, Vite is configured to connect directly to port 3001 for WebSocket HMR.
+  # This is more reliable than proxying WebSockets through Rack middleware.
+  #
   class DevProxy
+    # Paths that should be proxied to the Vite dev server
     PROXY_PATHS = %r{^/(_build|@vite|@fs)/}
 
     def initialize(app)
@@ -120,7 +125,33 @@ module ReactiveView
       headers = filter_response_headers(response.headers)
       body = [response.body]
 
+      # Fix MIME types for JavaScript modules
+      # Vite/Vinxi sometimes returns text/html for JS files incorrectly
+      headers = fix_content_type(headers, body.first)
+
       [status, headers, body]
+    end
+
+    # Fix Content-Type for JavaScript modules that Vite incorrectly serves as text/html
+    #
+    # @param headers [Hash] Response headers
+    # @param body [String] Response body
+    # @return [Hash] Headers with corrected Content-Type if needed
+    def fix_content_type(headers, body)
+      content_type = headers['content-type'] || headers['Content-Type']
+
+      # If Content-Type is text/html but body looks like JavaScript module, fix it
+      if content_type&.include?('text/html') && body.is_a?(String)
+        # Check if body starts with JavaScript patterns
+        trimmed = body.lstrip
+        if trimmed.start_with?('import ', 'export ', 'const ', 'let ', 'var ', 'function ', 'class ', '//', '/*')
+          headers = headers.dup
+          headers['content-type'] = 'application/javascript'
+          headers.delete('Content-Type')
+        end
+      end
+
+      headers
     end
 
     def filter_response_headers(headers)
@@ -141,8 +172,15 @@ module ReactiveView
 
     # Encode path segments to handle special characters like square brackets
     # in dynamic route files (e.g., [id].tsx)
+    #
+    # Note: We preserve '@' symbols as Vite uses them for special paths:
+    # - @vite/client - Vite HMR client
+    # - @fs/* - Filesystem access
     def encode_path(path)
-      path.split('/').map { |segment| URI.encode_www_form_component(segment) }.join('/')
+      path.split('/').map do |segment|
+        # Encode the segment but restore @ symbols which Vite requires unencoded
+        URI.encode_www_form_component(segment).gsub('%40', '@')
+      end.join('/')
     end
   end
 end

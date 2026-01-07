@@ -1,4 +1,4 @@
-import { createResource, type Resource } from "solid-js";
+import { createResource, createSignal, type Resource } from "solid-js";
 import { isServer } from "solid-js/web";
 import { useLocation, useParams } from "@solidjs/router";
 import type { LoaderDataMap } from "./types";
@@ -31,6 +31,66 @@ const getSSRCookies = (): string | undefined => {
   }
   return undefined;
 };
+
+// ============================================================================
+// HMR Support for Loader Invalidation
+// ============================================================================
+
+/**
+ * Track invalidated routes for HMR-triggered refetching.
+ * When a loader file changes, Rails notifies Vite which broadcasts to clients.
+ * This signal triggers refetching of affected loaders.
+ */
+const [loaderInvalidationCount, setLoaderInvalidationCount] = createSignal(0);
+
+/**
+ * Set of routes that have been invalidated by HMR.
+ * Used to determine if a specific loader should refetch.
+ */
+let invalidatedRoutes: Set<string> = new Set();
+
+/**
+ * Setup HMR event listener for loader invalidation.
+ * This runs once on the client when the module loads.
+ */
+function setupLoaderHMR(): void {
+  if (isServer) return;
+
+  // Check if HMR is available (Vite dev mode)
+  if (typeof import.meta.hot !== "undefined" && import.meta.hot) {
+    import.meta.hot.on(
+      "reactive-view:loader-update",
+      (data: { routes: string[]; type: string; timestamp: number }) => {
+        console.log("[ReactiveView] Loader update received:", data);
+
+        // Add routes to invalidation set
+        for (const route of data.routes) {
+          invalidatedRoutes.add(route);
+        }
+
+        // Trigger refetch for all active loaders
+        // The signal change will cause createResource to re-run its fetcher
+        setLoaderInvalidationCount((c) => c + 1);
+
+        // Clear invalidation set after a tick to allow loaders to check it
+        setTimeout(() => {
+          invalidatedRoutes.clear();
+        }, 100);
+      }
+    );
+
+    console.log("[ReactiveView] HMR loader invalidation listener registered");
+  }
+}
+
+// Initialize HMR on module load (client-side only)
+if (!isServer) {
+  setupLoaderHMR();
+}
+
+// ============================================================================
+// useLoaderData Hook
+// ============================================================================
 
 /**
  * Hook to load data from a Rails loader.
@@ -71,6 +131,11 @@ const getSSRCookies = (): string | undefined => {
  *   return <div>{data()?.name}</div>;
  * }
  * ```
+ *
+ * ## HMR Support
+ *
+ * When a `.loader.rb` file changes during development, the data will
+ * automatically refetch without requiring a page refresh.
  */
 
 // Overload 1: No arguments - uses current route, type provided by caller or generated import
@@ -97,12 +162,14 @@ export function useLoaderData<T>(
   const routeParams = useParams<Record<string, string>>();
 
   const [data] = createResource(
-    // Track location and params for reactivity
+    // Track location, params, and invalidation count for reactivity
     () => ({
       path: location.pathname,
       routeParams: { ...routeParams } as Record<string, string>,
       explicitRoute: route,
       explicitParams,
+      // Include invalidation count to trigger refetch on HMR
+      invalidationCount: loaderInvalidationCount(),
     }),
     async (source) => {
       let loaderPath: string;
@@ -211,7 +278,7 @@ function buildLoaderPath(
   // Examples: /users -> users/index, /users/123 -> users/[id] (no index needed)
   const lastSegment = path.split("/").pop() || "";
   const hasParamAtEnd = lastSegment.startsWith("[") && lastSegment.endsWith("]");
-  
+
   if (!hasParamAtEnd) {
     path = `${path}/index`;
   }

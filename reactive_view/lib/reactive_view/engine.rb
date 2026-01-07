@@ -34,13 +34,16 @@ module ReactiveView
 
     initializer 'reactive_view.setup_file_sync' do |app|
       app.config.after_initialize do
-        next unless ReactiveView.configuration.should_auto_start_daemon?
+        # File sync should ALWAYS run in development, regardless of daemon startup mode.
+        # This ensures TSX files are synced to the working directory and changes are
+        # detected even when the daemon is managed externally (e.g., via Procfile).
+        next unless Rails.env.development?
 
         # Initial sync of TSX files
         ReactiveView::FileSync.sync_all
 
-        # Start file watcher in development
-        ReactiveView::FileSync.start_watching if Rails.env.development?
+        # Start file watcher to detect changes
+        ReactiveView::FileSync.start_watching
       end
     end
 

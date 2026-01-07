@@ -190,6 +190,79 @@ RSpec.describe ReactiveView::DevProxy do
     end
   end
 
+  describe '#fix_content_type' do
+    let(:proxy_instance) { described_class.new(app) }
+
+    it 'fixes text/html to application/javascript for JavaScript content' do
+      headers = { 'content-type' => 'text/html' }
+      body = 'import "/_build/node_modules/vite/dist/client/env.mjs";'
+
+      fixed_headers = proxy_instance.send(:fix_content_type, headers, body)
+
+      expect(fixed_headers['content-type']).to eq('application/javascript')
+    end
+
+    it 'preserves correct content-type for actual HTML' do
+      headers = { 'content-type' => 'text/html' }
+      body = '<!DOCTYPE html><html><head></head><body></body></html>'
+
+      fixed_headers = proxy_instance.send(:fix_content_type, headers, body)
+
+      expect(fixed_headers['content-type']).to eq('text/html')
+    end
+
+    it 'preserves correct content-type for JavaScript' do
+      headers = { 'content-type' => 'application/javascript' }
+      body = 'export default function() {}'
+
+      fixed_headers = proxy_instance.send(:fix_content_type, headers, body)
+
+      expect(fixed_headers['content-type']).to eq('application/javascript')
+    end
+
+    it 'detects various JavaScript patterns' do
+      patterns = [
+        'import foo from "bar"',
+        'export default {}',
+        'const x = 1',
+        'let y = 2',
+        'var z = 3',
+        'function hello() {}',
+        'class MyClass {}',
+        '// comment',
+        '/* block comment */'
+      ]
+
+      patterns.each do |js_body|
+        headers = { 'content-type' => 'text/html' }
+        fixed_headers = proxy_instance.send(:fix_content_type, headers, js_body)
+
+        expect(fixed_headers['content-type']).to eq('application/javascript'),
+                                                 "Expected '#{js_body}' to be detected as JavaScript"
+      end
+    end
+  end
+
+  describe '#encode_path' do
+    let(:proxy_instance) { described_class.new(app) }
+
+    it 'preserves @ symbols in paths' do
+      expect(proxy_instance.send(:encode_path, '/@vite/client')).to eq('/@vite/client')
+      expect(proxy_instance.send(:encode_path, '/_build/@vite/client')).to eq('/_build/@vite/client')
+      expect(proxy_instance.send(:encode_path, '/@fs/path/to/file.js')).to eq('/@fs/path/to/file.js')
+    end
+
+    it 'encodes square brackets for dynamic routes' do
+      expect(proxy_instance.send(:encode_path, '/_build/@fs/routes/[id].tsx'))
+        .to eq('/_build/@fs/routes/%5Bid%5D.tsx')
+    end
+
+    it 'handles paths with both @ and square brackets' do
+      expect(proxy_instance.send(:encode_path, '/@fs/routes/users/[id]/edit.tsx'))
+        .to eq('/@fs/routes/users/%5Bid%5D/edit.tsx')
+    end
+  end
+
   describe 'PROXY_PATHS regex' do
     it 'matches /_build/ paths' do
       expect('/_build/something').to match(ReactiveView::DevProxy::PROXY_PATHS)

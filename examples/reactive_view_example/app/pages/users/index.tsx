@@ -37,7 +37,7 @@ export default function UsersIndexPage() {
         <A href="/counter">Counter</A>
       </nav>
 
-      <h1>Users</h1>
+      <h1>All Users</h1>
 
       <p>
         This page demonstrates loading data from a Rails loader. The user data
