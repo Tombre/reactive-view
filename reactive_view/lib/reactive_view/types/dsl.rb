@@ -75,7 +75,8 @@ module ReactiveView
         schema.keys.each_with_object({}) do |key, hash|
           hash[key.name] = key.type
         end
-      rescue StandardError
+      rescue StandardError => e
+        ReactiveView.logger.debug "[ReactiveView] Could not extract params from schema: #{e.message}"
         {}
       end
     end
