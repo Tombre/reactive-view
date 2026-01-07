@@ -27,6 +27,12 @@ export default function DashboardAnalytics() {
     return chartData.length > 0 ? Math.max(...chartData.map((d) => d.value)) : 1;
   };
 
+  const getBarHeight = (value: number) => {
+    // Calculate height in pixels (max 160px to leave room for labels)
+    const maxHeight = 160;
+    return Math.round((value / maxValue()) * maxHeight);
+  };
+
   return (
     <div>
       <div
@@ -123,26 +129,28 @@ export default function DashboardAnalytics() {
         >
           <For each={data().chart_data}>
             {(item) => (
-              <div
-                style={{
-                  flex: 1,
-                  display: "flex",
-                  "flex-direction": "column",
-                  "align-items": "center",
-                  gap: "8px",
-                }}
-              >
                 <div
                   style={{
-                    width: "100%",
-                    background: "#3b82f6",
-                    "border-radius": "4px 4px 0 0",
-                    transition: "height 0.3s ease",
-                    height: `${(item.value / maxValue()) * 100}%`,
-                    position: "relative",
+                    flex: 1,
+                    display: "flex",
+                    "flex-direction": "column",
+                    "align-items": "center",
+                    "justify-content": "flex-end",
+                    gap: "8px",
                   }}
-                  title={`${item.value} views`}
                 >
+                  <div
+                    style={{
+                      width: "100%",
+                      background: "#3b82f6",
+                      "border-radius": "4px 4px 0 0",
+                      transition: "height 0.3s ease",
+                      height: `${getBarHeight(item.value)}px`,
+                      position: "relative",
+                      "min-height": "4px", // Ensure small values are still visible
+                    }}
+                    title={`${item.value} views`}
+                  >
                   <div
                     style={{
                       position: "absolute",
