@@ -60,6 +60,50 @@ RSpec.describe ReactiveView::Types::SignatureBuilder do
   end
 end
 
+RSpec.describe ReactiveView::Types::Signature do
+  let(:schema) do
+    ReactiveView::Types::Hash.schema(
+      id: ReactiveView::Types::Integer,
+      name: ReactiveView::Types::String,
+      active: ReactiveView::Types::Optional[ReactiveView::Types::Boolean]
+    )
+  end
+
+  let(:signature) { described_class.new(schema) }
+
+  describe '#param_names' do
+    it 'returns the list of parameter names' do
+      expect(signature.param_names).to contain_exactly(:id, :name, :active)
+    end
+
+    it 'returns empty array for empty schema' do
+      empty_sig = described_class.new(ReactiveView::Types::Hash)
+      expect(empty_sig.param_names).to eq([])
+    end
+  end
+
+  describe '#type_for' do
+    it 'returns the type for a given parameter' do
+      expect(signature.type_for(:id)).to eq(ReactiveView::Types::Integer)
+    end
+
+    it 'returns nil for unknown parameter' do
+      expect(signature.type_for(:unknown)).to be_nil
+    end
+  end
+
+  describe '#empty?' do
+    it 'returns false when schema has keys' do
+      expect(signature.empty?).to be false
+    end
+
+    it 'returns true when schema has no keys' do
+      empty_sig = described_class.new(ReactiveView::Types::Hash)
+      expect(empty_sig.empty?).to be true
+    end
+  end
+end
+
 RSpec.describe ReactiveView::Types do
   describe 'primitive types' do
     it 'provides String type' do

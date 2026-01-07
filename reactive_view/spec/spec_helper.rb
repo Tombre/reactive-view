@@ -87,6 +87,10 @@ require 'reactive_view/types'
 require 'reactive_view/types/dsl'
 require 'reactive_view/types/validator'
 require 'reactive_view/dev_proxy'
+require 'reactive_view/renderer'
+require 'reactive_view/loader_registry'
+require 'reactive_view/router'
+require 'reactive_view/loader'
 
 # Load benchmark components
 require 'reactive_view/benchmark/statistics'
