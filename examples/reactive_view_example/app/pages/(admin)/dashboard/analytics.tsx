@@ -1,19 +1,31 @@
 import { createSignal, For } from "solid-js";
+import { useLoaderData } from "#loaders/(admin)/dashboard/analytics";
+import { useNavigate, useSearchParams } from "@solidjs/router";
 
 export default function DashboardAnalytics() {
-  const [selectedPeriod, setSelectedPeriod] = createSignal("week");
+  const loaderData = useLoaderData();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  // useLoaderData returns an Accessor, so we need to call it
+  const data = () => loaderData() || {
+    chart_data: [],
+    top_pages: [],
+    traffic_sources: [],
+    total_views: 0,
+    period: "week"
+  };
+  
+  const selectedPeriod = () => data().period;
 
-  const chartData = [
-    { label: "Mon", value: 45 },
-    { label: "Tue", value: 62 },
-    { label: "Wed", value: 54 },
-    { label: "Thu", value: 71 },
-    { label: "Fri", value: 58 },
-    { label: "Sat", value: 39 },
-    { label: "Sun", value: 48 },
-  ];
+  const setSelectedPeriod = (period: string) => {
+    navigate(`?period=${period}`, { replace: true });
+  };
 
-  const maxValue = Math.max(...chartData.map((d) => d.value));
+  const maxValue = () => {
+    const chartData = data().chart_data;
+    return chartData.length > 0 ? Math.max(...chartData.map((d) => d.value)) : 1;
+  };
 
   return (
     <div>
@@ -73,9 +85,20 @@ export default function DashboardAnalytics() {
         </div>
       </div>
 
-      <p style={{ color: "#6b7280", "margin-bottom": "24px" }}>
-        Viewing analytics for: <strong>{selectedPeriod()}</strong>
-      </p>
+      <div
+        style={{
+          display: "flex",
+          gap: "24px",
+          "margin-bottom": "24px",
+        }}
+      >
+        <p style={{ color: "#6b7280", margin: 0 }}>
+          Viewing analytics for: <strong>{selectedPeriod()}</strong>
+        </p>
+        <p style={{ color: "#6b7280", margin: 0 }}>
+          Total views: <strong>{data().total_views.toLocaleString()}</strong>
+        </p>
+      </div>
 
       {/* Simple Bar Chart */}
       <div
@@ -87,7 +110,7 @@ export default function DashboardAnalytics() {
         }}
       >
         <h3 style={{ margin: "0 0 20px 0", color: "#1f2937" }}>
-          Page Views This Week
+          Page Views - {selectedPeriod().charAt(0).toUpperCase() + selectedPeriod().slice(1)}
         </h3>
 
         <div
@@ -98,7 +121,7 @@ export default function DashboardAnalytics() {
             height: "200px",
           }}
         >
-          <For each={chartData}>
+          <For each={data().chart_data}>
             {(item) => (
               <div
                 style={{
@@ -115,7 +138,7 @@ export default function DashboardAnalytics() {
                     background: "#3b82f6",
                     "border-radius": "4px 4px 0 0",
                     transition: "height 0.3s ease",
-                    height: `${(item.value / maxValue) * 100}%`,
+                    height: `${(item.value / maxValue()) * 100}%`,
                     position: "relative",
                   }}
                   title={`${item.value} views`}
@@ -167,38 +190,21 @@ export default function DashboardAnalytics() {
         >
           <h4 style={{ margin: "0 0 12px 0", color: "#1f2937" }}>Top Pages</h4>
           <div style={{ "font-size": "14px", color: "#6b7280" }}>
-            <div
-              style={{
-                display: "flex",
-                "justify-content": "space-between",
-                padding: "8px 0",
-                "border-bottom": "1px solid #f3f4f6",
-              }}
-            >
-              <span>/dashboard</span>
-              <strong>1,234 views</strong>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                "justify-content": "space-between",
-                padding: "8px 0",
-                "border-bottom": "1px solid #f3f4f6",
-              }}
-            >
-              <span>/users</span>
-              <strong>892 views</strong>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                "justify-content": "space-between",
-                padding: "8px 0",
-              }}
-            >
-              <span>/about</span>
-              <strong>456 views</strong>
-            </div>
+            <For each={data().top_pages}>
+              {(page, index) => (
+                <div
+                  style={{
+                    display: "flex",
+                    "justify-content": "space-between",
+                    padding: "8px 0",
+                    "border-bottom": index() < data().top_pages.length - 1 ? "1px solid #f3f4f6" : "none",
+                  }}
+                >
+                  <span>{page.path}</span>
+                  <strong>{page.views.toLocaleString()} views</strong>
+                </div>
+              )}
+            </For>
           </div>
         </div>
 
@@ -214,38 +220,21 @@ export default function DashboardAnalytics() {
             Traffic Sources
           </h4>
           <div style={{ "font-size": "14px", color: "#6b7280" }}>
-            <div
-              style={{
-                display: "flex",
-                "justify-content": "space-between",
-                padding: "8px 0",
-                "border-bottom": "1px solid #f3f4f6",
-              }}
-            >
-              <span>Direct</span>
-              <strong>45%</strong>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                "justify-content": "space-between",
-                padding: "8px 0",
-                "border-bottom": "1px solid #f3f4f6",
-              }}
-            >
-              <span>Search</span>
-              <strong>32%</strong>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                "justify-content": "space-between",
-                padding: "8px 0",
-              }}
-            >
-              <span>Social</span>
-              <strong>23%</strong>
-            </div>
+            <For each={data().traffic_sources}>
+              {(source, index) => (
+                <div
+                  style={{
+                    display: "flex",
+                    "justify-content": "space-between",
+                    padding: "8px 0",
+                    "border-bottom": index() < data().traffic_sources.length - 1 ? "1px solid #f3f4f6" : "none",
+                  }}
+                >
+                  <span>{source.source}</span>
+                  <strong>{source.percentage}%</strong>
+                </div>
+              )}
+            </For>
           </div>
         </div>
       </div>

@@ -12,6 +12,7 @@ require_relative 'reactive_view/configuration'
 
 module ReactiveView
   class Error < StandardError; end
+  class ConfigurationError < Error; end
   class RenderError < Error; end
   class DaemonUnavailableError < Error; end
   class ValidationError < Error; end

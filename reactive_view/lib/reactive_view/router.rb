@@ -16,6 +16,7 @@ module ReactiveView
   # | `users/[id].tsx` | `/users/:id` | Dynamic segment |
   # | `blog/[...slug].tsx` | `/blog/*slug` | Catch-all segment |
   # | `users/[[id]].tsx` | `/users(/:id)` | Optional segment |
+  # | `(admin)/dashboard/analytics.tsx` | `/dashboard/analytics` | Grouped route (no URL prefix) |
   #
   # ## Route Priority
   #
@@ -87,8 +88,8 @@ module ReactiveView
         path_str = relative_path.to_s.sub(/\.tsx$/, '')
         segments = path_str.split('/')
 
-        # Build Rails route path
-        route_path = segments.map { |s| segment_to_route(s) }.join('/')
+        # Build Rails route path (filter out nil segments from grouped routes)
+        route_path = segments.map { |s| segment_to_route(s) }.compact.join('/')
 
         # Normalize the path
         route_path = normalize_route_path(route_path)
@@ -124,6 +125,10 @@ module ReactiveView
         when /^\[(.*?)\]$/
           # Dynamic: [id] -> :id
           ":#{::Regexp.last_match(1)}"
+        when /^\((.*?)\)$/
+          # Grouped route: (admin) -> stripped from route path
+          # These are used for layout grouping but don't affect the URL
+          nil
         when 'index'
           # Index routes map to empty segment
           ''

@@ -78,11 +78,13 @@ module ReactiveView
       # [id] -> id
       # [...slug] -> slug
       # [[optional]] -> optional
+      # (admin) -> admin (grouped routes)
       def normalize_segment(segment)
         segment
           .gsub(/\[\.\.\.(.*?)\]/, '\1') # [...param] -> param
           .gsub(/\[\[(.*?)\]\]/, '\1')     # [[optional]] -> optional
           .gsub(/\[(.*?)\]/, '\1')         # [param] -> param
+          .gsub(/\((.*?)\)/, '\1')         # (group) -> group (grouped routes)
       end
     end
   end
