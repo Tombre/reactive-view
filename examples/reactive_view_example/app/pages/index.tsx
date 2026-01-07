@@ -37,6 +37,9 @@ export default function HomePage() {
         <A href="/users" style={{ "margin-right": "16px" }}>
           Users
         </A>
+        <A href="/dashboard" style={{ "margin-right": "16px" }}>
+          Dashboard
+        </A>
         <A href="/counter">Counter</A>
       </nav>
 
