@@ -13,7 +13,8 @@ module ReactiveView
       # Sync all TSX files from pages to the working directory
       def sync_all
         setup_working_directory
-        sync_tsx_files
+        sync_page_components
+        generate_route_wrappers
         sync_loader_types
       end
 
@@ -70,30 +71,48 @@ module ReactiveView
         install_dependencies(working_dir)
       end
 
-      # Copy TSX files to the working directory routes
-      def sync_tsx_files
+      # Copy page source files to the working directory pages directory
+      def sync_page_components
         pages_path = ReactiveView.configuration.pages_absolute_path
-        routes_path = ReactiveView.configuration.working_directory_absolute_path.join('src', 'routes')
+        components_path = pages_destination_path
 
         return unless pages_path.exist?
 
-        # Clean existing routes (except api directory which has our render endpoint)
+        FileUtils.rm_rf(components_path) if components_path.exist?
+        FileUtils.mkdir_p(components_path)
+
+        Dir.glob(pages_path.join('**', '*.{ts,tsx}')).each do |source|
+          relative = Pathname.new(source).relative_path_from(pages_path)
+          dest = components_path.join(relative)
+
+          FileUtils.mkdir_p(dest.dirname)
+          FileUtils.cp(source, dest)
+        end
+
+        ReactiveView.logger.debug "[ReactiveView] Synced page components to #{components_path}"
+      end
+
+      # Generate thin wrapper files in src/routes that re-export page components
+      def generate_route_wrappers
+        pages_path = ReactiveView.configuration.pages_absolute_path
+        routes_path = routes_destination_path
+
+        return unless pages_path.exist?
+
+        FileUtils.mkdir_p(routes_path)
+
         Dir.glob(routes_path.join('*')).each do |path|
           next if File.basename(path) == 'api'
 
           FileUtils.rm_rf(path)
         end
 
-        # Copy TSX files maintaining directory structure
         Dir.glob(pages_path.join('**', '*.tsx')).each do |source|
           relative = Pathname.new(source).relative_path_from(pages_path)
-          dest = routes_path.join(relative)
-
-          FileUtils.mkdir_p(dest.dirname)
-          FileUtils.cp(source, dest)
+          generate_wrapper_file(relative, routes_path, pages_path)
         end
 
-        ReactiveView.logger.debug "[ReactiveView] Synced TSX files to #{routes_path}"
+        ReactiveView.logger.debug "[ReactiveView] Generated route wrappers in #{routes_path}"
       end
 
       # Generate TypeScript types from loader signatures
@@ -110,7 +129,6 @@ module ReactiveView
       # @param removed [Array<String>] Paths of removed files
       def handle_changes(modified, added, removed)
         pages_path = ReactiveView.configuration.pages_absolute_path
-        routes_path = ReactiveView.configuration.working_directory_absolute_path.join('src', 'routes')
 
         tsx_modified = []
         tsx_added = []
@@ -140,39 +158,36 @@ module ReactiveView
         end
 
         # Handle TSX/TS file changes - sync to working directory
-        sync_tsx_changes(tsx_modified + tsx_added, tsx_removed, pages_path, routes_path)
+        handle_page_file_changes(tsx_modified, tsx_added, tsx_removed, pages_path)
 
         # Handle loader file changes - regenerate types and notify Vite
         handle_loader_changes(loader_changes, pages_path)
       end
 
-      # Sync TSX/TS file changes to the working directory
-      #
-      # @param changed [Array<String>] Paths of modified/added files
-      # @param removed [Array<String>] Paths of removed files
-      # @param pages_path [Pathname] Source pages directory
-      # @param routes_path [Pathname] Destination routes directory
-      def sync_tsx_changes(changed, removed, pages_path, routes_path)
-        changed.each do |source|
+      # Sync TS/TSX page files and update wrappers as needed
+      def handle_page_file_changes(modified, added, removed, pages_path)
+        modified.each do |source|
+          sync_single_page_file(source, pages_path)
+        end
+
+        added.each do |source|
           relative = Pathname.new(source).relative_path_from(pages_path)
-          dest = routes_path.join(relative)
-
-          FileUtils.mkdir_p(dest.dirname)
-          FileUtils.cp(source, dest)
-
-          ReactiveView.logger.debug "[ReactiveView] Synced: #{relative}"
+          sync_single_page_file(source, pages_path)
+          if relative.extname == '.tsx'
+            generate_wrapper_file(relative, routes_destination_path, pages_path)
+            regenerate_parent_layout_wrapper(relative, pages_path)
+          end
+          ReactiveView.logger.info "[ReactiveView] Added: #{relative}"
         end
 
         removed.each do |source|
           relative = Pathname.new(source).relative_path_from(pages_path)
-          dest = routes_path.join(relative)
-
-          next unless dest.exist?
-
-          FileUtils.rm(dest)
-          ReactiveView.logger.debug "[ReactiveView] Removed: #{relative}"
-
-          cleanup_empty_directories(dest.dirname, routes_path)
+          remove_synced_page_file(relative)
+          if relative.extname == '.tsx'
+            remove_wrapper_file(relative)
+            regenerate_parent_layout_wrapper(relative, pages_path)
+          end
+          ReactiveView.logger.info "[ReactiveView] Removed: #{relative}"
         end
       end
 
@@ -203,6 +218,111 @@ module ReactiveView
 
         # Notify Vite to trigger HMR event for data refetch
         notify_vite_loader_change(routes, type)
+      end
+
+      def sync_single_page_file(source, pages_path)
+        return unless File.exist?(source)
+
+        relative = Pathname.new(source).relative_path_from(pages_path)
+        dest = pages_destination_path.join(relative)
+
+        FileUtils.mkdir_p(dest.dirname)
+        FileUtils.cp(source, dest)
+
+        ReactiveView.logger.debug "[ReactiveView] Synced: #{relative}"
+      end
+
+      def remove_synced_page_file(relative)
+        dest = pages_destination_path.join(relative)
+        return unless dest.exist?
+
+        FileUtils.rm(dest)
+        cleanup_empty_directories(dest.dirname, pages_destination_path)
+      end
+
+      def remove_wrapper_file(relative)
+        dest = routes_destination_path.join(relative)
+        return unless dest.exist?
+
+        FileUtils.rm(dest)
+        cleanup_empty_directories(dest.dirname, routes_destination_path)
+      end
+
+      def pages_destination_path
+        ReactiveView.configuration.working_directory_absolute_path.join('src', 'pages')
+      end
+
+      def routes_destination_path
+        ReactiveView.configuration.working_directory_absolute_path.join('src', 'routes')
+      end
+
+      def generate_wrapper_file(relative_path, routes_path, pages_path)
+        dest = routes_path.join(relative_path)
+        import_path = page_import_path_for(relative_path)
+        component_path = relative_path.to_s.sub(/\.tsx$/, '')
+        wrapper_content = if layout_file?(relative_path, pages_path)
+                            generate_layout_wrapper(import_path, component_path)
+                          else
+                            generate_page_wrapper(import_path, component_path)
+                          end
+
+        FileUtils.mkdir_p(dest.dirname)
+        File.write(dest, wrapper_content)
+      end
+
+      def regenerate_parent_layout_wrapper(relative_path, pages_path)
+        parent = relative_path.dirname
+        return if parent.to_s.empty? || parent.to_s == '.'
+
+        layout_candidate = Pathname.new("#{parent}.tsx")
+        layout_source = pages_path.join(layout_candidate)
+        return unless layout_source.exist?
+
+        generate_wrapper_file(layout_candidate, routes_destination_path, pages_path)
+      end
+
+      def page_import_path_for(relative_path)
+        routes_root = routes_destination_path
+        pages_root = pages_destination_path
+        route_dir = routes_root.join(relative_path).dirname
+        page_file = pages_root.join(relative_path)
+        path = page_file.relative_path_from(route_dir).to_s
+        path = path.sub(/\.tsx$/, '')
+        path.tr('\\', '/')
+      end
+
+      def layout_file?(relative_path, pages_path)
+        dir_name = relative_path.to_s.sub(/\.tsx$/, '')
+        pages_path.join(dir_name).directory?
+      end
+
+      def generate_page_wrapper(import_path, component_path)
+        <<~TSX
+          // Auto-generated route wrapper - DO NOT EDIT
+          // Actual component: src/pages/#{component_path}.tsx
+          // Edits here will be overwritten. Edit the source file instead.
+
+          import Page from "#{import_path}";
+          export * from "#{import_path}";
+          export default Page;
+        TSX
+      end
+
+      def generate_layout_wrapper(import_path, component_path)
+        <<~TSX
+          // Auto-generated layout wrapper - DO NOT EDIT
+          // Actual layout: src/pages/#{component_path}.tsx
+          // Edits here will be overwritten. Edit the source file instead.
+
+          import Layout from "#{import_path}";
+          import type { RouteSectionProps } from "@solidjs/router";
+
+          export * from "#{import_path}";
+
+          export default function LayoutWrapper(props: RouteSectionProps) {
+            return <Layout {...props} />;
+          }
+        TSX
       end
 
       # Convert a loader file path to its route identifier

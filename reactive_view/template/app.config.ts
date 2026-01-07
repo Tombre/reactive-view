@@ -19,26 +19,6 @@ export default defineConfig({
     server: {
       // Allow cross-origin requests from Rails
       cors: true,
-      // HMR configuration
-      // When accessing via Rails proxy (port 3000), the browser needs to connect
-      // directly to Vite (port 3001) for HMR WebSocket.
-      //
-      // Important: We must specify protocol, host, and port explicitly because
-      // Vinxi uses /_build/ as base URL, but the WebSocket server listens at root.
-      // Without explicit configuration, the browser would try to connect to
-      // ws://localhost:3001/_build/ instead of ws://localhost:3001/
-      hmr: {
-        // Use WebSocket protocol (not secure since we're on localhost)
-        protocol: "ws",
-        // Connect to localhost for HMR WebSocket
-        host: "localhost",
-        // The Vite dev server port (not the Rails proxy port)
-        clientPort: 3001,
-        // Force WebSocket path to the root (avoid /_build/ prefix)
-        path: "/@vite/ws",
-        // Show error overlay for HMR failures
-        overlay: true,
-      },
     },
     resolve: {
       // Ensure shared dependencies are resolved from this project's node_modules

@@ -70,13 +70,18 @@ reactive-view-ai/
 │   │   └── src/                # TypeScript source
 │   ├── template/               # SolidStart template
 │   │   └── src/
-│   │       ├── lib/reactive-view/  # Frontend library
+│   │       ├── pages/          # Synced page components (HMR works here)
+│   │       ├── routes/         # Generated route wrappers
 │   │       └── routes/api/     # Render endpoint
 │   └── spec/                   # Tests
 │
 ├── examples/
 │   └── reactive_view_example/  # Example Rails app
-│       └── app/pages/          # ReactiveView pages
+│       ├── app/pages/          # ReactiveView pages (source)
+│       └── .reactive_view/     # Generated SolidStart project
+│           └── src/
+│               ├── pages/      # Synced components
+│               └── routes/     # Generated wrappers
 │
 └── docs/
     ├── design/overview.md      # Design document
@@ -237,9 +242,24 @@ The `reactive_view/template/` directory contains the SolidStart project template
 
 | File | Purpose |
 |------|---------|
-| `src/lib/reactive-view/loader.ts` | `useLoaderData` hook |
-| `src/lib/reactive-view/context.tsx` | Request token context |
+| `src/pages/` | Synced page components (HMR-friendly) |
+| `src/routes/` | Generated route wrappers |
 | `src/routes/api/render.ts` | Endpoint Rails calls for SSR |
+
+### HMR Architecture
+
+ReactiveView uses a wrapper pattern to enable true Hot Module Replacement:
+
+```
+app/pages/counter.tsx         → .reactive_view/src/pages/counter.tsx (synced)
+                                         ↓
+                              .reactive_view/src/routes/counter.tsx (wrapper)
+```
+
+- **`src/pages/`** - Contains actual page components synced from `app/pages/`
+- **`src/routes/`** - Contains thin wrappers that import from `src/pages/`
+
+When you edit a page, only `src/pages/` changes. Vinxi's router sees no route changes, so Vite can hot-swap the component without a full reload.
 
 ### Working on the Example App
 

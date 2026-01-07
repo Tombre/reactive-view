@@ -6,53 +6,63 @@
 
 ## Context
 
-ReactiveView relies on Vite's Hot Module Replacement (HMR) for fast development feedback. While basic HMR works out of the box with SolidStart, there are several areas where the developer experience can be improved:
+ReactiveView relies on Vite's Hot Module Replacement (HMR) for fast development feedback. SolidStart/Vinxi has a known issue where route files in `src/routes/` always trigger full page reloads instead of hot-swapping components.
 
-1. State preservation during component updates is inconsistent
-2. Changes to loader files (`.loader.rb`) don't trigger appropriate refreshes
-3. HMR configuration isn't optimized for the ReactiveView file structure
-4. Error recovery after HMR failures can be clunky
-
-A smooth HMR experience is critical for developer productivity and adoption of the framework.
+To work around this, ReactiveView uses a **wrapper pattern**:
+- Page components are synced to `src/pages/` (HMR works here)
+- Thin wrapper files in `src/routes/` import from `src/pages/`
+- When you edit a page, only `src/pages/` changes, so Vite can hot-swap
 
 ## Overview
 
-Improve the Hot Module Replacement experience for ReactiveView developers by:
+The HMR architecture enables:
 
-- Optimizing Vite HMR configuration for TSX file patterns
-- Preserving component state during hot updates where possible
-- Handling loader file changes with appropriate refresh strategies
-- Improving error recovery and feedback during HMR cycles
+- **True HMR** for page component changes (state preserved)
+- **Loader file** changes trigger data refetching via custom HMR events
+- **Route structure changes** (add/remove pages) trigger full reload as expected
 
-**Current HMR Experience:**
+**HMR Flow:**
 ```
-Edit TSX → Vite Detects → Full Component Remount → State Lost
-Edit Loader → No Detection → Manual Refresh Required
-```
-
-**Improved HMR Experience:**
-```
-Edit TSX → Vite Detects → Granular Update → State Preserved
-Edit Loader → File Watcher → Intelligent Refresh → Fresh Data
+Edit app/pages/counter.tsx
+    │
+    ↓
+FileSync copies to .reactive_view/src/pages/counter.tsx
+    │
+    ↓
+Vite detects change in src/pages/ (NOT src/routes/)
+    │
+    ↓
+solid-refresh hot-swaps the component
+    │
+    ↓
+Browser updates WITHOUT full reload, state preserved!
 ```
 
 ## Implementation Summary
 
-### Phase 1: Direct WebSocket HMR Connection
+### Phase 1: Wrapper Pattern for True HMR
 
-HMR WebSocket connections bypass the Rails proxy and connect directly to Vite:
+SolidStart/Vinxi's file-system router triggers full reloads when route files change. To work around this:
 
-- Configured Vite's `server.hmr.clientPort` to tell the browser to connect to port 3001
-- Browser loads page from Rails (port 3000), but HMR WebSocket connects to Vite (port 3001)
-- This avoids the complexity of proxying WebSockets through Rack middleware
-- HTTP asset requests still go through the Rails DevProxy for consistent routing
+- Page components are synced to `src/pages/` (not `src/routes/`)
+- Thin wrapper files in `src/routes/` import and re-export from `src/pages/`
+- Wrapper files never change during normal development
+- Vite's HMR only sees changes in `src/pages/`, enabling true hot-swapping
+
+**Generated wrapper example:**
+```tsx
+// .reactive_view/src/routes/counter.tsx (auto-generated)
+import Page from "../pages/counter";
+export * from "../pages/counter";
+export default Page;
+```
 
 **Files modified:**
-- `reactive_view/template/app.config.ts` - configured `hmr.clientPort: 3001`
+- `reactive_view/lib/reactive_view/file_sync.rb` - generates wrappers, syncs to src/pages/
 
 ### Phase 2: Loader File Change Detection
 
-When `.loader.rb` files change, the system now triggers automatic data refetching:
+When `.loader.rb` files change, the system triggers automatic data refetching:
 
 - `FileSync` watches for `.loader.rb` file changes (in addition to TSX/TS files)
 - On loader change, it regenerates TypeScript types and notifies Vite
@@ -65,16 +75,16 @@ When `.loader.rb` files change, the system now triggers automatic data refetchin
 - `reactive_view/npm/src/vite-plugin.ts` - invalidation endpoint, HMR event emission
 - `reactive_view/npm/src/loader.ts` - HMR event listener, refetch trigger
 
-### Phase 3: HMR Configuration Optimization
+### Phase 3: HMR WebSocket Path Normalization
 
-Optimized Vite configuration for better HMR experience:
+Vinxi serves assets under `/_build/` which caused HMR WebSocket connection issues:
 
-- Added debug mode via `REACTIVE_VIEW_DEBUG=true` environment variable
-- Enabled HMR error overlay for better error visibility
-- Added dependency pre-bundling for faster cold starts
-- Added HMR logging in the Vite plugin for debugging
+- Vite plugin normalizes the HMR path based on the configured `base`
+- Uses relative path (`../@vite/ws`) to escape the `/_build` prefix
+- Debug mode via `REACTIVE_VIEW_DEBUG=true` environment variable
 
 **Files modified:**
+- `reactive_view/npm/src/vite-plugin.ts` - HMR path normalization in `configResolved`
 - `reactive_view/template/app.config.ts` - optimized HMR settings
 
 ## Acceptance Criteria
@@ -109,22 +119,19 @@ Optimized Vite configuration for better HMR experience:
 
 ## Technical Notes
 
-### WebSocket Proxy Architecture
+### File Sync Architecture
 
 ```
-Browser (localhost:3000)
+app/pages/counter.tsx (source - you edit this)
     │
-    │ WebSocket upgrade request to /_build/@vite/client
-    ↓
-Rails DevProxy Middleware
+    ↓ FileSync copies
+.reactive_view/src/pages/counter.tsx (actual component - HMR works)
     │
-    │ Detects Upgrade header, establishes upstream connection
-    ↓
-Vite Dev Server (localhost:3001)
+    ↓ Imported by
+.reactive_view/src/routes/counter.tsx (thin wrapper - stable)
     │
-    │ HMR events broadcast
-    ↓
-DevProxy bridges messages back to browser
+    ↓ Vinxi router loads
+Browser renders component
 ```
 
 ### Loader Change Flow

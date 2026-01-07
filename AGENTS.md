@@ -88,9 +88,32 @@ npm run build                 # Production build
   - Per-route loader files in `.reactive_view/types/loaders/` for auto-typed `useLoaderData()`
   - Central route map in `.reactive_view/types/loader-data.d.ts` for cross-route loading
   - Run after modifying `loader_sig` definitions in `.loader.rb` files
-- `bin/rails reactive_view:sync`: Mirrors TSX files for SolidStart; required when editing under `app/pages`.
+- `bin/rails reactive_view:sync`: Syncs TSX files and generates route wrappers:
+  - Copies `app/pages/*.tsx` to `.reactive_view/src/pages/` (HMR-friendly location)
+  - Generates thin wrappers in `.reactive_view/src/routes/` that import from `src/pages/`
+  - This wrapper pattern enables true HMR (state preserved on component edits)
 - `bin/rails reactive_view:daemon:*`: Start/stop/status for the SSR daemon when not relying on `bin/dev`.
 - Bundle exec wrappers (`bundle exec rails`, `bundle exec rake`) are mandatory inside `reactive_view/` to ensure the gemspec load path is respected.
+
+## File Sync & HMR Architecture
+
+ReactiveView uses a wrapper pattern to work around Vinxi's full-reload behavior for route files:
+
+```
+app/pages/counter.tsx (source - you edit this)
+        │
+        ↓ FileSync
+.reactive_view/src/pages/counter.tsx (synced component - HMR works here)
+        │
+        ↓ imported by
+.reactive_view/src/routes/counter.tsx (generated wrapper - never changes)
+```
+
+**Why this matters:**
+- Vinxi triggers full page reload when files in `src/routes/` change
+- By keeping actual components in `src/pages/`, edits don't touch route files
+- Vite's HMR can hot-swap the component without a full reload
+- State (signals, etc.) is preserved during development
 
 ## Coding Style Guidelines (Ruby)
 

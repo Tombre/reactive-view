@@ -20,6 +20,7 @@
  * ```
  */
 
+import { posix as pathPosix } from "node:path";
 import type { Plugin, ViteDevServer, HmrContext } from "vite";
 
 export interface ReactiveViewPluginOptions {
@@ -28,6 +29,40 @@ export interface ReactiveViewPluginOptions {
    * @default false
    */
   debug?: boolean;
+}
+
+const DEFAULT_HMR_WEBSOCKET_PATH = "/@vite/ws";
+const PAGES_FILE_PATTERN = /[\\/]src[\\/]pages[\\/].+\.(tsx|ts)$/;
+const ROUTE_FILE_PATTERN = /[\\/]src[\\/]routes[\\/].+\.tsx$/;
+
+function normalizeBasePath(base?: string): string {
+  if (!base || base === "") {
+    return "/";
+  }
+  if (!base.startsWith("/")) {
+    return `/${base}`;
+  }
+  return base;
+}
+
+function computeRelativeHmrPath(base: string): string {
+  const relative = pathPosix.relative(base, DEFAULT_HMR_WEBSOCKET_PATH);
+  if (!relative || relative === ".") {
+    return DEFAULT_HMR_WEBSOCKET_PATH;
+  }
+  return relative;
+}
+
+function isDefaultHmrPath(pathValue?: string): boolean {
+  if (!pathValue) {
+    return true;
+  }
+  const normalized = pathValue.trim().replace(/\/+$/, "");
+  const defaultNoSlash = DEFAULT_HMR_WEBSOCKET_PATH.replace(/\/+$/, "");
+  return (
+    normalized === defaultNoSlash ||
+    normalized === defaultNoSlash.slice(1)
+  );
 }
 
 /**
@@ -125,6 +160,45 @@ export function reactiveViewPlugin(
       log("Development server configured with loader invalidation endpoint");
     },
 
+    configResolved(config) {
+      const base = normalizeBasePath(config.base as string | undefined);
+      const serverConfig = config.server;
+
+      if (serverConfig.hmr === false) {
+        return;
+      }
+
+      const existingHmr =
+        typeof serverConfig.hmr === "object" && serverConfig.hmr !== null
+          ? { ...serverConfig.hmr }
+          : {};
+
+      const currentPath =
+        typeof existingHmr.path === "string" ? existingHmr.path : undefined;
+
+      if (isDefaultHmrPath(currentPath)) {
+        const resolvedPath = computeRelativeHmrPath(base);
+        if (currentPath !== resolvedPath) {
+          log(
+            `Normalized Vite HMR path for base ${base} -> ${resolvedPath}`
+          );
+        }
+        existingHmr.path = resolvedPath;
+      }
+
+      const isMiddlewareMode = Boolean(serverConfig.middlewareMode);
+      if (
+        isMiddlewareMode &&
+        typeof existingHmr.port !== "number" &&
+        typeof existingHmr.clientPort === "number"
+      ) {
+        log("Removed clientPort override to allow middleware HMR fallback");
+        delete existingHmr.clientPort;
+      }
+
+      serverConfig.hmr = existingHmr;
+    },
+
     /**
      * Resolve #loaders/* imports to @reactive-view/core at runtime.
      * TypeScript will resolve types via tsconfig paths to .reactive_view/types/loaders/*
@@ -156,20 +230,23 @@ export function reactiveViewPlugin(
     handleHotUpdate(ctx: HmrContext) {
       const { file, modules } = ctx;
 
-      // Only log for route files (TSX in routes directory)
-      if (file.includes("/routes/") && file.endsWith(".tsx")) {
-        const routePath = file
-          .split("/routes/")[1]
-          ?.replace(/\.tsx$/, "")
-          .replace(/\/index$/, "");
+      if (PAGES_FILE_PATTERN.test(file)) {
+        const [_, pagePart] = file.split(/[\\/]src[\\/]pages[\\/]/);
+        const componentPath = pagePart?.replace(/\.(tsx|ts)$/, "");
 
-        log(`HMR update for route: ${routePath}`, {
+        log(`HMR update for page component: ${componentPath}`, {
           file,
           moduleCount: modules.length,
         });
+
+        return undefined;
       }
 
-      // Return undefined to use default HMR behavior
+      if (ROUTE_FILE_PATTERN.test(file)) {
+        log(`Route wrapper change detected (structure update): ${file}`);
+        return undefined;
+      }
+
       return undefined;
     },
   };
