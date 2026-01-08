@@ -1,98 +1,62 @@
-import { A } from "@solidjs/router";
+import { A, useLocation } from "@solidjs/router";
 import { createSignal, type ParentProps } from "solid-js";
+import "~/styles/tailwind.css";
 
 export default function DashboardLayout(props: ParentProps) {
   const [sidebarOpen, setSidebarOpen] = createSignal(true);
+  const location = useLocation();
+
+  const isActive = (path: string, exact = false) => {
+    if (exact) {
+      return location.pathname === path;
+    }
+    return location.pathname.startsWith(path);
+  };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        "min-height": "100vh",
-        "font-family": "system-ui, sans-serif",
-      }}
-    >
+    <div class="flex min-h-screen font-sans">
       {/* Sidebar */}
-      <aside
-        style={{
-          width: sidebarOpen() ? "250px" : "0",
-          background: "#1f2937",
-          color: "white",
-          transition: "width 0.3s ease",
-          overflow: "hidden",
-          "flex-shrink": "0",
-        }}
-      >
-        <div style={{ padding: "20px" }}>
-          <h2 style={{ margin: "0 0 20px 0", "font-size": "20px" }}>
+      <aside class={`${sidebarOpen() ? "w-64" : "w-0"} bg-gray-800 text-white transition-all duration-300 overflow-hidden flex-shrink-0`}>
+        <div class="p-5">
+          <h2 class="text-xl font-semibold mb-5">
             Dashboard
           </h2>
 
           <nav>
-            <ul style={{ "list-style": "none", padding: 0, margin: 0 }}>
-              <li style={{ "margin-bottom": "8px" }}>
+            <ul class="space-y-2">
+              <li>
                 <A
                   href="/dashboard"
                   end
-                  activeClass="active-link"
-                  style={{
-                    display: "block",
-                    padding: "10px 12px",
-                    color: "white",
-                    "text-decoration": "none",
-                    "border-radius": "6px",
-                    transition: "background 0.2s",
-                  }}
-                  onMouseOver={(e) =>
-                    (e.currentTarget.style.background = "#374151")
-                  }
-                  onMouseOut={(e) =>
-                    (e.currentTarget.style.background = "transparent")
-                  }
+                  class={`block px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                    isActive("/dashboard", true) 
+                      ? "bg-gray-700 text-white" 
+                      : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                  }`}
                 >
                   📊 Overview
                 </A>
               </li>
-              <li style={{ "margin-bottom": "8px" }}>
+              <li>
                 <A
                   href="/dashboard/analytics"
-                  activeClass="active-link"
-                  style={{
-                    display: "block",
-                    padding: "10px 12px",
-                    color: "white",
-                    "text-decoration": "none",
-                    "border-radius": "6px",
-                    transition: "background 0.2s",
-                  }}
-                  onMouseOver={(e) =>
-                    (e.currentTarget.style.background = "#374151")
-                  }
-                  onMouseOut={(e) =>
-                    (e.currentTarget.style.background = "transparent")
-                  }
+                  class={`block px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                    isActive("/dashboard/analytics", true) 
+                      ? "bg-gray-700 text-white" 
+                      : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                  }`}
                 >
                   📈 Analytics
                 </A>
               </li>
-              <li style={{ "margin-bottom": "8px" }}>
+              <li>
                 <A
                   href="/dashboard/settings"
-                  activeClass="active-link"
-                  style={{
-                    display: "block",
-                    padding: "10px 12px",
-                    color: "white",
-                    "text-decoration": "none",
-                    "border-radius": "6px",
-                    transition: "background 0.2s",
-                  }}
-                  onMouseOver={(e) =>
-                    (e.currentTarget.style.background = "#374151")
-                  }
-                  onMouseOut={(e) =>
-                    (e.currentTarget.style.background = "transparent")
-                  }
+                  class={`block px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                    isActive("/dashboard/settings", true) 
+                      ? "bg-gray-700 text-white" 
+                      : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                  }`}
                 >
                   ⚙️ Settings
                 </A>
@@ -100,29 +64,10 @@ export default function DashboardLayout(props: ParentProps) {
             </ul>
           </nav>
 
-          <div
-            style={{
-              "margin-top": "30px",
-              "padding-top": "20px",
-              "border-top": "1px solid #374151",
-            }}
-          >
+          <div class="mt-8 pt-5 border-t border-gray-700">
             <A
               href="/"
-              style={{
-                display: "block",
-                padding: "10px 12px",
-                color: "#9ca3af",
-                "text-decoration": "none",
-                "border-radius": "6px",
-                transition: "background 0.2s",
-              }}
-              onMouseOver={(e) =>
-                (e.currentTarget.style.background = "#374151")
-              }
-              onMouseOut={(e) =>
-                (e.currentTarget.style.background = "transparent")
-              }
+              class="block px-3 py-2.5 text-gray-400 hover:bg-gray-700 hover:text-white rounded-md text-sm transition-colors no-underline"
             >
               ← Back to Home
             </A>
@@ -131,39 +76,23 @@ export default function DashboardLayout(props: ParentProps) {
       </aside>
 
       {/* Main Content */}
-      <div style={{ flex: 1, display: "flex", "flex-direction": "column" }}>
+      <div class="flex-1 flex flex-col">
         {/* Header */}
-        <header
-          style={{
-            background: "white",
-            "border-bottom": "1px solid #e5e7eb",
-            padding: "16px 24px",
-            display: "flex",
-            "align-items": "center",
-            "justify-content": "space-between",
-          }}
-        >
+        <header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen())}
-            style={{
-              background: "#f3f4f6",
-              border: "1px solid #d1d5db",
-              padding: "8px 12px",
-              "border-radius": "6px",
-              cursor: "pointer",
-              "font-size": "14px",
-            }}
+            class="bg-gray-100 border border-gray-300 px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors"
           >
             {sidebarOpen() ? "← Hide Sidebar" : "→ Show Sidebar"}
           </button>
 
-          <div style={{ color: "#6b7280", "font-size": "14px" }}>
+          <div class="text-gray-500 text-sm">
             Nested Layout Example
           </div>
         </header>
 
         {/* Child Routes */}
-        <main style={{ flex: 1, padding: "24px", background: "#f9fafb" }}>
+        <main class="flex-1 p-6 bg-gray-50">
           {props.children}
         </main>
       </div>

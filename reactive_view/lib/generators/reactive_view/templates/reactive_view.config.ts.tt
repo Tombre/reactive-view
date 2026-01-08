@@ -1,0 +1,7 @@
+import { defineConfig } from "@reactive-view/core/config";
+
+export default defineConfig({
+  // vitePlugins: [],
+  // vite: {},
+  // reactiveView: { debug: false },
+});

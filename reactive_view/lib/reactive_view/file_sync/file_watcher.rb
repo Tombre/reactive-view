@@ -3,7 +3,7 @@
 module ReactiveView
   class FileSync
     # Watches for file changes in the pages directory and triggers syncing.
-    # Uses the Listen gem to monitor TSX/TS files and loader files.
+    # Watches all files and syncs everything except .loader.rb files.
     class FileWatcher
       class << self
         # Start watching for file changes (development only)
@@ -15,7 +15,8 @@ module ReactiveView
           pages_path = ReactiveView.configuration.pages_absolute_path
           return unless pages_path.exist?
 
-          @listener = Listen.to(pages_path.to_s, only: /\.(tsx|ts|rb)$/) do |modified, added, removed|
+          # Watch all files in pages directory
+          @listener = Listen.to(pages_path.to_s) do |modified, added, removed|
             handle_changes(modified, added, removed)
           end
 
@@ -44,9 +45,9 @@ module ReactiveView
         def handle_changes(modified, added, removed)
           pages_path = ReactiveView.configuration.pages_absolute_path
 
-          tsx_modified = []
-          tsx_added = []
-          tsx_removed = []
+          asset_modified = []
+          asset_added = []
+          asset_removed = []
           loader_changes = { modified: [], added: [], removed: [] }
 
           # Categorize changes
@@ -54,32 +55,36 @@ module ReactiveView
             if source.end_with?('.loader.rb')
               type = modified.include?(source) ? :modified : :added
               loader_changes[type] << source
-            elsif source.end_with?('.tsx', '.ts')
-              if modified.include?(source)
-                tsx_modified << source
-              else
-                tsx_added << source
-              end
+            elsif modified.include?(source)
+              # All other files are assets to sync
+              asset_modified << source
+            else
+              asset_added << source
             end
           end
 
           removed.each do |source|
             if source.end_with?('.loader.rb')
               loader_changes[:removed] << source
-            elsif source.end_with?('.tsx', '.ts')
-              tsx_removed << source
+            else
+              asset_removed << source
             end
           end
 
-          # Handle TSX/TS file changes - sync to working directory
-          handle_page_changes(tsx_modified, tsx_added, tsx_removed, pages_path)
+          # Handle asset file changes - sync to working directory
+          handle_asset_changes(asset_modified, asset_added, asset_removed, pages_path)
 
           # Handle loader file changes - regenerate types and notify Vite
           handle_loader_changes(loader_changes, pages_path)
         end
 
-        # Sync TS/TSX page files and update wrappers as needed
-        def handle_page_changes(modified, added, removed, pages_path)
+        # Sync asset files and update wrappers for TSX files
+        #
+        # @param modified [Array<String>] Modified file paths
+        # @param added [Array<String>] Added file paths
+        # @param removed [Array<String>] Removed file paths
+        # @param pages_path [Pathname] Source pages directory
+        def handle_asset_changes(modified, added, removed, pages_path)
           modified.each do |source|
             ComponentSyncer.sync_file(source, pages_path)
           end
@@ -87,20 +92,26 @@ module ReactiveView
           added.each do |source|
             relative = Pathname.new(source).relative_path_from(pages_path)
             ComponentSyncer.sync_file(source, pages_path)
+
+            # Only generate wrappers for TSX files
             if relative.extname == '.tsx'
               WrapperGenerator.generate_wrapper(relative, pages_path)
               WrapperGenerator.regenerate_parent_layout(relative, pages_path)
             end
+
             ReactiveView.logger.info "[ReactiveView] Added: #{relative}"
           end
 
           removed.each do |source|
             relative = Pathname.new(source).relative_path_from(pages_path)
             ComponentSyncer.remove_file(relative)
+
+            # Only remove wrappers for TSX files
             if relative.extname == '.tsx'
               WrapperGenerator.remove_wrapper(relative)
               WrapperGenerator.regenerate_parent_layout(relative, pages_path)
             end
+
             ReactiveView.logger.info "[ReactiveView] Removed: #{relative}"
           end
         end

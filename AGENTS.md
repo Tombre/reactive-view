@@ -133,18 +133,90 @@ app/pages/counter.tsx (source - you edit this)
 
 ## Coding Style Guidelines (TypeScript / SolidStart)
 
-1. Stick to ES modules; use named imports when importing multiple utilities from a file.
-2. Order imports: Node built-ins, npm deps (`solid-js`, `@solidjs/router`), loader imports (`#loaders/*`), then relative components.
-3. Use TypeScript interfaces for public contracts and `type` aliases for unions / utility shapes.
-4. Prefer explicit return types for exported functions, loaders, and hooks.
-5. Enforce immutability where possible (`const` by default, `let` only when reassignment is required).
-6. JSX/TSX formatting: two spaces indentation, closing brackets on their own line for multi-line elements.
-7. Signals/state: use SolidJS primitives (`createSignal`, `createResource`) and never mutate the returned getters.
-8. Error boundaries are not baked in yet; wrap risky UI in local `try/catch` plus fallback UI until global boundaries ship (see `docs/agent/tasks/06-error-boundaries.md`).
-9. Use async/await with `try/catch` for fetches; surface errors via UI-friendly states rather than `alert`.
-10. Keep CSS inline classes utility-first; global styles belong in `app/assets/stylesheets/application.css` or template CSS files.
-11. For loader data, import from `#loaders/{route}` for auto-typed hooks (e.g., `import { useLoaderData } from "#loaders/users/index"`).
-12. For cross-route loading, import from `@reactive-view/core` and specify the route: `useLoaderData("users/[id]", { id })`.
+**CRITICAL**: ReactiveView uses SolidJS TSX, NOT React JSX. Follow SolidJS conventions strictly.
+
+### SolidJS vs React Key Differences (MANDATORY)
+
+| ❌ React (WRONG) | ✅ SolidJS (CORRECT) | Rule |
+|---|---|---|
+| `className="..."` | `class="..."` | Use standard HTML attribute names |
+| `htmlFor="..."` | `for="..."` | Standard HTML attributes |
+| `e.currentTarget` | `e.target` | SolidJS event handling |
+| `{condition && <div/>}` | `<Show when={condition}><div/></Show>` | Control flow components |
+| `{arr.map(item => <div/>)}` | `<For each={arr}>{item => <div/>}</For>` | Control flow components |
+
+### SolidJS Coding Standards
+
+1. **HTML Attributes**: Always use standard HTML attribute names:
+   - `class` not `className`
+   - `for` not `htmlFor`
+   - `tabindex` not `tabIndex`
+
+2. **Event Handling**:
+   - Use `e.target` not `e.currentTarget`
+   - Event names are camelCase: `onClick`, `onChange`, `onSubmit`
+
+3. **Control Flow**: Use SolidJS control flow components:
+   - `<Show when={condition}>` for conditional rendering
+   - `<For each={array}>` for lists
+   - `<Switch>` and `<Match>` for complex conditionals
+
+4. **Import Order**: Node built-ins, npm deps (`solid-js`, `@solidjs/router`), loader imports (`#loaders/*`), then relative components.
+
+5. **TypeScript**: Use TypeScript interfaces for public contracts and `type` aliases for unions / utility shapes.
+
+6. **Return Types**: Prefer explicit return types for exported functions, loaders, and hooks.
+
+7. **Immutability**: Enforce immutability where possible (`const` by default, `let` only when reassignment is required).
+
+8. **JSX/TSX Formatting**: Two spaces indentation, closing brackets on their own line for multi-line elements.
+
+9. **Signals/State**: Use SolidJS primitives (`createSignal`, `createResource`) and never mutate the returned getters.
+
+10. **Error Handling**: Error boundaries are not baked in yet; wrap risky UI in local `try/catch` plus fallback UI until global boundaries ship (see `docs/agent/tasks/06-error-boundaries.md`).
+
+11. **Async Operations**: Use async/await with `try/catch` for fetches; surface errors via UI-friendly states rather than `alert`.
+
+12. **CSS Classes**: Use Tailwind utility classes with the `class` attribute. Global styles belong in `app/pages/styles/tailwind.css` or template CSS files.
+
+13. **Loader Data**: 
+    - Import from `#loaders/{route}` for auto-typed hooks (e.g., `import { useLoaderData } from "#loaders/users/index"`)
+    - For cross-route loading, import from `@reactive-view/core` and specify the route: `useLoaderData("users/[id]", { id })`
+
+### Example: Correct SolidJS Component
+
+```tsx
+import { createSignal, Show, For } from "solid-js";
+import { A } from "@solidjs/router";
+
+export default function ExamplePage() {
+  const [items, setItems] = createSignal<string[]>(["a", "b"]);
+  const [visible, setVisible] = createSignal(true);
+
+  return (
+    <div class="container mx-auto p-4">  {/* class not className */}
+      <button 
+        class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        onClick={() => setVisible(!visible())}
+      >
+        Toggle List
+      </button>
+      
+      <Show when={visible()}>  {/* SolidJS conditional */}
+        <ul class="mt-4 space-y-2">
+          <For each={items()}>  {/* SolidJS list rendering */}
+            {(item, index) => (
+              <li class="p-2 bg-gray-100 rounded">
+                {index()}: {item}
+              </li>
+            )}
+          </For>
+        </ul>
+      </Show>
+    </div>
+  );
+}
+```
 
 ## Shared Naming & Organization Rules
 

@@ -1,81 +1,35 @@
 import { For, Suspense } from "solid-js";
 import { A } from "@solidjs/router";
 import { useLoaderData } from "#loaders/users/index";
+import MainLayout from "../components/MainLayout";
 
 export default function UsersIndexPage() {
   const data = useLoaderData();
 
   return (
-    <div
-      style={{
-        "font-family": "system-ui, sans-serif",
-        padding: "40px",
-        "max-width": "800px",
-        margin: "0 auto",
-      }}
-    >
-      <nav
-        style={{
-          background: "#f3f4f6",
-          padding: "16px",
-          "border-radius": "8px",
-          "margin-bottom": "20px",
-        }}
-      >
-        <A href="/" style={{ "margin-right": "16px" }}>
-          Home
-        </A>
-        <A href="/about" style={{ "margin-right": "16px" }}>
-          About
-        </A>
-        <A
-          href="/users"
-          style={{ "margin-right": "16px", "font-weight": "bold" }}
-        >
-          Users
-        </A>
-        <A href="/counter">Counter</A>
-      </nav>
-
-      <h1>All Users</h1>
-
-      <p>
+    <MainLayout title="All Users">
+      <p class="text-gray-700 mb-6">
         This page demonstrates loading data from a Rails loader. The user data
-        comes from <code>app/pages/users/index.loader.rb</code>.
+        comes from <code class="bg-gray-100 px-2 py-1 rounded text-sm">app/pages/users/index.loader.rb</code>.
       </p>
 
-      <Suspense fallback={<div>Loading users...</div>}>
-        <div style={{ "margin-top": "20px" }}>
-          <p style={{ color: "#666" }}>
+      <Suspense fallback={<div class="text-gray-500">Loading users...</div>}>
+        <div class="mt-5">
+          <p class="text-gray-600 mb-4">
             Showing {data()?.users?.length || 0} of {data()?.total || 0} users
           </p>
 
-          <div
-            style={{
-              display: "grid",
-              gap: "12px",
-              "margin-top": "16px",
-            }}
-          >
+          <div class="grid gap-3 mt-4">
             <For each={data()?.users || []}>
               {(user) => (
                 <A
                   href={`/users/${user.id}`}
-                  style={{
-                    display: "block",
-                    background: "#fff",
-                    border: "1px solid #e5e7eb",
-                    padding: "16px",
-                    "border-radius": "8px",
-                    "text-decoration": "none",
-                    color: "inherit",
-                    transition: "box-shadow 0.2s",
-                  }}
+                  class="block bg-white border border-gray-200 p-4 rounded-lg hover:shadow-md transition-shadow no-underline text-inherit"
                 >
-                  <div style={{ "font-weight": "bold", color: "#1f2937" }}>
+                  <div class="font-semibold text-gray-900">
                     {user.name}
                   </div>
-                  <div style={{ color: "#6b7280", "font-size": "14px" }}>
+                  <div class="text-gray-600 text-sm">
                     {user.email}
                   </div>
                 </A>
@@ -85,26 +39,10 @@ export default function UsersIndexPage() {
         </div>
       </Suspense>
 
-      <div
-        style={{
-          "margin-top": "30px",
-          background: "#f9fafb",
-          padding: "16px",
-          "border-radius": "8px",
-        }}
-      >
-        <h3>Loader Code</h3>
-        <pre
-          style={{
-            background: "#1f2937",
-            color: "#e5e7eb",
-            padding: "12px",
-            "border-radius": "6px",
-            overflow: "auto",
-            "font-size": "13px",
-          }}
-        >
-          {`class Pages::Users::IndexLoader < ReactiveView::Loader
+      <div class="mt-8 bg-gray-50 border border-gray-200 p-4 rounded-lg">
+        <h3 class="text-lg font-semibold text-gray-900 mb-3">Loader Code</h3>
+        <pre class="bg-gray-800 text-gray-100 p-3 rounded text-xs overflow-auto">
+{`class Pages::Users::IndexLoader < ReactiveView::Loader
   loader_sig do
     param :users, ReactiveView::Types::Array[
       ReactiveView::Types::Hash.schema(
@@ -122,6 +60,6 @@ export default function UsersIndexPage() {
 end`}
         </pre>
       </div>
-    </div>
+    </MainLayout>
   );
 }

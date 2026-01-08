@@ -1,5 +1,5 @@
 import { createSignal, createEffect, onCleanup } from "solid-js";
-import { A } from "@solidjs/router";
+import MainLayout from "./components/MainLayout";
 
 export default function CounterPage() {
   const [count, setCount] = createSignal(0);
@@ -17,113 +17,59 @@ export default function CounterPage() {
   });
 
   return (
-    <div style={{ "font-family": "system-ui, sans-serif", padding: "40px", "max-width": "800px", margin: "0 auto" }}>
-      <nav style={{ 
-        background: "#f3f4f6", 
-        padding: "16px", 
-        "border-radius": "8px", 
-        "margin-bottom": "20px" 
-      }}>
-        <A href="/" style={{ "margin-right": "16px" }}>Home</A>
-        <A href="/about" style={{ "margin-right": "16px" }}>About</A>
-        <A href="/users" style={{ "margin-right": "16px" }}>Users</A>
-        <A href="/counter" style={{ "font-weight": "bold" }}>Counter</A>
-      </nav>
-
-      <h1>Reactive Counter Demo</h1>
-      
-      <p>
+    <MainLayout title="Reactive Counter Demo">
+      <p class="text-gray-700 mb-6">
         This page demonstrates SolidJS reactivity with signals and effects.
         The counter state is managed entirely on the client side.
       </p>
 
-      <div style={{ 
-        background: "#fef3c7", 
-        padding: "30px", 
-        "border-radius": "12px", 
-        "text-align": "center",
-        "margin": "30px 0"
-      }}>
-        <div style={{ "font-size": "64px", "font-weight": "bold", color: "#92400e" }}>
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center my-8">
+        <div class="text-6xl font-bold text-amber-800 mb-2">
           {count()}
         </div>
-        <p style={{ color: "#78716c", margin: "10px 0 0 0" }}>Current Count</p>
+        <p class="text-stone-600 text-sm">Current Count</p>
       </div>
 
-      <div style={{ "display": "flex", gap: "10px", "justify-content": "center", "flex-wrap": "wrap" }}>
+      <div class="flex flex-wrap justify-center gap-3 mb-8">
         <button 
           onClick={() => setCount(c => c - 1)}
-          style={{
-            background: "#ef4444",
-            color: "white",
-            border: "none",
-            padding: "12px 24px",
-            "border-radius": "6px",
-            cursor: "pointer",
-            "font-size": "16px"
-          }}
+          class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
         >
           - Decrement
         </button>
         
         <button 
           onClick={() => setCount(0)}
-          style={{
-            background: "#6b7280",
-            color: "white",
-            border: "none",
-            padding: "12px 24px",
-            "border-radius": "6px",
-            cursor: "pointer",
-            "font-size": "16px"
-          }}
+          class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
         >
           Reset
         </button>
         
         <button 
           onClick={() => setCount(c => c + 1)}
-          style={{
-            background: "#22c55e",
-            color: "white",
-            border: "none",
-            padding: "12px 24px",
-            "border-radius": "6px",
-            cursor: "pointer",
-            "font-size": "16px"
-          }}
+          class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
         >
           + Increment
         </button>
       </div>
 
-      <div style={{ 
-        "margin-top": "30px",
-        "padding": "20px",
-        background: autoIncrement() ? "#dcfce7" : "#f3f4f6",
-        "border-radius": "8px",
-        "text-align": "center"
-      }}>
-        <label style={{ cursor: "pointer", "user-select": "none" }}>
+      <div class={`mt-8 p-5 rounded-lg text-center transition-colors ${
+        autoIncrement() ? "bg-green-50 border border-green-200" : "bg-gray-100 border border-gray-200"
+      }`}>
+        <label class="cursor-pointer select-none flex items-center justify-center gap-2">
           <input 
             type="checkbox" 
             checked={autoIncrement()}
             onChange={(e) => setAutoIncrement(e.target.checked)}
-            style={{ "margin-right": "8px" }}
+            class="w-4 h-4"
           />
-          Auto-increment every second (using SolidJS effects)
+          <span class="text-gray-700">Auto-increment every second (using SolidJS effects)</span>
         </label>
       </div>
 
-      <div style={{ "margin-top": "30px", color: "#666" }}>
-        <h3>How This Works</h3>
-        <pre style={{ 
-          background: "#1f2937", 
-          color: "#e5e7eb", 
-          padding: "16px", 
-          "border-radius": "8px",
-          overflow: "auto"
-        }}>
+      <div class="mt-8 text-gray-600">
+        <h3 class="text-lg font-semibold text-gray-900 mb-3">How This Works</h3>
+        <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-auto text-sm">
 {`const [count, setCount] = createSignal(0);
 const [autoIncrement, setAutoIncrement] = createSignal(false);
 
@@ -137,6 +83,6 @@ createEffect(() => {
 });`}
         </pre>
       </div>
-    </div>
+    </MainLayout>
   );
 }

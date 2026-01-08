@@ -1,47 +1,71 @@
-import { A } from "@solidjs/router";
+import MainLayout from "./components/MainLayout";
 
 export default function AboutPage() {
   return (
-    <div style={{ "font-family": "system-ui, sans-serif", padding: "40px", "max-width": "800px", margin: "0 auto" }}>
-      <nav style={{ 
-        background: "#f3f4f6", 
-        padding: "16px", 
-        "border-radius": "8px", 
-        "margin-bottom": "20px" 
-      }}>
-        <A href="/" style={{ "margin-right": "16px" }}>Home</A>
-        <A href="/about" style={{ "margin-right": "16px", "font-weight": "bold" }}>About</A>
-        <A href="/users" style={{ "margin-right": "16px" }}>Users</A>
-        <A href="/counter">Counter</A>
-      </nav>
-
-      <h1>About ReactiveView</h1>
-      
-      <p>
+    <MainLayout title="About ReactiveView">
+      <p class="text-gray-700 mb-6">
         ReactiveView is a Ruby on Rails "view framework" gem for creating modern 
         reactive frontends for your Rails application.
       </p>
 
-      <h2>Features</h2>
-      <ul>
-        <li><strong>SSR</strong> - Server-side rendering with SolidJS hydration</li>
-        <li><strong>Type Safety</strong> - Automatic TypeScript types from Ruby loaders</li>
-        <li><strong>File-based Routing</strong> - SolidStart-style routing from <code>app/pages/</code></li>
-        <li><strong>Rails Integration</strong> - Use Rails for auth, models, and business logic</li>
+      <h2 class="text-2xl font-bold text-gray-900 mb-4">Features</h2>
+      <ul class="space-y-3 mb-8">
+        <li class="flex items-start">
+          <span class="text-green-500 mr-3 mt-1">✓</span>
+          <div>
+            <strong class="text-gray-900">SSR</strong> - Server-side rendering with SolidJS hydration
+          </div>
+        </li>
+        <li class="flex items-start">
+          <span class="text-green-500 mr-3 mt-1">✓</span>
+          <div>
+            <strong class="text-gray-900">Type Safety</strong> - Automatic TypeScript types from Ruby loaders
+          </div>
+        </li>
+        <li class="flex items-start">
+          <span class="text-green-500 mr-3 mt-1">✓</span>
+          <div>
+            <strong class="text-gray-900">File-based Routing</strong> - SolidStart-style routing from <code class="bg-gray-100 px-2 py-1 rounded text-sm">app/pages/</code>
+          </div>
+        </li>
+        <li class="flex items-start">
+          <span class="text-green-500 mr-3 mt-1">✓</span>
+          <div>
+            <strong class="text-gray-900">Rails Integration</strong> - Use Rails for auth, models, and business logic
+          </div>
+        </li>
       </ul>
 
-      <h2>Architecture</h2>
-      <p>
+      <h2 class="text-2xl font-bold text-gray-900 mb-4">Architecture</h2>
+      <p class="text-gray-700 mb-4">
         ReactiveView works by coordinating between Rails and a SolidStart daemon:
       </p>
-      <ol>
-        <li>Rails receives the HTTP request</li>
-        <li>Your loader runs (auth, data fetching, etc.)</li>
-        <li>Rails asks SolidStart to render the page</li>
-        <li>SolidStart calls back to Rails for loader data</li>
-        <li>Rendered HTML is returned to the client</li>
-        <li>SolidJS hydrates for client-side interactivity</li>
+      <ol class="space-y-2 text-gray-700">
+        <li class="flex">
+          <span class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-semibold mr-3 mt-0.5 flex-shrink-0">1</span>
+          Rails receives the HTTP request
+        </li>
+        <li class="flex">
+          <span class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-semibold mr-3 mt-0.5 flex-shrink-0">2</span>
+          Your loader runs (auth, data fetching, etc.)
+        </li>
+        <li class="flex">
+          <span class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-semibold mr-3 mt-0.5 flex-shrink-0">3</span>
+          Rails asks SolidStart to render the page
+        </li>
+        <li class="flex">
+          <span class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-semibold mr-3 mt-0.5 flex-shrink-0">4</span>
+          SolidStart calls back to Rails for loader data
+        </li>
+        <li class="flex">
+          <span class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-semibold mr-3 mt-0.5 flex-shrink-0">5</span>
+          Rendered HTML is returned to the client
+        </li>
+        <li class="flex">
+          <span class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-semibold mr-3 mt-0.5 flex-shrink-0">6</span>
+          SolidJS hydrates for client-side interactivity
+        </li>
       </ol>
-    </div>
+    </MainLayout>
   );
 }

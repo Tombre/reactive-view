@@ -1,6 +1,6 @@
 # ReactiveView Example Application
 
-This is an example Rails application demonstrating the ReactiveView gem.
+This is an example Rails application demonstrating the ReactiveView gem with Tailwind CSS for styling.
 
 ## Prerequisites
 
@@ -119,6 +119,94 @@ To generate TypeScript types from your loaders:
 
 ```bash
 bin/rails reactive_view:types:generate
+```
+
+## Styling with Tailwind CSS v4
+
+This example application uses Tailwind CSS v4 for styling. The configuration uses the Vite plugin approach (not PostCSS):
+
+- **`.reactive_view/tailwind.config.ts`**: Tailwind configuration for the build
+- **`.reactive_view/app.config.ts`**: Includes `@tailwindcss/vite` plugin
+- **`.reactive_view/src/styles/tailwind.css`**: Base stylesheet using `@import "tailwindcss"` syntax
+- **`@tailwindcss/forms`**: Plugin for better form styling
+
+### Tailwind v4 Changes
+
+Tailwind CSS v4 uses a new syntax:
+
+```css
+/* Old v3 syntax (NO LONGER WORKS) */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* New v4 syntax */
+@import "tailwindcss";
+
+@theme {
+  --font-sans: system-ui, sans-serif;
+}
+```
+
+### Adding Custom Styles
+
+To add custom styles:
+
+1. Edit `.reactive_view/src/styles/tailwind.css` for global styles
+2. Use Tailwind utility classes in your TSX components with `class` attribute (not `className`)
+3. Import the stylesheet using: `import "~/styles/tailwind.css"`
+4. After editing `app/pages/styles/tailwind.css`, run `bin/rails reactive_view:sync` to update
+
+### Important Notes
+
+- Tailwind CSS is configured in `.reactive_view/` directory (where Vinxi/Vite runs)
+- Use the `@tailwindcss/vite` plugin, not the PostCSS plugin
+- Styles are imported using the `~/styles/` alias which resolves to `.reactive_view/src/styles/`
+
+### Shared Layout Component
+
+The `MainLayout` component (`app/pages/components/MainLayout.tsx`) provides:
+- Consistent navigation with active state styling
+- Tailwind CSS import
+- Responsive design utilities
+- Reusable layout structure
+
+### SolidJS vs React Important Notes
+
+**This app uses SolidJS, not React!** Key syntax differences:
+
+- ✅ Use `class="..."` instead of `className="..."`
+- ✅ Use `for="..."` instead of `htmlFor="..."`
+- ✅ Use `e.target` instead of `e.currentTarget` for events
+- ✅ Use `<Show when={condition}>` instead of `{condition && <JSX/>}`
+- ✅ Use `<For each={array}>` instead of `{array.map(...)}`
+
+### Correct SolidJS Example
+
+```tsx
+import { createSignal, Show, For } from "solid-js";
+
+export default function MyPage() {
+  const [items, setItems] = createSignal(["a", "b"]);
+  const [visible, setVisible] = createSignal(true);
+
+  return (
+    <div class="container mx-auto">  {/* class not className */}
+      <button 
+        class="px-4 py-2 bg-blue-500 text-white rounded"
+        onClick={() => setVisible(!visible())}
+      >
+        Toggle
+      </button>
+      
+      <Show when={visible()}>  {/* SolidJS conditional */}
+        <For each={items()}>  {/* SolidJS list rendering */}
+          {(item) => <div>{item}</div>}
+        </For>
+      </Show>
+    </div>
+  );
+}
 ```
 
 ## Useful Commands

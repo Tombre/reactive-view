@@ -35,143 +35,76 @@ export default function DashboardAnalytics() {
 
   return (
     <div>
-      <div
-        style={{
-          display: "flex",
-          "align-items": "center",
-          "justify-content": "space-between",
-          "margin-bottom": "24px",
-        }}
-      >
-        <h1 style={{ margin: 0, color: "#1f2937" }}>Analytics</h1>
+      <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">Analytics</h1>
 
-        <div style={{ display: "flex", gap: "8px" }}>
+        <div class="flex gap-2">
           <button
             onClick={() => setSelectedPeriod("week")}
-            style={{
-              padding: "8px 16px",
-              "border-radius": "6px",
-              border: "1px solid #d1d5db",
-              background: selectedPeriod() === "week" ? "#3b82f6" : "white",
-              color: selectedPeriod() === "week" ? "white" : "#374151",
-              cursor: "pointer",
-              "font-size": "14px",
-            }}
+            class={`px-4 py-2 rounded-md border text-sm font-medium transition-colors ${
+              selectedPeriod() === "week" 
+                ? "bg-blue-500 text-white border-blue-500" 
+                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+            }`}
           >
             Week
           </button>
           <button
             onClick={() => setSelectedPeriod("month")}
-            style={{
-              padding: "8px 16px",
-              "border-radius": "6px",
-              border: "1px solid #d1d5db",
-              background: selectedPeriod() === "month" ? "#3b82f6" : "white",
-              color: selectedPeriod() === "month" ? "white" : "#374151",
-              cursor: "pointer",
-              "font-size": "14px",
-            }}
+            class={`px-4 py-2 rounded-md border text-sm font-medium transition-colors ${
+              selectedPeriod() === "month" 
+                ? "bg-blue-500 text-white border-blue-500" 
+                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+            }`}
           >
             Month
           </button>
           <button
             onClick={() => setSelectedPeriod("year")}
-            style={{
-              padding: "8px 16px",
-              "border-radius": "6px",
-              border: "1px solid #d1d5db",
-              background: selectedPeriod() === "year" ? "#3b82f6" : "white",
-              color: selectedPeriod() === "year" ? "white" : "#374151",
-              cursor: "pointer",
-              "font-size": "14px",
-            }}
+            class={`px-4 py-2 rounded-md border text-sm font-medium transition-colors ${
+              selectedPeriod() === "year" 
+                ? "bg-blue-500 text-white border-blue-500" 
+                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+            }`}
           >
             Year
           </button>
         </div>
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          gap: "24px",
-          "margin-bottom": "24px",
-        }}
-      >
-        <p style={{ color: "#6b7280", margin: 0 }}>
+      <div class="flex flex-wrap gap-6 mb-6 text-gray-600">
+        <p class="m-0">
           Viewing analytics for: <strong>{selectedPeriod()}</strong>
         </p>
-        <p style={{ color: "#6b7280", margin: 0 }}>
+        <p class="m-0">
           Total views: <strong>{data().total_views.toLocaleString()}</strong>
         </p>
       </div>
 
       {/* Simple Bar Chart */}
-      <div
-        style={{
-          background: "white",
-          padding: "24px",
-          "border-radius": "12px",
-          border: "1px solid #e5e7eb",
-        }}
-      >
-        <h3 style={{ margin: "0 0 20px 0", color: "#1f2937" }}>
+      <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-5">
           Page Views - {selectedPeriod().charAt(0).toUpperCase() + selectedPeriod().slice(1)}
         </h3>
 
-        <div
-          style={{
-            display: "flex",
-            "align-items": "flex-end",
-            gap: "12px",
-            height: "200px",
-          }}
-        >
+        <div class="flex items-end gap-3 h-50">
           <For each={data().chart_data}>
             {(item) => (
+              <div class="flex-1 flex flex-col items-center justify-end gap-2">
                 <div
+                  class="w-full bg-blue-500 rounded-t transition-all duration-300 ease-out relative min-h-1"
                   style={{
-                    flex: 1,
-                    display: "flex",
-                    "flex-direction": "column",
-                    "align-items": "center",
-                    "justify-content": "flex-end",
-                    gap: "8px",
+                    height: `${getBarHeight(item.value)}px`,
                   }}
+                  title={`${item.value} views`}
                 >
                   <div
-                    style={{
-                      width: "100%",
-                      background: "#3b82f6",
-                      "border-radius": "4px 4px 0 0",
-                      transition: "height 0.3s ease",
-                      height: `${getBarHeight(item.value)}px`,
-                      position: "relative",
-                      "min-height": "4px", // Ensure small values are still visible
-                    }}
-                    title={`${item.value} views`}
-                  >
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "-24px",
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      "font-size": "12px",
-                      "font-weight": "bold",
-                      color: "#1f2937",
-                    }}
+                    class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs font-bold text-gray-900"
                   >
                     {item.value}
                   </div>
                 </div>
-                <div
-                  style={{
-                    "font-size": "12px",
-                    color: "#6b7280",
-                    "font-weight": "500",
-                  }}
-                >
+                <div class="text-xs text-gray-600 font-medium">
                   {item.label}
                 </div>
               </div>
@@ -180,34 +113,15 @@ export default function DashboardAnalytics() {
         </div>
       </div>
 
-      <div
-        style={{
-          "margin-top": "24px",
-          display: "grid",
-          "grid-template-columns": "repeat(auto-fit, minmax(300px, 1fr))",
-          gap: "20px",
-        }}
-      >
-        <div
-          style={{
-            background: "white",
-            padding: "20px",
-            "border-radius": "12px",
-            border: "1px solid #e5e7eb",
-          }}
-        >
-          <h4 style={{ margin: "0 0 12px 0", color: "#1f2937" }}>Top Pages</h4>
-          <div style={{ "font-size": "14px", color: "#6b7280" }}>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-6">
+        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+          <h4 class="text-lg font-semibold text-gray-900 mb-3">Top Pages</h4>
+          <div class="text-sm text-gray-600">
             <For each={data().top_pages}>
               {(page, index) => (
-                <div
-                  style={{
-                    display: "flex",
-                    "justify-content": "space-between",
-                    padding: "8px 0",
-                    "border-bottom": index() < data().top_pages.length - 1 ? "1px solid #f3f4f6" : "none",
-                  }}
-                >
+                <div class={`flex justify-between py-2 ${
+                  index() < data().top_pages.length - 1 ? "border-b border-gray-100" : ""
+                }`}>
                   <span>{page.path}</span>
                   <strong>{page.views.toLocaleString()} views</strong>
                 </div>
@@ -216,28 +130,16 @@ export default function DashboardAnalytics() {
           </div>
         </div>
 
-        <div
-          style={{
-            background: "white",
-            padding: "20px",
-            "border-radius": "12px",
-            border: "1px solid #e5e7eb",
-          }}
-        >
-          <h4 style={{ margin: "0 0 12px 0", color: "#1f2937" }}>
+        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+          <h4 class="text-lg font-semibold text-gray-900 mb-3">
             Traffic Sources
           </h4>
-          <div style={{ "font-size": "14px", color: "#6b7280" }}>
+          <div class="text-sm text-gray-600">
             <For each={data().traffic_sources}>
               {(source, index) => (
-                <div
-                  style={{
-                    display: "flex",
-                    "justify-content": "space-between",
-                    padding: "8px 0",
-                    "border-bottom": index() < data().traffic_sources.length - 1 ? "1px solid #f3f4f6" : "none",
-                  }}
-                >
+                <div class={`flex justify-between py-2 ${
+                  index() < data().traffic_sources.length - 1 ? "border-b border-gray-100" : ""
+                }`}>
                   <span>{source.source}</span>
                   <strong>{source.percentage}%</strong>
                 </div>

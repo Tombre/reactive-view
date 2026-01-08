@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+/* Specify paths to scan for Tailwind classes */
+@source "../pages/**/*.tsx";
+@source "../routes/**/*.tsx";
+
+@theme {
+  --font-sans: system-ui, sans-serif;
+}

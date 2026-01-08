@@ -20,6 +20,11 @@ module ReactiveView
         say 'Created ReactiveView initializer', :green
       end
 
+      def create_frontend_config
+        template 'reactive_view.config.ts.tt', 'reactive_view.config.ts'
+        say 'Created reactive_view.config.ts for frontend configuration', :green
+      end
+
       def create_example_page
         template 'index.tsx.erb', 'app/pages/index.tsx'
         say 'Created example index page', :green

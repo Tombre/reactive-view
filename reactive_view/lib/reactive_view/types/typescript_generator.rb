@@ -175,9 +175,10 @@ module ReactiveView
       def path_to_interface_name(path)
         segments = path.split('/').map do |segment|
           segment
-            .gsub(/\[\.\.\.(.*?)\]/, '\1')
-            .gsub(/\[\[(.*?)\]\]/, '\1')
-            .gsub(/\[(.*?)\]/, '\1')
+            .gsub(/\(([^)]+)\)/, '\1')       # Strip route group parentheses: (admin) -> admin
+            .gsub(/\[\.\.\.(.*?)\]/, '\1')   # Catch-all routes: [...slug] -> slug
+            .gsub(/\[\[(.*?)\]\]/, '\1')     # Optional catch-all: [[...slug]] -> slug
+            .gsub(/\[(.*?)\]/, '\1')         # Dynamic params: [id] -> id
             .camelize
         end
 
@@ -227,6 +228,9 @@ module ReactiveView
           return "#{dry_type_to_typescript(inner)} | null"
         end
 
+        # Check for boolean type by name (TrueClass | FalseClass)
+        return 'boolean' if type.respond_to?(:name) && type.name == 'TrueClass | FalseClass'
+
         # Get the primitive type name
         type_name = extract_type_name(type)
 
@@ -235,7 +239,7 @@ module ReactiveView
           'string'
         when /Integer/i, /Float/i, /Decimal/i
           'number'
-        when /Bool/i
+        when /Bool/i, /TrueClass/i, /FalseClass/i
           'boolean'
         when /Array/i
           member_type = extract_array_member_type(type)

@@ -17,170 +17,101 @@ export default function DashboardSettings() {
 
   return (
     <div>
-      <h1 style={{ margin: "0 0 16px 0", color: "#1f2937" }}>Settings</h1>
+      <h1 class="text-2xl font-bold text-gray-900 mb-4">Settings</h1>
 
-      <p style={{ color: "#6b7280", "margin-bottom": "24px" }}>
+      <p class="text-gray-600 mb-6">
         Manage your dashboard preferences and notifications.
       </p>
 
       {/* Notifications Section */}
-      <div
-        style={{
-          background: "white",
-          padding: "24px",
-          "border-radius": "12px",
-          border: "1px solid #e5e7eb",
-          "margin-bottom": "20px",
-        }}
-      >
-        <h3 style={{ margin: "0 0 16px 0", color: "#1f2937" }}>
+      <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-5">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">
           Notifications
         </h3>
 
-        <div style={{ display: "flex", "flex-direction": "column", gap: "16px" }}>
-          <label
-            style={{
-              display: "flex",
-              "align-items": "center",
-              "justify-content": "space-between",
-              cursor: "pointer",
-            }}
-          >
+        <div class="space-y-4">
+          <label class="flex items-center justify-between cursor-pointer">
             <div>
-              <div style={{ "font-weight": "500", color: "#1f2937" }}>
+              <div class="font-medium text-gray-900">
                 Email Notifications
               </div>
-              <div style={{ "font-size": "14px", color: "#6b7280" }}>
+              <div class="text-sm text-gray-600">
                 Receive notifications via email
               </div>
             </div>
             <input
               type="checkbox"
               checked={emailNotifications()}
-              onChange={(e) => setEmailNotifications(e.currentTarget.checked)}
-              style={{
-                width: "20px",
-                height: "20px",
-                cursor: "pointer",
-              }}
+              onChange={(e) => setEmailNotifications(e.target.checked)}
+              class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
             />
           </label>
 
-          <label
-            style={{
-              display: "flex",
-              "align-items": "center",
-              "justify-content": "space-between",
-              cursor: "pointer",
-            }}
-          >
+          <label class="flex items-center justify-between cursor-pointer">
             <div>
-              <div style={{ "font-weight": "500", color: "#1f2937" }}>
+              <div class="font-medium text-gray-900">
                 Push Notifications
               </div>
-              <div style={{ "font-size": "14px", color: "#6b7280" }}>
+              <div class="text-sm text-gray-600">
                 Receive push notifications in your browser
               </div>
             </div>
             <input
               type="checkbox"
               checked={pushNotifications()}
-              onChange={(e) => setPushNotifications(e.currentTarget.checked)}
-              style={{
-                width: "20px",
-                height: "20px",
-                cursor: "pointer",
-              }}
+              onChange={(e) => setPushNotifications(e.target.checked)}
+              class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
             />
           </label>
         </div>
       </div>
 
       {/* Appearance Section */}
-      <div
-        style={{
-          background: "white",
-          padding: "24px",
-          "border-radius": "12px",
-          border: "1px solid #e5e7eb",
-          "margin-bottom": "20px",
-        }}
-      >
-        <h3 style={{ margin: "0 0 16px 0", color: "#1f2937" }}>Appearance</h3>
+      <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-5">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Appearance</h3>
 
-        <label
-          style={{
-            display: "flex",
-            "align-items": "center",
-            "justify-content": "space-between",
-            cursor: "pointer",
-          }}
-        >
+        <label class="flex items-center justify-between cursor-pointer">
           <div>
-            <div style={{ "font-weight": "500", color: "#1f2937" }}>
+            <div class="font-medium text-gray-900">
               Dark Mode
             </div>
-            <div style={{ "font-size": "14px", color: "#6b7280" }}>
+            <div class="text-sm text-gray-600">
               Use dark theme across the dashboard
             </div>
           </div>
           <input
             type="checkbox"
             checked={darkMode()}
-            onChange={(e) => setDarkMode(e.currentTarget.checked)}
-            style={{
-              width: "20px",
-              height: "20px",
-              cursor: "pointer",
-            }}
+            onChange={(e) => setDarkMode(e.target.checked)}
+            class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
           />
         </label>
       </div>
 
       {/* Save Button */}
-      <div style={{ display: "flex", "align-items": "center", gap: "12px" }}>
+      <div class="flex items-center gap-3">
         <button
           onClick={handleSave}
-          style={{
-            background: "#3b82f6",
-            color: "white",
-            border: "none",
-            padding: "12px 24px",
-            "border-radius": "8px",
-            cursor: "pointer",
-            "font-size": "16px",
-            "font-weight": "500",
-          }}
+          class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
         >
           Save Changes
         </button>
 
         {saveStatus() && (
-          <span
-            style={{
-              color: saveStatus()?.includes("success") ? "#10b981" : "#6b7280",
-              "font-size": "14px",
-            }}
-          >
+          <span class={`text-sm ${
+            saveStatus()?.includes("success") ? "text-emerald-600" : "text-gray-600"
+          }`}>
             {saveStatus()}
           </span>
         )}
       </div>
 
       {/* Info Box */}
-      <div
-        style={{
-          "margin-top": "30px",
-          background: "#fef3c7",
-          padding: "20px",
-          "border-radius": "12px",
-          border: "1px solid #fde68a",
-        }}
-      >
-        <h4 style={{ margin: "0 0 8px 0", color: "#92400e" }}>
+      <div class="mt-8 bg-amber-50 border border-amber-200 p-5 rounded-xl">
+        <h4 class="text-lg font-semibold text-amber-800 mb-2">
           💡 Nested Layout Benefits
         </h4>
-        <p style={{ margin: 0, color: "#78350f", "font-size": "14px" }}>
+        <p class="text-amber-700 text-sm m-0">
           Notice how the sidebar and header persist as you navigate between
           Dashboard pages. The layout component wraps all child routes, and
           client-side state (like the sidebar toggle and form values) is

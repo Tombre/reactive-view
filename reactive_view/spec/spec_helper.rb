@@ -86,6 +86,8 @@ end
 require 'reactive_view/types'
 require 'reactive_view/types/dsl'
 require 'reactive_view/types/validator'
+require 'reactive_view/types/typescript_generator'
+require 'reactive_view/templates'
 require 'reactive_view/dev_proxy'
 require 'reactive_view/renderer'
 require 'reactive_view/loader_registry'

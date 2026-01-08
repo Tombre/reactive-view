@@ -1,114 +1,57 @@
 import { useLoaderData } from "#loaders/(admin)/(auth)/login";
+import "~/styles/tailwind.css";
 
 export default function AdminAuthLogin() {
   const loaderData = useLoaderData();
   const data = () => loaderData() || { require_2fa: false, session_timeout: 30 };
 
   return (
-    <div style={{ padding: "40px", "max-width": "400px", margin: "0 auto" }}>
-      <h1 style={{ color: "#1f2937", "margin-bottom": "24px" }}>Admin Login</h1>
-      
-      <div
-        style={{
-          background: "white",
-          padding: "24px",
-          "border-radius": "12px",
-          border: "1px solid #e5e7eb",
-        }}
-      >
-        <form>
-          <div style={{ "margin-bottom": "16px" }}>
-            <label
-              style={{
-                display: "block",
-                "margin-bottom": "8px",
-                "font-weight": "500",
-                color: "#374151",
-              }}
-            >
-              Email
-            </label>
-            <input
-              type="email"
-              placeholder="admin@example.com"
-              style={{
-                width: "100%",
-                padding: "8px 12px",
-                border: "1px solid #d1d5db",
-                "border-radius": "6px",
-                "font-size": "14px",
-              }}
-            />
-          </div>
-
-          <div style={{ "margin-bottom": "16px" }}>
-            <label
-              style={{
-                display: "block",
-                "margin-bottom": "8px",
-                "font-weight": "500",
-                color: "#374151",
-              }}
-            >
-              Password
-            </label>
-            <input
-              type="password"
-              placeholder="••••••••"
-              style={{
-                width: "100%",
-                padding: "8px 12px",
-                border: "1px solid #d1d5db",
-                "border-radius": "6px",
-                "font-size": "14px",
-              }}
-            />
-          </div>
-
-          {data().require_2fa ? (
-            <div
-              style={{
-                background: "#fffbeb",
-                border: "1px solid #fbbf24",
-                padding: "12px",
-                "border-radius": "6px",
-                "margin-bottom": "16px",
-                "font-size": "14px",
-                color: "#92400e",
-              }}
-            >
-              Two-factor authentication is required
+    <div class="min-h-screen bg-gray-50 font-sans flex items-center justify-center px-4">
+      <div class="w-full max-w-md">
+        <h1 class="text-2xl font-bold text-gray-900 mb-6 text-center">Admin Login</h1>
+        
+        <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <form>
+            <div class="mb-4">
+              <label class="block mb-2 font-medium text-gray-700 text-sm">
+                Email
+              </label>
+              <input
+                type="email"
+                placeholder="admin@example.com"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
             </div>
-          ) : null}
 
-          <button
-            type="submit"
-            style={{
-              width: "100%",
-              padding: "10px",
-              background: "#3b82f6",
-              color: "white",
-              border: "none",
-              "border-radius": "6px",
-              "font-size": "14px",
-              "font-weight": "500",
-              cursor: "pointer",
-            }}
-          >
-            Sign In
-          </button>
-        </form>
+            <div class="mb-4">
+              <label class="block mb-2 font-medium text-gray-700 text-sm">
+                Password
+              </label>
+              <input
+                type="password"
+                placeholder="••••••••"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
 
-        <p
-          style={{
-            "margin-top": "16px",
-            "font-size": "12px",
-            color: "#6b7280",
-            "text-align": "center",
-          }}
-        >
-          Session timeout: {data().session_timeout} minutes
-        </p>
+            {data().require_2fa && (
+              <div class="bg-yellow-50 border border-yellow-300 p-3 rounded-md mb-4 text-sm text-yellow-800">
+                Two-factor authentication is required
+              </div>
+            )}
+
+            <button
+              type="submit"
+              class="w-full py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              Sign In
+            </button>
+          </form>
+
+          <p class="mt-4 text-xs text-gray-600 text-center">
+            Session timeout: {data().session_timeout} minutes
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -1,33 +1,37 @@
-import { defineConfig } from "@solidjs/start/config";
-import { reactiveViewPlugin } from "@reactive-view/core/vite-plugin";
+// ReactiveView SolidStart Configuration
+// User configuration is loaded from ../reactive_view.config.ts (Rails root)
 
-export default defineConfig({
+import { defineConfig as solidStartDefineConfig } from "@solidjs/start/config";
+import { reactiveViewPlugin } from "@reactive-view/core/vite-plugin";
+import type { ReactiveViewConfig } from "@reactive-view/core/config";
+
+// Load user config from Rails root (dynamic import with fallback)
+let userConfig: ReactiveViewConfig = {};
+try {
+  const module = await import("../reactive_view.config.ts");
+  userConfig = module.default || {};
+} catch {
+  // No user config found - use defaults
+}
+
+export default solidStartDefineConfig({
   server: {
-    // Preset for Node.js server
     preset: "node-server",
   },
   vite: {
     plugins: [
-      // ReactiveView plugin handles:
-      // - #loaders/* import resolution
-      // - Loader file change notifications for HMR
-      // - Development debugging (set debug: true for verbose logging)
-      reactiveViewPlugin({
-        debug: process.env.REACTIVE_VIEW_DEBUG === "true",
-      }),
+      reactiveViewPlugin(userConfig.reactiveView || {}),
+      ...(userConfig.vitePlugins || []),
     ],
     server: {
-      // Allow cross-origin requests from Rails
       cors: true,
     },
     resolve: {
-      // Ensure shared dependencies are resolved from this project's node_modules
-      // This prevents duplicate module issues with @reactive-view/core
       dedupe: ["solid-js", "@solidjs/router", "@solidjs/start"],
     },
-    // Optimize dependency pre-bundling for faster cold starts
     optimizeDeps: {
       include: ["solid-js", "@solidjs/router"],
     },
+    ...(userConfig.vite || {}),
   },
 });

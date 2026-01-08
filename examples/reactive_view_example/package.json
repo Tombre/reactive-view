@@ -8,6 +8,8 @@
     "solid-js": "^1.9.4"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.1.18",
+    "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3"
   }
 }

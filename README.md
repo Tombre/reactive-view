@@ -119,13 +119,13 @@ Visit http://localhost:3000 to see the example application.
 
 ### Example Pages
 
-| Route | File | Description |
-|-------|------|-------------|
-| `/` | `app/pages/index.tsx` | Home page with interactive counter |
-| `/about` | `app/pages/about.tsx` | Static about page |
-| `/counter` | `app/pages/counter.tsx` | SolidJS signals & effects demo |
-| `/users` | `app/pages/users/index.tsx` | User list (data from loader) |
-| `/users/:id` | `app/pages/users/[id].tsx` | User detail (dynamic route) |
+| Route        | File                        | Description                        |
+| ------------ | --------------------------- | ---------------------------------- |
+| `/`          | `app/pages/index.tsx`       | Home page with interactive counter |
+| `/about`     | `app/pages/about.tsx`       | Static about page                  |
+| `/counter`   | `app/pages/counter.tsx`     | SolidJS signals & effects demo     |
+| `/users`     | `app/pages/users/index.tsx` | User list (data from loader)       |
+| `/users/:id` | `app/pages/users/[id].tsx`  | User detail (dynamic route)        |
 
 ### Creating Pages
 
@@ -225,26 +225,26 @@ bundle exec rspec spec/reactive_view/types/
 
 ### Gem Structure
 
-| File | Purpose |
-|------|---------|
-| `lib/reactive_view.rb` | Main entry point |
-| `lib/reactive_view/engine.rb` | Rails Engine |
-| `lib/reactive_view/loader.rb` | Base controller class |
-| `lib/reactive_view/router.rb` | File-based route generation |
-| `lib/reactive_view/renderer.rb` | HTTP client to SolidStart |
-| `lib/reactive_view/daemon.rb` | SolidStart process manager |
+| File                                   | Purpose                        |
+| -------------------------------------- | ------------------------------ |
+| `lib/reactive_view.rb`                 | Main entry point               |
+| `lib/reactive_view/engine.rb`          | Rails Engine                   |
+| `lib/reactive_view/loader.rb`          | Base controller class          |
+| `lib/reactive_view/router.rb`          | File-based route generation    |
+| `lib/reactive_view/renderer.rb`        | HTTP client to SolidStart      |
+| `lib/reactive_view/daemon.rb`          | SolidStart process manager     |
 | `lib/reactive_view/request_context.rb` | Token-based auth for callbacks |
-| `lib/reactive_view/types/` | Type system (Dry::Types) |
+| `lib/reactive_view/types/`             | Type system (Dry::Types)       |
 
 ### SolidStart Template
 
 The `reactive_view/template/` directory contains the SolidStart project template:
 
-| File | Purpose |
-|------|---------|
-| `src/pages/` | Synced page components (HMR-friendly) |
-| `src/routes/` | Generated route wrappers |
-| `src/routes/api/render.ts` | Endpoint Rails calls for SSR |
+| File                       | Purpose                               |
+| -------------------------- | ------------------------------------- |
+| `src/pages/`               | Synced page components (HMR-friendly) |
+| `src/routes/`              | Generated route wrappers              |
+| `src/routes/api/render.ts` | Endpoint Rails calls for SSR          |
 
 ### HMR Architecture
 
@@ -307,6 +307,7 @@ bundle exec rspec
 ### Test Coverage
 
 Current tests cover:
+
 - `RequestContext` - Token generation, storage, retrieval, validation
 - `Types::SignatureBuilder` - DSL for defining loader signatures
 - `Types::Validator` - Response validation against schemas
@@ -320,10 +321,10 @@ RSpec.describe Pages::Users::IndexLoader do
   describe "#load" do
     it "returns users" do
       create(:user, name: "Alice")
-      
+
       loader = described_class.new
       result = loader.load
-      
+
       expect(result[:users].first[:name]).to eq("Alice")
     end
   end
@@ -359,14 +360,14 @@ end
 
 ReactiveView uses SolidStart-style file-based routing:
 
-| File | Route |
-|------|-------|
-| `app/pages/index.tsx` | `/` |
-| `app/pages/about.tsx` | `/about` |
-| `app/pages/users/index.tsx` | `/users` |
-| `app/pages/users/[id].tsx` | `/users/:id` |
-| `app/pages/blog/[...slug].tsx` | `/blog/*slug` |
-| `app/pages/users/[[id]].tsx` | `/users(/:id)` (optional) |
+| File                           | Route                     |
+| ------------------------------ | ------------------------- |
+| `app/pages/index.tsx`          | `/`                       |
+| `app/pages/about.tsx`          | `/about`                  |
+| `app/pages/users/index.tsx`    | `/users`                  |
+| `app/pages/users/[id].tsx`     | `/users/:id`              |
+| `app/pages/blog/[...slug].tsx` | `/blog/*slug`             |
+| `app/pages/users/[[id]].tsx`   | `/users(/:id)` (optional) |
 
 ### Nested Layouts
 
@@ -430,6 +431,7 @@ bin/rails reactive_view:types:generate
 ```
 
 This creates:
+
 1. **Per-route loader files** in `.reactive_view/types/loaders/` - auto-typed `useLoaderData()` hooks
 2. **Central route map** in `.reactive_view/types/loader-data.d.ts` - for cross-route loading
 
@@ -457,6 +459,7 @@ bin/rails reactive_view:types:generate
 ### Editor Support
 
 Your editor (VSCode, etc.) should now:
+
 - Recognize TSX files in `app/pages/`
 - Provide autocomplete for SolidJS primitives
 - Show fully-typed `useLoaderData()` with automatic type inference
@@ -472,7 +475,7 @@ Import from the route-specific loader path. Types are automatically inferred:
 import { useLoaderData } from "#loaders/users/index";
 
 export default function UsersPage() {
-  const data = useLoaderData();  // Fully typed!
+  const data = useLoaderData(); // Fully typed!
   return <div>{data()?.total} users</div>;
 }
 ```
@@ -487,10 +490,10 @@ import { useLoaderData } from "@reactive-view/core";
 export default function DashboardPage() {
   // Load users data from the users/index route
   const usersData = useLoaderData("users/index");
-  
+
   // Load a specific user with params
   const userData = useLoaderData("users/[id]", { id: "123" });
-  
+
   return (
     <div>
       <h1>Dashboard</h1>
@@ -502,6 +505,8 @@ export default function DashboardPage() {
 ```
 
 ### SolidJS Primitives
+
+ReactiveView uses SolidJS TSX, not React JSX.
 
 For SolidJS primitives, import directly from `solid-js`:
 
