@@ -35,7 +35,7 @@ module ReactiveView
         #
         # @param relative_path [Pathname] Relative path to the TSX file
         # @param pages_path [Pathname] Base pages directory
-        # @return [void]
+        # @return [Boolean] true if generation succeeded
         def generate_wrapper(relative_path, pages_path)
           dest = routes_path.join(relative_path)
           import_path = calculate_import_path(relative_path)
@@ -48,8 +48,10 @@ module ReactiveView
                               page_wrapper_template(import_path, component_path, has_loader)
                             end
 
-          FileUtils.mkdir_p(dest.dirname)
-          File.write(dest, wrapper_content)
+          AtomicWriter.write(dest, wrapper_content)
+        rescue SystemCallError => e
+          ReactiveView.logger.error "[ReactiveView] Failed to generate wrapper for #{relative_path}: #{e.message}"
+          false
         end
 
         # Remove a wrapper file

@@ -4,45 +4,155 @@ module ReactiveView
   class FileSync
     # Watches for file changes in the pages directory and triggers syncing.
     # Watches all files and syncs everything except .loader.rb files.
+    #
+    # Features:
+    # - Thread-safe start/stop operations
+    # - Debounced change processing to batch rapid file changes
+    # - Separate handling for asset files (TSX, CSS, etc.) vs loader files
     class FileWatcher
+      # Debounce delay in seconds - wait this long after last change before processing
+      DEBOUNCE_DELAY = 0.1
+
       class << self
-        # Start watching for file changes (development only)
+        # Start watching for file changes (development only).
+        #
+        # Thread-safe: can be called from multiple threads.
         #
         # @return [void]
         def start
-          return if @listener
+          listener_mutex.synchronize do
+            return if @listener
 
-          pages_path = ReactiveView.configuration.pages_absolute_path
-          return unless pages_path.exist?
+            pages_path = ReactiveView.configuration.pages_absolute_path
+            return unless pages_path.exist?
 
-          # Watch all files in pages directory
-          @listener = Listen.to(pages_path.to_s) do |modified, added, removed|
-            handle_changes(modified, added, removed)
+            initialize_state
+
+            # Watch all files in pages directory
+            @listener = Listen.to(pages_path.to_s) do |modified, added, removed|
+              queue_changes(modified, added, removed)
+            end
+
+            @listener.start
+            ReactiveView.logger.info "[ReactiveView] File watcher started for #{pages_path}"
           end
-
-          @listener.start
-          ReactiveView.logger.info "[ReactiveView] File watcher started for #{pages_path}"
         end
 
-        # Stop the file watcher
+        # Stop the file watcher.
+        #
+        # Thread-safe: can be called from multiple threads.
         #
         # @return [void]
         def stop
-          return unless @listener
-
-          @listener.stop
-          @listener = nil
-          ReactiveView.logger.info '[ReactiveView] File watcher stopped'
+          listener_mutex.synchronize do
+            stop_internal
+          end
         end
 
         private
 
-        # Handle file change events
+        # Mutex for protecting @listener access
+        def listener_mutex
+          @listener_mutex ||= Mutex.new
+        end
+
+        # Mutex for protecting pending changes
+        def pending_mutex
+          @pending_mutex ||= Mutex.new
+        end
+
+        # Initialize internal state for change tracking
+        def initialize_state
+          @pending = { modified: [], added: [], removed: [] }
+          @debounce_thread = nil
+        end
+
+        # Stop listener without acquiring mutex (for internal use)
+        def stop_internal
+          # Stop debounce thread if running
+          @debounce_thread&.kill if @debounce_thread&.alive?
+          @debounce_thread = nil
+
+          return unless @listener
+
+          @listener.stop
+          @listener = nil
+          @pending = nil
+          ReactiveView.logger.info '[ReactiveView] File watcher stopped'
+        end
+
+        # Queue changes for debounced processing.
+        #
+        # This collects changes and schedules processing after DEBOUNCE_DELAY.
+        # If new changes come in before processing, the timer resets.
+        #
+        # @param modified [Array<String>] Paths of modified files
+        # @param added [Array<String>] Paths of added files
+        # @param removed [Array<String>] Paths of removed files
+        def queue_changes(modified, added, removed)
+          pending_mutex.synchronize do
+            return unless @pending
+
+            @pending[:modified] += modified
+            @pending[:added] += added
+            @pending[:removed] += removed
+          end
+
+          schedule_processing
+        end
+
+        # Schedule debounced processing of queued changes.
+        #
+        # Cancels any existing scheduled processing and starts a new timer.
+        def schedule_processing
+          pending_mutex.synchronize do
+            # Cancel existing scheduled processing
+            @debounce_thread&.kill if @debounce_thread&.alive?
+
+            @debounce_thread = Thread.new do
+              Thread.current.name = 'reactive_view_file_watcher_debounce'
+              sleep DEBOUNCE_DELAY
+              process_pending_changes
+            end
+          end
+        end
+
+        # Process all pending changes.
+        #
+        # Collects pending changes atomically, then processes them.
+        def process_pending_changes
+          changes = pending_mutex.synchronize do
+            return unless @pending
+
+            result = @pending.dup
+            @pending = { modified: [], added: [], removed: [] }
+            result
+          end
+
+          # Deduplicate
+          changes[:modified].uniq!
+          changes[:added].uniq!
+          changes[:removed].uniq!
+
+          # Remove items that were both added and removed (net no-op)
+          net_removed = changes[:removed] - changes[:added]
+          net_added = changes[:added] - changes[:removed]
+          # Modified files that were also removed should be ignored
+          net_modified = changes[:modified] - changes[:removed]
+
+          handle_changes(net_modified, net_added, net_removed)
+        rescue StandardError => e
+          ReactiveView.logger.error "[ReactiveView] Error processing file changes: #{e.message}"
+        end
+
+        # Handle file change events.
         #
         # @param modified [Array<String>] Paths of modified files
         # @param added [Array<String>] Paths of added files
         # @param removed [Array<String>] Paths of removed files
         def handle_changes(modified, added, removed)
+          return if modified.empty? && added.empty? && removed.empty?
+
           pages_path = ReactiveView.configuration.pages_absolute_path
 
           asset_modified = []
@@ -78,7 +188,7 @@ module ReactiveView
           handle_loader_changes(loader_changes, pages_path)
         end
 
-        # Sync asset files and update wrappers for TSX files
+        # Sync asset files and update wrappers for TSX files.
         #
         # @param modified [Array<String>] Modified file paths
         # @param added [Array<String>] Added file paths
@@ -116,7 +226,7 @@ module ReactiveView
           end
         end
 
-        # Handle loader file changes - regenerate types and notify Vite for HMR
+        # Handle loader file changes - regenerate types and notify Vite for HMR.
         #
         # @param changes [Hash] Hash with :modified, :added, :removed keys containing file paths
         # @param pages_path [Pathname] Source pages directory
@@ -145,7 +255,7 @@ module ReactiveView
           ViteNotifier.notify(routes, type)
         end
 
-        # Generate TypeScript types from loader signatures
+        # Generate TypeScript types from loader signatures.
         def sync_loader_types
           Types::TypescriptGenerator.generate
         rescue StandardError => e

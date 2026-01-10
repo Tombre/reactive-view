@@ -81,11 +81,47 @@ module ReactiveView
       end
     end
 
+    # Set up signal handlers to ensure graceful shutdown
+    initializer 'reactive_view.signal_handlers' do |app|
+      app.config.after_initialize do
+        next if ReactiveView.configuration.external_daemon
+
+        ReactiveView::Engine.setup_signal_handlers
+      end
+    end
+
     # Shutdown daemon when Rails stops
     config.after_initialize do
       at_exit do
         ReactiveView::Daemon.instance.stop if ReactiveView.configuration.should_auto_start_daemon?
         ReactiveView::FileSync.stop_watching
+      end
+    end
+
+    class << self
+      # Set up signal handlers to ensure daemon is stopped on SIGINT/SIGTERM.
+      #
+      # This preserves any existing signal handlers by chaining them.
+      #
+      # @return [void]
+      def setup_signal_handlers
+        %w[INT TERM].each do |signal|
+          previous_handler = Signal.trap(signal) do
+            ReactiveView.logger.info "[ReactiveView] Received SIG#{signal}, shutting down daemon..."
+            ReactiveView::Daemon.instance.stop
+            ReactiveView::FileSync.stop_watching
+
+            # Call the previous handler if it was a Proc
+            if previous_handler.is_a?(Proc)
+              previous_handler.call
+            elsif previous_handler == 'DEFAULT'
+              # Re-raise the signal with default handling
+              Signal.trap(signal, 'DEFAULT')
+              Process.kill(signal, Process.pid)
+            end
+            # If previous_handler was 'IGNORE' or 'EXIT', do nothing extra
+          end
+        end
       end
     end
   end

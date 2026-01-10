@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'file_sync/atomic_writer'
 require_relative 'file_sync/directory_setup'
 require_relative 'file_sync/component_syncer'
 require_relative 'file_sync/wrapper_generator'

@@ -56,7 +56,7 @@ module ReactiveView
       mutation_name = params[:_mutation].presence || 'mutate'
       mutation_method = mutation_name.to_sym
 
-      # Validate the mutation method exists and is not :load
+      # Validate the mutation method exists and is allowed
       unless valid_mutation_method?(loader, mutation_method)
         return render json: {
           success: false,
@@ -71,6 +71,12 @@ module ReactiveView
       render_mutation_result(result)
     rescue LoaderNotFoundError => e
       render json: { success: false, error: e.message }, status: :not_found
+    rescue ArgumentError => e
+      # Wrong number of arguments or other argument issues
+      handle_argument_error(e, mutation_name)
+    rescue NoMethodError => e
+      # Defense-in-depth: shouldn't happen due to valid_mutation_method? check
+      handle_no_method_error(e, mutation_name)
     rescue StandardError => e
       handle_mutation_error(e)
     end
@@ -87,7 +93,14 @@ module ReactiveView
       raise ActionController::InvalidAuthenticityToken
     end
 
-    # Check if the mutation method is valid
+    # Check if the mutation method is valid and allowed to be called.
+    #
+    # A method is valid if:
+    # - The loader responds to it
+    # - It's not the :load method (reserved for data loading)
+    # - It's defined on the loader class itself or a Loader subclass (not inherited from
+    #   ActionController::Base or other base classes)
+    #
     # @param loader [ReactiveView::Loader] The loader instance
     # @param method [Symbol] The method name to check
     # @return [Boolean]
@@ -95,14 +108,26 @@ module ReactiveView
       # Must respond to the method
       return false unless loader.respond_to?(method)
 
-      # Cannot be the load method
+      # Cannot be the load method (reserved for data loading)
       return false if method == :load
 
-      # Cannot be a private/protected method from base controller
-      base_methods = ActionController::Base.instance_methods
-      return false if base_methods.include?(method) && !loader.class.instance_methods(false).include?(method)
+      # Check if the method is defined in the loader class hierarchy
+      # We walk up the class hierarchy and accept methods defined on:
+      # - The loader class itself
+      # - Any class between the loader and ReactiveView::Loader (inclusive)
+      # This excludes methods only defined on ActionController::Base or Object
+      klass = loader.class
+      while klass && klass != Object
+        # Accept if method is defined directly on this class
+        return true if klass.instance_methods(false).include?(method)
 
-      true
+        # Stop checking once we reach ReactiveView::Loader
+        break if klass == ReactiveView::Loader
+
+        klass = klass.superclass
+      end
+
+      false
     end
 
     # Extract the loader path from the URL
@@ -190,6 +215,32 @@ module ReactiveView
         render json: { success: false, error: 'Internal server error' },
                status: :internal_server_error
       end
+    end
+
+    # Handle ArgumentError from mutation methods (wrong number of arguments, etc.)
+    #
+    # @param error [ArgumentError] The error
+    # @param mutation_name [String] The name of the mutation that was called
+    def handle_argument_error(error, mutation_name)
+      ReactiveView.logger.error "[ReactiveView] Mutation argument error: #{error.message}"
+
+      render json: {
+        success: false,
+        error: "Invalid call to mutation '#{mutation_name}': #{error.message}"
+      }, status: :bad_request
+    end
+
+    # Handle NoMethodError from mutation methods (defense-in-depth)
+    #
+    # @param error [NoMethodError] The error
+    # @param mutation_name [String] The name of the mutation that was called
+    def handle_no_method_error(error, mutation_name)
+      ReactiveView.logger.error "[ReactiveView] Mutation method error: #{error.message}"
+
+      render json: {
+        success: false,
+        error: "Mutation '#{mutation_name}' is not available"
+      }, status: :not_found
     end
   end
 end

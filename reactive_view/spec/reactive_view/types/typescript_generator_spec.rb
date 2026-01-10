@@ -47,6 +47,89 @@ RSpec.describe ReactiveView::Types::TypescriptGenerator do
     end
   end
 
+  describe '#sanitize_js_identifier' do
+    it 'returns valid identifiers unchanged' do
+      result = generator.send(:sanitize_js_identifier, 'validName')
+      expect(result).to eq('validName')
+    end
+
+    it 'allows underscores and dollar signs' do
+      result = generator.send(:sanitize_js_identifier, '_private$var')
+      expect(result).to eq('_private$var')
+    end
+
+    it 'replaces invalid characters with underscores' do
+      result = generator.send(:sanitize_js_identifier, 'my-mutation-name')
+      expect(result).to eq('my_mutation_name')
+    end
+
+    it 'prefixes identifiers starting with numbers' do
+      result = generator.send(:sanitize_js_identifier, '123abc')
+      expect(result).to eq('_123abc')
+    end
+
+    it 'handles empty strings' do
+      result = generator.send(:sanitize_js_identifier, '')
+      expect(result).to eq('_unnamed')
+    end
+
+    it 'handles reserved words by adding suffix' do
+      result = generator.send(:sanitize_js_identifier, 'class')
+      expect(result).to eq('class_')
+    end
+
+    it 'handles reserved words case-insensitively' do
+      result = generator.send(:sanitize_js_identifier, 'CLASS')
+      expect(result).to eq('CLASS_')
+    end
+
+    it 'handles symbols' do
+      result = generator.send(:sanitize_js_identifier, :update_user)
+      expect(result).to eq('update_user')
+    end
+
+    it 'replaces special characters' do
+      result = generator.send(:sanitize_js_identifier, 'hello@world.com')
+      expect(result).to eq('hello_world_com')
+    end
+  end
+
+  describe '#valid_js_identifier?' do
+    it 'returns true for valid identifiers' do
+      expect(generator.send(:valid_js_identifier?, 'validName')).to be true
+    end
+
+    it 'returns true for identifiers starting with underscore' do
+      expect(generator.send(:valid_js_identifier?, '_private')).to be true
+    end
+
+    it 'returns true for identifiers starting with dollar sign' do
+      expect(generator.send(:valid_js_identifier?, '$element')).to be true
+    end
+
+    it 'returns false for identifiers starting with numbers' do
+      expect(generator.send(:valid_js_identifier?, '123abc')).to be false
+    end
+
+    it 'returns false for identifiers with hyphens' do
+      expect(generator.send(:valid_js_identifier?, 'my-var')).to be false
+    end
+
+    it 'returns false for reserved words' do
+      expect(generator.send(:valid_js_identifier?, 'class')).to be false
+      expect(generator.send(:valid_js_identifier?, 'function')).to be false
+      expect(generator.send(:valid_js_identifier?, 'return')).to be false
+    end
+
+    it 'returns false for empty strings' do
+      expect(generator.send(:valid_js_identifier?, '')).to be false
+    end
+
+    it 'returns false for nil' do
+      expect(generator.send(:valid_js_identifier?, nil)).to be false
+    end
+  end
+
   describe '#dry_type_to_typescript' do
     it 'converts String to string' do
       result = generator.send(:dry_type_to_typescript, ReactiveView::Types::String)

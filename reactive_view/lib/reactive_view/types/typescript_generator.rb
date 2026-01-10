@@ -33,6 +33,17 @@ module ReactiveView
     #   }
     #
     class TypescriptGenerator
+      # JavaScript reserved words that cannot be used as identifiers
+      JS_RESERVED_WORDS = %w[
+        break case catch continue debugger default delete do else finally
+        for function if in instanceof new return switch this throw try
+        typeof var void while with class const enum export extends import
+        super implements interface let package private protected public
+        static yield null true false undefined NaN Infinity
+      ].freeze
+
+      # Pattern for valid JavaScript identifiers (must start with letter, $, or _)
+      JS_IDENTIFIER_PATTERN = /\A[a-zA-Z_$][a-zA-Z0-9_$]*\z/
       ROUTE_MAP_FILE = 'types/loader-data.d.ts'
       LOADERS_DIR = 'types/loaders'
 
@@ -104,14 +115,17 @@ module ReactiveView
         # Clean up old loader files first
         FileUtils.rm_rf(@loaders_dir) if @loaders_dir.exist?
 
-        loaders.map do |loader|
+        loaders.filter_map do |loader|
           file_path = @loaders_dir.join("#{loader[:path]}.ts")
           content = build_loader_file(loader)
 
-          FileUtils.mkdir_p(file_path.dirname)
-          File.write(file_path, content)
-
-          file_path.to_s
+          begin
+            FileSync::AtomicWriter.write(file_path, content)
+            file_path.to_s
+          rescue SystemCallError => e
+            ReactiveView.logger.error "[ReactiveView] Failed to write loader file #{file_path}: #{e.message}"
+            nil
+          end
         end
       end
 
@@ -229,9 +243,23 @@ module ReactiveView
 
       # Build a single mutation (interface, action, form)
       def build_mutation(loader_path, mutation_name, schema)
-        capitalized_name = mutation_name.to_s.camelize
-        action_name = "#{mutation_name}Action"
+        # Use the original mutation name for compound identifiers (e.g., deleteAction, DeleteForm)
+        # These are safe because they're combined with suffixes that make them valid identifiers
+        base_name = mutation_name.to_s
+        capitalized_name = base_name.camelize
+        action_name = "#{base_name}Action"
         form_name = "#{capitalized_name}Form"
+
+        # Validate the resulting identifiers are valid JS (they should be, given the suffixes)
+        unless valid_js_identifier?(action_name)
+          action_name = sanitize_js_identifier(action_name)
+          ReactiveView.logger.warn "[ReactiveView] Action name sanitized to '#{action_name}'"
+        end
+
+        unless valid_js_identifier?(form_name)
+          form_name = sanitize_js_identifier(form_name)
+          ReactiveView.logger.warn "[ReactiveView] Form name sanitized to '#{form_name}'"
+        end
 
         # Generate params interface if schema has keys
         params_interface = if schema&.respond_to?(:keys) && schema.keys.any?
@@ -291,8 +319,11 @@ module ReactiveView
       def generate_route_map(loaders)
         content = build_route_map(loaders)
 
-        FileUtils.mkdir_p(@route_map_path.dirname)
-        File.write(@route_map_path, content)
+        begin
+          FileSync::AtomicWriter.write(@route_map_path, content)
+        rescue SystemCallError => e
+          ReactiveView.logger.error "[ReactiveView] Failed to write route map #{@route_map_path}: #{e.message}"
+        end
       end
 
       # Build the central route map TypeScript content
@@ -321,12 +352,14 @@ module ReactiveView
 
       def path_to_interface_name(path)
         segments = path.split('/').map do |segment|
-          segment
-            .gsub(/\(([^)]+)\)/, '\1')       # Strip route group parentheses: (admin) -> admin
-            .gsub(/\[\.\.\.(.*?)\]/, '\1')   # Catch-all routes: [...slug] -> slug
-            .gsub(/\[\[(.*?)\]\]/, '\1')     # Optional catch-all: [[...slug]] -> slug
-            .gsub(/\[(.*?)\]/, '\1')         # Dynamic params: [id] -> id
-            .camelize
+          cleaned = segment
+                    .gsub(/\(([^)]+)\)/, '\1')       # Strip route group parentheses: (admin) -> admin
+                    .gsub(/\[\.\.\.(.*?)\]/, '\1')   # Catch-all routes: [...slug] -> slug
+                    .gsub(/\[\[(.*?)\]\]/, '\1')     # Optional catch-all: [[...slug]] -> slug
+                    .gsub(/\[(.*?)\]/, '\1')         # Dynamic params: [id] -> id
+
+          # Sanitize and camelize each segment
+          sanitize_js_identifier(cleaned).camelize
         end
 
         "#{segments.join}LoaderData"
@@ -360,8 +393,14 @@ module ReactiveView
         schema.keys.map do |key|
           optional = key.type.optional? ? '?' : ''
           ts_type = dry_type_to_typescript(key.type)
+          # Use quoted property name if it contains special characters
+          prop_name = if valid_js_identifier?(key.name.to_s)
+                        key.name.to_s
+                      else
+                        "\"#{key.name}\""
+                      end
 
-          "#{key.name}#{optional}: #{ts_type}"
+          "#{prop_name}#{optional}: #{ts_type}"
         end
       rescue StandardError => e
         ReactiveView.logger.warn "[ReactiveView] Error converting schema to TypeScript: #{e.message}"
@@ -432,6 +471,42 @@ module ReactiveView
         Types::Any
       rescue StandardError
         Types::Any
+      end
+
+      # Sanitize a string to be a valid JavaScript identifier.
+      # Removes invalid characters, ensures it starts with a valid char,
+      # and handles reserved words.
+      #
+      # @param name [String, Symbol] The name to sanitize
+      # @param prefix [String] Prefix to add if name starts with invalid char
+      # @return [String] A valid JavaScript identifier
+      def sanitize_js_identifier(name, prefix: '_')
+        str = name.to_s
+
+        # Replace invalid characters with underscores
+        sanitized = str.gsub(/[^a-zA-Z0-9_$]/, '_')
+
+        # Ensure it starts with a valid character (letter, $, or _)
+        sanitized = "#{prefix}#{sanitized}" if sanitized.match?(/\A[0-9]/)
+
+        # Handle empty string
+        sanitized = '_unnamed' if sanitized.empty?
+
+        # Handle reserved words by adding underscore suffix
+        sanitized = "#{sanitized}_" if JS_RESERVED_WORDS.include?(sanitized.downcase)
+
+        sanitized
+      end
+
+      # Check if a string is a valid JavaScript identifier
+      #
+      # @param name [String] The name to validate
+      # @return [Boolean] true if valid, false otherwise
+      def valid_js_identifier?(name)
+        return false if name.nil? || name.empty?
+        return false if JS_RESERVED_WORDS.include?(name.downcase)
+
+        name.match?(JS_IDENTIFIER_PATTERN)
       end
     end
   end

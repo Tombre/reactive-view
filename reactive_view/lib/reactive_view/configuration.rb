@@ -11,6 +11,19 @@ module ReactiveView
     # Whether the daemon is managed externally (e.g., in production on a different server)
     attr_accessor :external_daemon
 
+    # Daemon monitoring and restart settings
+    # Maximum number of restarts allowed within the restart window
+    attr_accessor :daemon_max_restarts
+
+    # Time window (in seconds) for counting restarts
+    attr_accessor :daemon_restart_window
+
+    # Interval (in seconds) between health checks when monitoring
+    attr_accessor :daemon_health_check_interval
+
+    # TTL (in seconds) for caching health check results
+    attr_accessor :daemon_health_check_ttl
+
     # Path to the pages directory (relative to Rails.root)
     attr_accessor :pages_path
 
@@ -29,6 +42,10 @@ module ReactiveView
       @daemon_timeout = 30 # seconds
       @auto_start_daemon = true
       @external_daemon = false
+      @daemon_max_restarts = 5
+      @daemon_restart_window = 60 # seconds
+      @daemon_health_check_interval = 5 # seconds
+      @daemon_health_check_ttl = 2 # seconds
       @pages_path = 'app/pages'
       @working_directory = '.reactive_view'
       @validate_responses = true
