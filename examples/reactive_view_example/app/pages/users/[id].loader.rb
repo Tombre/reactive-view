@@ -3,8 +3,8 @@
 module Pages
   module Users
     class IdLoader < ReactiveView::Loader
-      # Define the type signature for this loader's response
-      loader_sig do
+      # Define the type shape for this loader's response
+      shape :load do
         param :user, ReactiveView::Types::Hash.schema(
           id: ReactiveView::Types::Integer,
           name: ReactiveView::Types::String,

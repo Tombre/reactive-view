@@ -87,7 +87,7 @@ npm run build                 # Production build
 - `bin/rails reactive_view:types:generate`: Generate TypeScript types in `.reactive_view/types/`:
   - Per-route loader files in `.reactive_view/types/loaders/` for auto-typed `useLoaderData()`
   - Central route map in `.reactive_view/types/loader-data.d.ts` for cross-route loading
-  - Run after modifying `loader_sig` definitions in `.loader.rb` files
+  - Run after modifying `shape` definitions in `.loader.rb` files
 - `bin/rails reactive_view:sync`: Syncs TSX files and generates route wrappers:
   - Copies `app/pages/*.tsx` to `.reactive_view/src/pages/` (HMR-friendly location)
   - Generates thin wrappers in `.reactive_view/src/routes/` that import from `src/pages/`
@@ -123,7 +123,7 @@ app/pages/counter.tsx (source - you edit this)
 4. Keep method definitions small; extract service objects or concerns when files exceed ~200 lines.
 5. Names: Classes/Modules are `CamelCase`, methods and variables are `snake_case`, constants are `SCREAMING_SNAKE_CASE`.
 6. Import order: standard library first, third-party gems second, internal relative paths last (use `require_relative` only when absolutely necessary).
-7. Type safety: leverage Dry::Types for loader signatures; never bypass validations unless a TODO explains why.
+7. Type safety: leverage Dry::Types for loader shape definitions; never bypass validations unless a TODO explains why.
 8. Error handling: raise domain-specific errors (see `ReactiveView::Error` derivatives) and rescue them at controller/daemon boundaries only.
 9. Logging: prefer `Rails.logger.info/debug` with contextual payloads; avoid `puts`.
 10. Comments: document non-obvious side effects or security constraints; avoid narrating obvious code.

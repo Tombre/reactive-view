@@ -3,11 +3,11 @@
 module Pages
   module Users
     class IndexLoader < ReactiveView::Loader
-      # Define the type signature for this loader's response
+      # Define the type shape for this loader's response
       # This is used to:
       # 1. Generate TypeScript types for the frontend
       # 2. Validate the response in development/test modes
-      loader_sig do
+      shape :load do
         param :users, ReactiveView::Types::Array[
           ReactiveView::Types::Hash.schema(
             id: ReactiveView::Types::Integer,

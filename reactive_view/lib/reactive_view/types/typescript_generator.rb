@@ -2,7 +2,7 @@
 
 module ReactiveView
   module Types
-    # Generates TypeScript type definitions from loader signatures.
+    # Generates TypeScript type definitions from loader shape definitions.
     #
     # This generator creates two types of output:
     #
@@ -81,13 +81,13 @@ module ReactiveView
         LoaderRegistry.all_loader_paths.filter_map do |path|
           loader_class = LoaderRegistry.class_for_path(path)
 
-          next unless loader_class._loader_sig
+          next unless loader_class._method_shapes[:load]
 
           {
             path: path,
             class_name: LoaderRegistry.path_to_class_name(path),
             interface_name: path_to_interface_name(path),
-            schema: loader_class._loader_sig
+            schema: loader_class._method_shapes[:load]
           }
         end
       end

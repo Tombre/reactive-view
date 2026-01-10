@@ -2,11 +2,11 @@
 
 module ReactiveView
   module Types
-    # Validates loader response data against the declared type signature.
+    # Validates loader response data against the declared type shape.
     # Only active in development and test environments by default.
     #
     # @example
-    #   validator = Validator.new(loader_class._loader_sig)
+    #   validator = Validator.new(loader_class._method_shapes[:load])
     #   validator.validate!({ id: 1, name: "John" }) # => returns data or raises
     #
     class Validator

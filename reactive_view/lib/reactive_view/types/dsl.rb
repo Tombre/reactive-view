@@ -3,10 +3,10 @@
 module ReactiveView
   module Types
     # DSL for building type signatures in loaders.
-    # Used with the `loader_sig` class method.
+    # Used with the `shape` class method.
     #
     # @example
-    #   loader_sig do
+    #   shape :load do
     #     param :id, Types::Integer
     #     param :name, Types::String
     #     param :email, Types::Optional[Types::String]

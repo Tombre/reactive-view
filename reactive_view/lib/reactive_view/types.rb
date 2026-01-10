@@ -3,7 +3,7 @@
 require 'dry-types'
 
 module ReactiveView
-  # Type system for loader signatures, built on top of Dry::Types.
+  # Type system for loader shape definitions, built on top of Dry::Types.
   # Provides convenient type definitions that map to TypeScript types.
   module Types
     include Dry.Types()
@@ -12,7 +12,7 @@ module ReactiveView
     # - Strict::String, Strict::Integer, etc.
     # - Coercible::String, Coercible::Integer, etc.
     #
-    # We create convenient aliases below for use in loader_sig blocks.
+    # We create convenient aliases below for use in shape blocks.
 
     # Primitive types - these map directly to TypeScript primitives
     # Using self:: to avoid constant redefinition warnings

@@ -85,7 +85,7 @@ Example loader (`app/pages/users/[id].loader.rb`):
 module Pages
   module Users
     class IdLoader < ReactiveView::Loader
-      loader_sig do
+      shape :load do
         param :user, ReactiveView::Types::Hash.schema(
           id: ReactiveView::Types::Integer,
           name: ReactiveView::Types::String,

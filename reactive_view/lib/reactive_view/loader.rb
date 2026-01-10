@@ -7,7 +7,7 @@ module ReactiveView
   # @example Basic loader with data
   #   # app/pages/users/[id].loader.rb
   #   class Pages::Users::IdLoader < ReactiveView::Loader
-  #     loader_sig do
+  #     shape :load do
   #       param :id, ReactiveView::Types::Integer
   #       param :name, ReactiveView::Types::String
   #     end
@@ -27,7 +27,7 @@ module ReactiveView
   #   class Pages::Admin::DashboardLoader < ReactiveView::Loader
   #     before_action :authenticate_admin!
   #
-  #     loader_sig do
+  #     shape :load do
   #       param :stats, ReactiveView::Types::Hash
   #     end
   #
@@ -43,17 +43,44 @@ module ReactiveView
   #   end
   #
   class Loader < ActionController::Base
-    # Store the type signature for this loader
-    class_attribute :_loader_sig, default: nil
+    # Store the type shapes for loader methods
+    # Supports multiple methods like :load, :mutate, etc.
+    class_attribute :_method_shapes, default: {}
 
     class << self
-      # Define the type signature for this loader's data
+      # Define the type shape for a loader method
       # Used for TypeScript type generation and runtime validation
       #
+      # @param method_name [Symbol] The method to define the shape for (defaults to :load)
       # @yield Block defining the parameters
-      def loader_sig(&block)
+      #
+      # @example Define a load shape
+      #   shape :load do
+      #     param :id, ReactiveView::Types::Integer
+      #     param :name, ReactiveView::Types::String
+      #   end
+      #
+      # @example Using default method (:load)
+      #   shape do
+      #     param :users, ReactiveView::Types::Array[...]
+      #   end
+      #
+      # @example Future: Define a mutate shape
+      #   shape :mutate do
+      #     param :name, ReactiveView::Types::String
+      #     param :email, ReactiveView::Types::String
+      #   end
+      def shape(method_name = :load, &block)
         builder = Types::SignatureBuilder.new(&block)
-        self._loader_sig = builder.build
+        self._method_shapes = _method_shapes.merge(method_name => builder.build)
+      end
+
+      # Internal helper to access the :load shape
+      # Maintains compatibility with existing code that accesses _loader_sig
+      #
+      # @return [Dry::Types::Type, nil] The load method's type schema
+      def _loader_sig
+        _method_shapes[:load]
       end
     end
 

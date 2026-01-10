@@ -4,7 +4,7 @@ module Pages
   module Admin
     module Dashboard
       class AnalyticsLoader < ReactiveView::Loader
-        loader_sig do
+        shape :load do
           param :chart_data, ReactiveView::Types::Array[
             ReactiveView::Types::Hash.schema(
               label: ReactiveView::Types::String,

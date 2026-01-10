@@ -4,7 +4,7 @@ module Pages
   module Admin
     module Auth
       class LoginLoader < ReactiveView::Loader
-        loader_sig do
+        shape :load do
           param :require_2fa, ReactiveView::Types::Bool
           param :session_timeout, ReactiveView::Types::Integer
         end

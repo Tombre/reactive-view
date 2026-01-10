@@ -23,7 +23,7 @@ ReactiveView.configure do |config|
   # Path to the SolidStart working directory (relative to Rails.root)
   config.working_directory = '.reactive_view'
 
-  # Enable response validation against loader_sig in development/test
+  # Enable response validation against shape definitions in development/test
   # This helps catch type mismatches early
   config.validate_responses = true
 

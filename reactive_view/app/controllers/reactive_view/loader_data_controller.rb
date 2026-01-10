@@ -65,9 +65,9 @@ module ReactiveView
 
     def validate_response!(loader_class, data)
       return unless ReactiveView.configuration.should_validate_responses?
-      return unless loader_class._loader_sig
+      return unless loader_class._method_shapes[:load]
 
-      validator = Types::Validator.new(loader_class._loader_sig)
+      validator = Types::Validator.new(loader_class._method_shapes[:load])
       validator.validate!(data)
     end
 

@@ -7,7 +7,7 @@ Build your frontend with TSX components (TypeScript + SolidJS), with all data, a
 ## Features
 
 - **SSR with Reactive Interactivity** - Server-side rendered pages that hydrate into fully interactive SolidJS applications
-- **Type Safety** - Automatic TypeScript type generation from your Ruby loader signatures
+- **Type Safety** - Automatic TypeScript type generation from your Ruby shape definitions
 - **Directory-Based Routing** - SolidStart-style file-based routing from `app/pages/`
 - **Rails Integration** - Use Rails for auth, models, business logic - SolidJS for the UI
 
@@ -149,7 +149,7 @@ Create a loader file alongside your page:
 module Pages
   module Users
     class IdLoader < ReactiveView::Loader
-      loader_sig do
+      shape :load do
         param :user, ReactiveView::Types::Hash.schema(
           id: ReactiveView::Types::Integer,
           name: ReactiveView::Types::String
@@ -170,14 +170,14 @@ end
 import { useLoaderData } from "#loaders/users/[id]";
 
 export default function UserPage() {
-  // Types are automatically inferred from the Ruby loader_sig!
+  // Types are automatically inferred from the Ruby shape definition!
   const data = useLoaderData();
 
   return <h1>Hello, {data()?.user.name}</h1>;
 }
 ```
 
-The `#loaders/*` import path maps to auto-generated TypeScript files that provide full type safety based on your Ruby `loader_sig` definitions.
+The `#loaders/*` import path maps to auto-generated TypeScript files that provide full type safety based on your Ruby `shape` definitions.
 
 ### Authentication
 
@@ -397,10 +397,10 @@ export default function BlogLayout(props: RouteSectionProps) {
 
 ## Type System
 
-ReactiveView uses [Dry::Types](https://dry-rb.org/gems/dry-types/) for type definitions:
+ReactiveView uses [Dry::Types](https://dry-rb.org/gems/dry-types/) for type definitions. Use the `shape` method to define the type signature for your loader methods:
 
 ```ruby
-loader_sig do
+shape :load do
   param :id, ReactiveView::Types::Integer
   param :name, ReactiveView::Types::String
   param :email, ReactiveView::Types::Optional[ReactiveView::Types::String]
@@ -412,9 +412,29 @@ loader_sig do
 end
 ```
 
+The `shape` method takes a method name as its first argument (defaults to `:load`), allowing you to define type signatures for different loader methods. Currently, only `:load` is used, but this opens the door for future features like mutations:
+
+```ruby
+# Explicit method name
+shape :load do
+  param :users, ReactiveView::Types::Array[...]
+end
+
+# Implicit :load (same as above)
+shape do
+  param :users, ReactiveView::Types::Array[...]
+end
+
+# Future: mutations
+shape :mutate do
+  param :name, ReactiveView::Types::String
+  param :email, ReactiveView::Types::String
+end
+```
+
 ### Response Validation
 
-In development and test modes, loader responses are validated against their signatures:
+In development and test modes, loader responses are validated against their shape definitions:
 
 ```ruby
 def load
