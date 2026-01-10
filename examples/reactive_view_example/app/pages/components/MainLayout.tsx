@@ -18,57 +18,57 @@ export default function MainLayout(props: MainLayoutProps) {
   };
 
   return (
-    <div class="min-h-screen bg-gray-50 font-sans">
-      <div class="max-w-4xl mx-auto px-10 py-10">
+    <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {props.showNav !== false && (
-          <nav class="bg-gray-100 p-4 rounded-lg mb-5">
-            <div class="flex flex-wrap gap-4">
+          <nav class="bg-white shadow-sm rounded-lg mb-8 p-2">
+            <div class="flex flex-wrap gap-2">
               <A 
                 href="/" 
-                class={`px-3 py-1 rounded transition-colors ${
+                class={`px-4 py-2 rounded-md transition-all font-medium text-sm ${
                   isActive("/", true) 
-                    ? "bg-blue-500 text-white font-semibold" 
-                    : "text-gray-700 hover:bg-gray-200"
+                    ? "bg-blue-600 text-white shadow-md" 
+                    : "text-gray-700 hover:bg-gray-100"
                 }`}
               >
                 Home
               </A>
               <A 
                 href="/about" 
-                class={`px-3 py-1 rounded transition-colors ${
+                class={`px-4 py-2 rounded-md transition-all font-medium text-sm ${
                   isActive("/about", true) 
-                    ? "bg-blue-500 text-white font-semibold" 
-                    : "text-gray-700 hover:bg-gray-200"
+                    ? "bg-blue-600 text-white shadow-md" 
+                    : "text-gray-700 hover:bg-gray-100"
                 }`}
               >
                 About
               </A>
               <A 
                 href="/users" 
-                class={`px-3 py-1 rounded transition-colors ${
+                class={`px-4 py-2 rounded-md transition-all font-medium text-sm ${
                   isActive("/users") 
-                    ? "bg-blue-500 text-white font-semibold" 
-                    : "text-gray-700 hover:bg-gray-200"
+                    ? "bg-blue-600 text-white shadow-md" 
+                    : "text-gray-700 hover:bg-gray-100"
                 }`}
               >
                 Users
               </A>
               <A 
                 href="/dashboard" 
-                class={`px-3 py-1 rounded transition-colors ${
+                class={`px-4 py-2 rounded-md transition-all font-medium text-sm ${
                   isActive("/dashboard") 
-                    ? "bg-blue-500 text-white font-semibold" 
-                    : "text-gray-700 hover:bg-gray-200"
+                    ? "bg-blue-600 text-white shadow-md" 
+                    : "text-gray-700 hover:bg-gray-100"
                 }`}
               >
                 Dashboard
               </A>
               <A 
                 href="/counter" 
-                class={`px-3 py-1 rounded transition-colors ${
+                class={`px-4 py-2 rounded-md transition-all font-medium text-sm ${
                   isActive("/counter", true) 
-                    ? "bg-blue-500 text-white font-semibold" 
-                    : "text-gray-700 hover:bg-gray-200"
+                    ? "bg-blue-600 text-white shadow-md" 
+                    : "text-gray-700 hover:bg-gray-100"
                 }`}
               >
                 Counter
@@ -78,7 +78,7 @@ export default function MainLayout(props: MainLayoutProps) {
         )}
         
         {props.title && (
-          <h1 class="text-3xl font-bold text-gray-900 mb-6">{props.title}</h1>
+          <h1 class="text-4xl font-bold text-gray-900 mb-8 tracking-tight">{props.title}</h1>
         )}
         
         {props.children}

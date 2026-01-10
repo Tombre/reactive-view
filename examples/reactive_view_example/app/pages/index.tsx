@@ -6,50 +6,60 @@ export default function HomePage() {
 
   return (
     <MainLayout title="Welcome to ReactiveView!">
-      <p class="text-gray-700 mb-6">
-        This page is rendered by <strong>SolidJS</strong> with server-side
-        rendering, powered by your <strong>Rails</strong> backend.
-      </p>
-
-      <div class="bg-sky-50 border border-sky-200 rounded-lg p-5 mt-5">
-        <h3 class="text-lg font-semibold text-gray-900 mb-3">Interactive Counter (Client-Side State)</h3>
-        <p class="text-gray-700 mb-4">
-          Count: <strong class="text-xl text-sky-600">{count()}</strong>
+      <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
+        <p class="text-lg text-gray-700 leading-relaxed">
+          This page is rendered by <strong class="text-blue-600">SolidJS</strong> with server-side
+          rendering, powered by your <strong class="text-blue-600">Rails</strong> backend.
         </p>
-        <div class="flex gap-2">
+      </div>
+
+      <div class="bg-gradient-to-br from-sky-50 to-blue-50 border border-sky-200 rounded-xl shadow-md p-6 mb-8">
+        <h2 class="text-2xl font-bold text-gray-900 mb-4">Interactive Counter</h2>
+        <p class="text-sm text-gray-600 mb-4">Client-Side State Management</p>
+        <div class="bg-white rounded-lg p-6 mb-6">
+          <p class="text-gray-600 mb-2">Count:</p>
+          <p class="text-5xl font-bold text-blue-600">{count()}</p>
+        </div>
+        <div class="flex gap-3">
           <button
             onClick={() => setCount((c) => c + 1)}
-            class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded font-medium transition-colors"
+            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-all shadow-md hover:shadow-lg active:scale-95"
           >
             Increment
           </button>
           <button
             onClick={() => setCount(0)}
-            class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded font-medium transition-colors"
+            class="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold transition-all shadow-md hover:shadow-lg active:scale-95"
           >
             Reset
           </button>
         </div>
       </div>
 
-      <div class="mt-8 text-gray-600">
-        <h3 class="text-lg font-semibold text-gray-900 mb-3">How It Works</h3>
-        <ul class="space-y-2">
+      <div class="bg-white rounded-lg shadow-sm p-6">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">How It Works</h2>
+        <ul class="space-y-4">
           <li class="flex items-start">
-            <span class="text-blue-500 mr-2">•</span>
-            Pages are defined as TSX files in <code class="bg-gray-100 px-2 py-1 rounded text-sm">app/pages/</code>
+            <span class="text-2xl text-blue-500 mr-4 mt-1">•</span>
+            <div>
+              <p class="text-gray-800 font-medium">Pages are defined as TSX files in</p>
+              <code class="bg-gray-100 text-blue-600 px-3 py-1 rounded-md text-sm font-mono mt-1 inline-block">app/pages/</code>
+            </div>
           </li>
           <li class="flex items-start">
-            <span class="text-blue-500 mr-2">•</span>
-            Data is loaded via Ruby loaders (<code class="bg-gray-100 px-2 py-1 rounded text-sm">*.loader.rb</code>)
+            <span class="text-2xl text-blue-500 mr-4 mt-1">•</span>
+            <div>
+              <p class="text-gray-800 font-medium">Data is loaded via Ruby loaders</p>
+              <code class="bg-gray-100 text-blue-600 px-3 py-1 rounded-md text-sm font-mono mt-1 inline-block">*.loader.rb</code>
+            </div>
           </li>
           <li class="flex items-start">
-            <span class="text-blue-500 mr-2">•</span>
-            Full SSR with hydration for interactivity
+            <span class="text-2xl text-blue-500 mr-4 mt-1">•</span>
+            <p class="text-gray-800 font-medium">Full SSR with hydration for interactivity</p>
           </li>
           <li class="flex items-start">
-            <span class="text-blue-500 mr-2">•</span>
-            Type-safe communication between Rails and TypeScript
+            <span class="text-2xl text-blue-500 mr-4 mt-1">•</span>
+            <p class="text-gray-800 font-medium">Type-safe communication between Rails and TypeScript</p>
           </li>
         </ul>
       </div>
