@@ -84,7 +84,7 @@ For example:
 # app/pages/users/[id].loader.rb
 class Users::IdLoader < ReactiveView::Loader
   # Provide the typescript definition
-  loader_sig do
+  shape :load do
     param :name, ReactiveView::Types::String
     param :id, ReactiveView::Types::Integer
   end
@@ -102,14 +102,14 @@ class Users::IdLoader < ReactiveView::Loader
 end
 ```
 
-The loader recieves the parameters of the request like any regular rails controller. And allows you to return some data. For type safety you can also call a `load_sig` method that allows you to configure a response type structure. This is automatically inferred on the frontend:
+The loader recieves the parameters of the request like any regular rails controller. And allows you to return some data. For type safety you can also call a `shape` method that allows you to configure a response type structure. This is automatically inferred on the frontend:
 
 ```tsx
 // app/pages/users/[id].tsx
 import { useLoaderData } from "reactiveview";
 
 export default function Page() {
-  // `user` will automatically be typed to the `loader_sig` we setup in the loader
+  // `user` will automatically be typed to the `shape` definition we setup in the loader
   const user = useLoaderData();
 
   return (
@@ -178,7 +178,7 @@ Because the loaders are the things that accept all the requests in the first pla
 class Users::IdLoader < ReactiveView::Loader
   before_action :authenticate_user!
 
-  loader_sig do
+  shape :load do
     param :name, ReactiveView::Types::String
     param :id, ReactiveView::Types::Integer
   end

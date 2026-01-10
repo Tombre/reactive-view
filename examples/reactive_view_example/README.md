@@ -30,13 +30,20 @@ bin/rails reactive_view:setup
 
 ## Running the Application
 
-Start both Rails and the SolidStart daemon:
+Start the app (installs dependencies, prepares the database, runs setup if needed, then launches both processes):
+
+```bash
+bin/start
+```
+
+Already set up and just want to launch the processes?
 
 ```bash
 bin/dev
 ```
 
 This will start:
+
 - Rails server on http://localhost:3000
 - SolidStart daemon on http://localhost:3001
 
@@ -44,13 +51,13 @@ This will start:
 
 The example includes several pages demonstrating ReactiveView features:
 
-| Route | Description |
-|-------|-------------|
-| `/` | Home page with interactive counter |
-| `/about` | Static about page |
-| `/counter` | Advanced counter with SolidJS effects |
-| `/users` | User list loaded from Rails via loader |
-| `/users/:id` | Dynamic user page with loader |
+| Route        | Description                            |
+| ------------ | -------------------------------------- |
+| `/`          | Home page with interactive counter     |
+| `/about`     | Static about page                      |
+| `/counter`   | Advanced counter with SolidJS effects  |
+| `/users`     | User list loaded from Rails via loader |
+| `/users/:id` | Dynamic user page with loader          |
 
 ## Project Structure
 
@@ -166,6 +173,7 @@ To add custom styles:
 ### Shared Layout Component
 
 The `MainLayout` component (`app/pages/components/MainLayout.tsx`) provides:
+
 - Consistent navigation with active state styling
 - Tailwind CSS import
 - Responsive design utilities
@@ -191,16 +199,21 @@ export default function MyPage() {
   const [visible, setVisible] = createSignal(true);
 
   return (
-    <div class="container mx-auto">  {/* class not className */}
-      <button 
+    <div class="container mx-auto">
+      {" "}
+      {/* class not className */}
+      <button
         class="px-4 py-2 bg-blue-500 text-white rounded"
         onClick={() => setVisible(!visible())}
       >
         Toggle
       </button>
-      
-      <Show when={visible()}>  {/* SolidJS conditional */}
-        <For each={items()}>  {/* SolidJS list rendering */}
+      <Show when={visible()}>
+        {" "}
+        {/* SolidJS conditional */}
+        <For each={items()}>
+          {" "}
+          {/* SolidJS list rendering */}
           {(item) => <div>{item}</div>}
         </For>
       </Show>

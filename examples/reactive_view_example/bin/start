@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+APP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$APP_ROOT"
+
+if ! command -v bundle >/dev/null 2>&1; then
+  echo "Bundler is not installed. Install it with: gem install bundler" >&2
+  exit 1
+fi
+
+echo "Ensuring Ruby gems are installed..."
+if ! bundle check >/dev/null 2>&1; then
+  bundle install
+fi
+
+if ! command -v foreman >/dev/null 2>&1; then
+  echo "Installing foreman..."
+  gem install foreman
+fi
+
+if [ ! -d ".reactive_view" ]; then
+  echo "Running ReactiveView setup..."
+  bin/rails reactive_view:setup
+fi
+
+echo "Syncing ReactiveView files..."
+bin/rails reactive_view:sync 2>/dev/null || true
+
+echo "Preparing database..."
+bin/rails db:prepare
+
+echo "Starting ReactiveView example (Rails + SolidStart)..."
+exec bin/dev "$@"

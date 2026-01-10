@@ -99,6 +99,11 @@ The fastest way to explore ReactiveView is via the included example:
 git clone <repo-url>
 cd reactive-view-ai
 
+# Easiest start from repo root (installs deps, prepares DB, runs setup if needed)
+bin/start-example
+
+# Or follow the manual steps below
+
 # Navigate to example app
 cd examples/reactive_view_example
 
