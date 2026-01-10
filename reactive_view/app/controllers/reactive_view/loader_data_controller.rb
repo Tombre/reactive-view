@@ -1,17 +1,22 @@
 # frozen_string_literal: true
 
 module ReactiveView
-  # Internal controller that handles data requests for loader data.
-  # This is called when useLoaderData() is invoked during:
+  # Internal controller that handles data requests for loader data and mutations.
+  # This is called when useLoaderData() or mutation actions are invoked during:
   # - SSR: SolidStart daemon calls back to Rails with forwarded cookies
   # - Client-side navigation: Browser calls directly with session cookies
   #
   # Authentication is handled via Rails session cookies in both cases.
   class LoaderDataController < ActionController::Base
-    # Skip CSRF for API-style requests
-    skip_forgery_protection
+    # Skip CSRF for read-only load requests (GET)
+    skip_forgery_protection only: [:show]
+
+    # Enable CSRF protection for mutations
+    protect_from_forgery with: :exception, only: [:mutate]
+    before_action :verify_csrf_for_mutation, only: [:mutate]
 
     # GET /_reactive_view/loaders/:path/load
+    # Fetches data from a loader for SSR or client-side navigation
     def show
       # Get the loader class from the path
       loader_class = LoaderRegistry.class_for_path(loader_path)
@@ -34,7 +39,71 @@ module ReactiveView
       handle_loader_error(e)
     end
 
+    # POST/PUT/PATCH/DELETE /_reactive_view/loaders/:path/mutate
+    # Handles mutation requests from forms or useAction calls
+    #
+    # The mutation method to call is determined by the _mutation parameter.
+    # Defaults to 'mutate' if not specified.
+    #
+    # @example
+    #   POST /_reactive_view/loaders/users/[id]/mutate?_mutation=update
+    #   POST /_reactive_view/loaders/users/[id]/mutate?_mutation=delete
+    def mutate
+      loader_class = LoaderRegistry.class_for_path(loader_path)
+      loader = build_loader(loader_class)
+
+      # Determine which mutation method to call
+      mutation_name = params[:_mutation].presence || 'mutate'
+      mutation_method = mutation_name.to_sym
+
+      # Validate the mutation method exists and is not :load
+      unless valid_mutation_method?(loader, mutation_method)
+        return render json: {
+          success: false,
+          error: "Mutation '#{mutation_name}' not defined for this loader"
+        }, status: :not_found
+      end
+
+      # Call the mutation method and get the result
+      result = loader.public_send(mutation_method)
+
+      # Handle the mutation result
+      render_mutation_result(result)
+    rescue LoaderNotFoundError => e
+      render json: { success: false, error: e.message }, status: :not_found
+    rescue StandardError => e
+      handle_mutation_error(e)
+    end
+
     private
+
+    # Verify CSRF token for mutation requests
+    # Accepts token from either X-CSRF-Token header or authenticity_token param
+    def verify_csrf_for_mutation
+      token = request.headers['X-CSRF-Token'] || params[:authenticity_token]
+
+      return if token.present? && valid_authenticity_token?(session, token)
+
+      raise ActionController::InvalidAuthenticityToken
+    end
+
+    # Check if the mutation method is valid
+    # @param loader [ReactiveView::Loader] The loader instance
+    # @param method [Symbol] The method name to check
+    # @return [Boolean]
+    def valid_mutation_method?(loader, method)
+      # Must respond to the method
+      return false unless loader.respond_to?(method)
+
+      # Cannot be the load method
+      return false if method == :load
+
+      # Cannot be a private/protected method from base controller
+      base_methods = ActionController::Base.instance_methods
+      return false if base_methods.include?(method) && !loader.class.instance_methods(false).include?(method)
+
+      true
+    end
 
     # Extract the loader path from the URL
     # The path comes from the route: /_reactive_view/loaders/:path/load
@@ -46,8 +115,8 @@ module ReactiveView
     def build_loader(loader_class)
       loader = loader_class.new
 
-      # Set up params from the request query parameters
-      # Route params (like :id) are passed as query params by the frontend
+      # Set up params from the request
+      # Route params and form data are both accessible via params
       loader.params = ActionController::Parameters.new(loader_params)
 
       # Set the request/response for helpers (current_user, etc.)
@@ -60,7 +129,7 @@ module ReactiveView
     # Extract loader-relevant params from the request
     # Excludes internal routing params
     def loader_params
-      params.to_unsafe_h.except('controller', 'action', 'path')
+      params.to_unsafe_h.except('controller', 'action', 'path', '_mutation')
     end
 
     def validate_response!(loader_class, data)
@@ -69,6 +138,26 @@ module ReactiveView
 
       validator = Types::Validator.new(loader_class._method_shapes[:load])
       validator.validate!(data)
+    end
+
+    # Render the result of a mutation method
+    # Handles MutationResult objects or legacy direct responses
+    #
+    # @param result [MutationResult, Hash, nil] The mutation result
+    def render_mutation_result(result)
+      case result
+      when MutationResult
+        render json: result.to_json_hash, status: result.status
+      when Hash
+        # Legacy support: mutation returned a hash directly
+        render json: result
+      when nil
+        # Mutation returned nothing, assume success
+        render json: { success: true }
+      else
+        # Unknown return type, try to handle gracefully
+        render json: { success: true, data: result }
+      end
     end
 
     def handle_loader_error(error)
@@ -83,6 +172,23 @@ module ReactiveView
         }, status: :internal_server_error
       else
         render json: { error: 'Internal server error' }, status: :internal_server_error
+      end
+    end
+
+    def handle_mutation_error(error)
+      ReactiveView.logger.error "[ReactiveView] Mutation error: #{error.message}"
+      ReactiveView.logger.error error.backtrace.join("\n") if error.backtrace
+
+      if Rails.env.development? || Rails.env.test?
+        render json: {
+          success: false,
+          error: error.message,
+          type: error.class.name,
+          backtrace: error.backtrace&.first(10)
+        }, status: :internal_server_error
+      else
+        render json: { success: false, error: 'Internal server error' },
+               status: :internal_server_error
       end
     end
   end

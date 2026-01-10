@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 module ReactiveView
-  # Base controller for handling ReactiveView page requests.
-  # Subclass this in your app/pages/*.loader.rb files to provide data to your pages.
+  # Base controller for handling ReactiveView page requests and mutations.
+  # Subclass this in your app/pages/*.loader.rb files to provide data to your pages
+  # and handle mutations.
   #
   # @example Basic loader with data
   #   # app/pages/users/[id].loader.rb
@@ -14,6 +15,39 @@ module ReactiveView
   #
   #     def load
   #       { id: user.id, name: user.name }
+  #     end
+  #
+  #     private
+  #
+  #     def user
+  #       @user ||= User.find(params[:id])
+  #     end
+  #   end
+  #
+  # @example Loader with mutations
+  #   class Pages::Users::IdLoader < ReactiveView::Loader
+  #     shape :load do
+  #       param :user, ReactiveView::Types::Hash.schema(
+  #         id: ReactiveView::Types::Integer,
+  #         name: ReactiveView::Types::String
+  #       )
+  #     end
+  #
+  #     shape :update do
+  #       param :name, ReactiveView::Types::String
+  #       param :email, ReactiveView::Types::String
+  #     end
+  #
+  #     def load
+  #       { user: { id: user.id, name: user.name } }
+  #     end
+  #
+  #     def update
+  #       if user.update(shapes.update(params))
+  #         render_success(user: { id: user.id, name: user.name })
+  #       else
+  #         render_error(user)
+  #       end
   #     end
   #
   #     private
@@ -65,8 +99,8 @@ module ReactiveView
       #     param :users, ReactiveView::Types::Array[...]
       #   end
       #
-      # @example Future: Define a mutate shape
-      #   shape :mutate do
+      # @example Define a mutation shape
+      #   shape :update do
       #     param :name, ReactiveView::Types::String
       #     param :email, ReactiveView::Types::String
       #   end
@@ -109,11 +143,13 @@ module ReactiveView
 
       # Ask SolidStart to render the page
       # Forward cookies so SolidStart can pass them back for authenticated loader requests
+      # Include CSRF token for mutation forms
       html = renderer.render(
         path: request.fullpath,
         loader_path: loader_path,
         rails_base_url: rails_base_url,
-        cookies: request.headers['Cookie']
+        cookies: request.headers['Cookie'],
+        csrf_token: form_authenticity_token
       )
 
       render html: html.html_safe, layout: false
@@ -149,6 +185,88 @@ module ReactiveView
     #   end
     def load
       {}
+    end
+
+    # =========================================================================
+    # Mutation Helpers
+    # =========================================================================
+
+    # Accessor for shape-based param extraction.
+    # Use this to extract and validate params based on your shape definitions.
+    #
+    # @return [ShapesAccessor] Helper for extracting typed params
+    #
+    # @example Extract params for an update mutation
+    #   def update
+    #     attrs = shapes.update(params)  # Only extracts keys defined in shape :update
+    #     user.update(attrs)
+    #   end
+    def shapes
+      @shapes ||= ShapesAccessor.new(self.class._method_shapes)
+    end
+
+    # Return a successful mutation response.
+    # Returns a MutationResult that LoaderDataController will render.
+    #
+    # @param data [Hash] Optional additional data to include in response
+    # @option data [Array<String>] :revalidate Routes to revalidate after mutation
+    # @return [MutationResult] A success result object
+    #
+    # @example Simple success
+    #   render_success
+    #
+    # @example Success with data
+    #   render_success(user: { id: 1, name: "Updated" })
+    #
+    # @example Success with revalidation
+    #   render_success(revalidate: ["users/index"])
+    def render_success(data = {})
+      MutationResult.success(data)
+    end
+
+    # Return an error response from a model or hash.
+    # Returns a MutationResult that LoaderDataController will render.
+    #
+    # @param record_or_errors [ActiveModel::Errors, Hash, Object]
+    #   An object with .errors method, or a hash of errors
+    # @return [MutationResult] An error result object
+    #
+    # @example With an ActiveRecord model
+    #   render_error(user)  # Uses user.errors
+    #
+    # @example With a hash of errors
+    #   render_error(name: ["can't be blank"], email: ["is invalid"])
+    #
+    # @example With a string message
+    #   render_error("Something went wrong")
+    def render_error(record_or_errors)
+      MutationResult.error(record_or_errors)
+    end
+
+    # Return a redirect response for mutations.
+    # Returns a MutationResult that LoaderDataController will render as a redirect instruction.
+    #
+    # Note: For non-mutation requests (standard page navigation), this calls the parent
+    # redirect_to method for normal HTTP redirects.
+    #
+    # @param options [String, Hash] URL or options hash for redirect
+    # @param response_options [Hash] Additional options
+    # @option response_options [Array<String>] :revalidate Routes to revalidate after redirect
+    # @return [MutationResult, void] A redirect result object for mutations, or performs redirect
+    #
+    # @example Simple redirect after mutation
+    #   def delete
+    #     user.destroy
+    #     mutation_redirect "/users"
+    #   end
+    #
+    # @example Redirect with revalidation
+    #   def delete
+    #     user.destroy
+    #     mutation_redirect "/users", revalidate: ["users/index"]
+    #   end
+    def mutation_redirect(path, revalidate: [])
+      MutationResult.redirect(path, revalidate: revalidate)
     end
 
     private

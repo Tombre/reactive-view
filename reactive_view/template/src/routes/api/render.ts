@@ -6,14 +6,14 @@ import type { APIEvent } from "@solidjs/start/server";
  * 
  * This endpoint:
  * 1. Receives the render request from Rails
- * 2. Stores cookies for authenticated loader data requests
+ * 2. Stores cookies and CSRF token for authenticated requests and mutations
  * 3. Internally renders the requested route
  * 4. Returns the HTML to Rails
  */
 export async function POST(event: APIEvent): Promise<Response> {
   try {
     const body = await event.request.json();
-    const { path, loader_path, rails_base_url, cookies } = body;
+    const { path, loader_path, rails_base_url, cookies, csrf_token } = body;
 
     if (!path) {
       return new Response(
@@ -22,10 +22,13 @@ export async function POST(event: APIEvent): Promise<Response> {
       );
     }
 
-    // Store the cookies and Rails URL for this request
-    // These will be accessed by useLoaderData during SSR
+    // Store the cookies, Rails URL, and CSRF token for this request
+    // These will be accessed by useLoaderData and mutations during SSR
+    // Note: We don't clean these up in finally because SSR may access them
+    // after the fetch completes but before the response is sent back
     (globalThis as any).__REACTIVE_VIEW_COOKIES__ = cookies;
     (globalThis as any).__RAILS_BASE_URL__ = rails_base_url;
+    (globalThis as any).__RAILS_CSRF_TOKEN__ = csrf_token;
 
     // Build the internal URL to render using the request's own origin
     // This ensures we use the same host/port that successfully received this request
@@ -74,10 +77,6 @@ export async function POST(event: APIEvent): Promise<Response> {
       }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
-  } finally {
-    // Clean up global state
-    delete (globalThis as any).__REACTIVE_VIEW_COOKIES__;
-    delete (globalThis as any).__RAILS_BASE_URL__;
   }
 }
 
