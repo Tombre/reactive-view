@@ -10,62 +10,48 @@ export default function Navigation() {
     return location.pathname.startsWith(path);
   };
 
+  const navLinkClass = (path: string, exact = false) => {
+    const base = "px-4 py-2 text-sm font-medium rounded-lg transition-colors";
+    if (isActive(path, exact)) {
+      return `${base} text-blue-700 bg-blue-50`;
+    }
+    return `${base} text-gray-600 hover:bg-gray-100 hover:text-gray-900`;
+  };
+
   return (
-    <nav class="bg-white/80 backdrop-blur-sm rounded-2xl py-5 mt-2 mb-16">
-      <div class="flex flex-wrap items-center gap-3 px-6">
-        <div class="flex flex-wrap gap-2">
-          <A 
-            href="/" 
-            class={`px-5 py-3 rounded-lg transition-all font-semibold text-sm ${
-              isActive("/", true) 
-                ? "bg-blue-600 text-white" 
-                : "text-gray-700 hover:bg-gray-100"
-            }`}
-          >
-            Home
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          {/* Logo / Brand */}
+          <A href="/" class="flex items-center gap-2 text-gray-900 hover:text-gray-700 transition-colors">
+            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <span class="font-bold text-lg">ReactiveView</span>
           </A>
-          <A 
-            href="/about" 
-            class={`px-5 py-3 rounded-lg transition-all font-semibold text-sm ${
-              isActive("/about", true) 
-                ? "bg-blue-600 text-white" 
-                : "text-gray-700 hover:bg-gray-100"
-            }`}
-          >
-            About
-          </A>
-          <A 
-            href="/users" 
-            class={`px-5 py-3 rounded-lg transition-all font-semibold text-sm ${
-              isActive("/users") 
-                ? "bg-blue-600 text-white" 
-                : "text-gray-700 hover:bg-gray-100"
-            }`}
-          >
-            Users
-          </A>
-          <A 
-            href="/dashboard" 
-            class={`px-5 py-3 rounded-lg transition-all font-semibold text-sm ${
-              isActive("/dashboard") 
-                ? "bg-blue-600 text-white" 
-                : "text-gray-700 hover:bg-gray-100"
-            }`}
-          >
-            Dashboard
-          </A>
-          <A 
-            href="/counter" 
-            class={`px-5 py-3 rounded-lg transition-all font-semibold text-sm ${
-              isActive("/counter", true) 
-                ? "bg-blue-600 text-white" 
-                : "text-gray-700 hover:bg-gray-100"
-            }`}
-          >
-            Counter
-          </A>
+
+          {/* Navigation Links */}
+          <nav class="flex items-center gap-2">
+            <A href="/" class={navLinkClass("/", true)}>
+              Home
+            </A>
+            <A href="/about" class={navLinkClass("/about", true)}>
+              About
+            </A>
+            <A href="/users" class={navLinkClass("/users")}>
+              Users
+            </A>
+            <A href="/dashboard" class={navLinkClass("/dashboard")}>
+              Dashboard
+            </A>
+            <A href="/counter" class={navLinkClass("/counter", true)}>
+              Counter
+            </A>
+          </nav>
         </div>
       </div>
-    </nav>
+    </header>
   );
 }
