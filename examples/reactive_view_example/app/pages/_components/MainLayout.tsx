@@ -1,6 +1,6 @@
 import { type ParentProps } from "solid-js";
 import Navigation from "./Navigation";
-import "~/styles/tailwind.css";
+import "../_styles/tailwind.css";
 
 interface MainLayoutProps extends ParentProps {
   title?: string;
