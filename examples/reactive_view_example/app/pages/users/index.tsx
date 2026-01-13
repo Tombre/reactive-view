@@ -1,7 +1,7 @@
 import { For, Suspense } from "solid-js";
 import { A } from "@solidjs/router";
 import { useLoaderData } from "#loaders/users/index";
-import MainLayout from "../components/MainLayout";
+import MainLayout from "../_components/MainLayout";
 
 export default function UsersIndexPage() {
   const data = useLoaderData();

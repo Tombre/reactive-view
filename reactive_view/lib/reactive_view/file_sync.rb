@@ -25,6 +25,30 @@ module ReactiveView
   #
   class FileSync
     class << self
+      # Check if a path is private (any segment starts with underscore).
+      #
+      # Private paths are synced to the SolidStart bundle (so they can be imported)
+      # but do NOT generate routes or route wrappers. Use this convention to colocate
+      # components, utilities, and styles alongside your pages.
+      #
+      # @param path [String, Pathname] Path to check (relative to pages directory)
+      # @return [Boolean] true if path contains a private segment (underscore prefix)
+      #
+      # @example Private folder
+      #   private_path?("_components/Button.tsx") # => true
+      #
+      # @example Private file
+      #   private_path?("_helpers.ts") # => true
+      #
+      # @example Nested private folder
+      #   private_path?("users/_partials/Card.tsx") # => true
+      #
+      # @example Regular route
+      #   private_path?("users/index.tsx") # => false
+      def private_path?(path)
+        path.to_s.split('/').any? { |segment| segment.start_with?('_') }
+      end
+
       # Syncs all files from app/pages to the SolidStart working directory.
       #
       # This method performs a full sync:

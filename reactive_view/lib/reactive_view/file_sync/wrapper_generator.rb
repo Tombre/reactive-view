@@ -25,6 +25,10 @@ module ReactiveView
 
           Dir.glob(pages_path.join('**', '*.tsx')).each do |source|
             relative = Pathname.new(source).relative_path_from(pages_path)
+
+            # Skip private paths - they don't need route wrappers
+            next if FileSync.private_path?(relative)
+
             generate_wrapper(relative, pages_path)
           end
 

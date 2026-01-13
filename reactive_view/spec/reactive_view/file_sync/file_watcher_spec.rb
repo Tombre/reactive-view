@@ -200,6 +200,29 @@ RSpec.describe ReactiveView::FileSync::FileWatcher do
 
       described_class.send(:handle_changes, modified, [], [])
     end
+
+    it 'does not generate wrappers for TSX files in private folders' do
+      added = ["#{pages_path}/_components/Button.tsx"]
+      expect(ReactiveView::FileSync::ComponentSyncer).to receive(:sync_file)
+      expect(ReactiveView::FileSync::WrapperGenerator).not_to receive(:generate_wrapper)
+
+      described_class.send(:handle_changes, [], added, [])
+    end
+
+    it 'does not remove wrappers for TSX files in private folders' do
+      removed = ["#{pages_path}/_components/Button.tsx"]
+      expect(ReactiveView::FileSync::ComponentSyncer).to receive(:remove_file)
+      expect(ReactiveView::FileSync::WrapperGenerator).not_to receive(:remove_wrapper)
+
+      described_class.send(:handle_changes, [], [], removed)
+    end
+
+    it 'still syncs private files for imports to work' do
+      added = ["#{pages_path}/_utils/helpers.ts"]
+      expect(ReactiveView::FileSync::ComponentSyncer).to receive(:sync_file).with(added.first, pages_path)
+
+      described_class.send(:handle_changes, [], added, [])
+    end
   end
 
   describe 'DEBOUNCE_DELAY constant' do

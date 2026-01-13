@@ -17,6 +17,14 @@ module ReactiveView
   # | `blog/[...slug].tsx` | `/blog/*slug` | Catch-all segment |
   # | `users/[[id]].tsx` | `/users(/:id)` | Optional segment |
   # | `(admin)/dashboard/analytics.tsx` | `/dashboard/analytics` | Grouped route (no URL prefix) |
+  # | `_components/Button.tsx` | (none) | Private folder (underscore prefix) |
+  # | `_helpers.ts` | (none) | Private file (underscore prefix) |
+  #
+  # ## Private Folders and Files
+  #
+  # Files and folders prefixed with underscore (`_`) are private - they are synced
+  # to the SolidStart bundle (so they can be imported) but do NOT generate routes.
+  # Use this for colocating shared components, utilities, and styles.
   #
   # ## Route Priority
   #
@@ -71,6 +79,9 @@ module ReactiveView
         Dir.glob(base_path.join('**', '*.tsx')).each do |file|
           file_path = Pathname.new(file)
           relative_path = file_path.relative_path_from(base_path)
+
+          # Skip files in private folders/files (underscore prefix)
+          next if FileSync.private_path?(relative_path)
 
           route_info = parse_route(relative_path)
           routes << route_info if route_info

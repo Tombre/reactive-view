@@ -8,7 +8,7 @@ import {
   deleteAction,
   useSubmission,
 } from "#loaders/users/[id]";
-import MainLayout from "../components/MainLayout";
+import MainLayout from "../_components/MainLayout";
 
 export default function UserShowPage() {
   const params = useParams();

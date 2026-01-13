@@ -1,5 +1,5 @@
 import { createSignal } from "solid-js";
-import MainLayout from "./components/MainLayout";
+import MainLayout from "./_components/MainLayout";
 
 export default function HomePage() {
   const [count, setCount] = createSignal(0);

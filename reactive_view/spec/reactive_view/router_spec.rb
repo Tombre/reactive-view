@@ -160,4 +160,60 @@ RSpec.describe ReactiveView::Router do
       expect(route[:loader_path]).to eq('users/[[id]]')
     end
   end
+
+  describe '.scan_directory' do
+    let(:temp_dir) { Dir.mktmpdir }
+    let(:pages_path) { Pathname.new(temp_dir) }
+
+    before do
+      allow(ReactiveView.configuration).to receive(:pages_absolute_path).and_return(pages_path)
+    end
+
+    after do
+      FileUtils.rm_rf(temp_dir)
+    end
+
+    it 'excludes files in private folders (underscore prefix)' do
+      # Create regular route files
+      FileUtils.mkdir_p(pages_path.join('users'))
+      File.write(pages_path.join('index.tsx'), '')
+      File.write(pages_path.join('users/index.tsx'), '')
+
+      # Create private folder with files
+      FileUtils.mkdir_p(pages_path.join('_components'))
+      File.write(pages_path.join('_components/Button.tsx'), '')
+      File.write(pages_path.join('_components/Navigation.tsx'), '')
+
+      routes = described_class.send(:scan_directory, pages_path)
+      file_paths = routes.map { |r| r[:file_path] }
+
+      expect(file_paths).to include('index.tsx')
+      expect(file_paths).to include('users/index.tsx')
+      expect(file_paths).not_to include('_components/Button.tsx')
+      expect(file_paths).not_to include('_components/Navigation.tsx')
+    end
+
+    it 'excludes private files (underscore prefix)' do
+      File.write(pages_path.join('index.tsx'), '')
+      File.write(pages_path.join('_helpers.ts'), '')
+
+      routes = described_class.send(:scan_directory, pages_path)
+      file_paths = routes.map { |r| r[:file_path] }
+
+      expect(file_paths).to include('index.tsx')
+      expect(file_paths).not_to include('_helpers.ts')
+    end
+
+    it 'excludes nested private folders' do
+      FileUtils.mkdir_p(pages_path.join('users/_partials'))
+      File.write(pages_path.join('users/index.tsx'), '')
+      File.write(pages_path.join('users/_partials/Card.tsx'), '')
+
+      routes = described_class.send(:scan_directory, pages_path)
+      file_paths = routes.map { |r| r[:file_path] }
+
+      expect(file_paths).to include('users/index.tsx')
+      expect(file_paths).not_to include('users/_partials/Card.tsx')
+    end
+  end
 end

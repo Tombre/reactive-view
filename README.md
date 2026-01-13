@@ -373,6 +373,42 @@ ReactiveView uses SolidStart-style file-based routing:
 | `app/pages/users/[id].tsx`     | `/users/:id`              |
 | `app/pages/blog/[...slug].tsx` | `/blog/*slug`             |
 | `app/pages/users/[[id]].tsx`   | `/users(/:id)` (optional) |
+| `app/pages/_components/*.tsx`  | (none - private folder)   |
+| `app/pages/_helpers.ts`        | (none - private file)     |
+
+### Private Folders and Files
+
+Files and folders prefixed with underscore (`_`) are **private** - they are included in the SolidStart bundle (so you can import them) but do NOT become routes.
+
+Use this for colocating:
+- Shared components: `_components/Button.tsx`
+- Utility functions: `_utils/formatDate.ts`
+- Styles: `_styles/variables.css`
+- Route-specific partials: `users/_partials/UserCard.tsx`
+
+```
+app/pages/
+├── _components/           # Private - no routes generated
+│   ├── Button.tsx
+│   └── Navigation.tsx
+├── _styles/               # Private - no routes generated
+│   └── variables.css
+├── users/
+│   ├── _partials/         # Nested private folder
+│   │   └── UserCard.tsx
+│   ├── index.tsx          # Route: /users
+│   └── [id].tsx           # Route: /users/:id
+├── index.tsx              # Route: /
+└── about.tsx              # Route: /about
+```
+
+Import private files like any other module:
+
+```tsx
+// app/pages/users/index.tsx
+import { Button } from "../_components/Button";
+import { UserCard } from "./_partials/UserCard";
+```
 
 ### Nested Layouts
 

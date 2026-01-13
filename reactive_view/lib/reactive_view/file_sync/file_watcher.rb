@@ -203,8 +203,8 @@ module ReactiveView
             relative = Pathname.new(source).relative_path_from(pages_path)
             ComponentSyncer.sync_file(source, pages_path)
 
-            # Only generate wrappers for TSX files
-            if relative.extname == '.tsx'
+            # Only generate wrappers for TSX files NOT in private paths
+            if relative.extname == '.tsx' && !FileSync.private_path?(relative)
               WrapperGenerator.generate_wrapper(relative, pages_path)
               WrapperGenerator.regenerate_parent_layout(relative, pages_path)
             end
@@ -216,8 +216,8 @@ module ReactiveView
             relative = Pathname.new(source).relative_path_from(pages_path)
             ComponentSyncer.remove_file(relative)
 
-            # Only remove wrappers for TSX files
-            if relative.extname == '.tsx'
+            # Only remove wrappers for TSX files NOT in private paths
+            if relative.extname == '.tsx' && !FileSync.private_path?(relative)
               WrapperGenerator.remove_wrapper(relative)
               WrapperGenerator.regenerate_parent_layout(relative, pages_path)
             end

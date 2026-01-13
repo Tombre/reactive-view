@@ -12,7 +12,7 @@ export default function MainLayout(props: MainLayoutProps) {
   return (
     <div class="min-h-screen bg-gray-50">
       {props.showNav !== false && <Navigation />}
-      
+
       <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {props.title && (
           <div class="mb-8">
@@ -22,10 +22,8 @@ export default function MainLayout(props: MainLayoutProps) {
             )}
           </div>
         )}
-        
-        <div class="space-y-6">
-          {props.children}
-        </div>
+
+        <div class="space-y-6">{props.children}</div>
       </main>
     </div>
   );
