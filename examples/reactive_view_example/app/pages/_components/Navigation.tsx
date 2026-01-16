@@ -21,7 +21,7 @@ export default function Navigation() {
   return (
     <header class="sticky top-0 z-50 px-8 py-4">
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16 gap-x-12">
+        <div class="flex items-center h-16 gap-x-12">
           {/* Logo / Brand */}
           <A
             href="/"

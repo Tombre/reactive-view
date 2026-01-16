@@ -300,6 +300,50 @@ bin/rails reactive_view:daemon:status
 bin/rails reactive_view:build
 ```
 
+## Tailwind CSS Setup
+
+ReactiveView ships with Tailwind CSS v4 support through the `@tailwindcss/vite` plugin. To add Tailwind to a new application:
+
+1. Install the dependencies inside your `.reactive_view` directory:
+
+```bash
+cd .reactive_view
+npm install --save-dev tailwindcss @tailwindcss/vite
+```
+
+2. Register the plugin in `reactive_view.config.ts` (Rails root):
+
+```ts
+import { defineConfig } from "@reactive-view/core/config";
+import tailwindcss from "@tailwindcss/vite";
+
+export default defineConfig({
+  vitePlugins: [tailwindcss()],
+});
+```
+
+3. Create `app/pages/_styles/tailwind.css`:
+
+```css
+@import "tailwindcss" source("../");
+
+@theme {
+  --font-sans: system-ui, sans-serif;
+}
+```
+
+The `source("../")` directive makes Tailwind scan all synced components inside `.reactive_view/src/pages` after `reactive_view:sync` copies files over.
+
+4. Import the stylesheet once (for example in `app/pages/_components/MainLayout.tsx`):
+
+```ts
+import "../_styles/tailwind.css";
+```
+
+5. Whenever you edit files under `app/pages/`, run `bin/rails reactive_view:sync` so Tailwind sees the changes in `.reactive_view/src`.
+
+This setup keeps Tailwind fully managed by Vite, aligns with Tailwind v4’s CSS-first configuration, and avoids separate PostCSS steps.
+
 ## Testing
 
 ### Running Gem Tests

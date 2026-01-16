@@ -1,15 +1,17 @@
 import { useLoaderData } from "#loaders/(admin)/(auth)/login";
-import "~/styles/tailwind.css";
 
 export default function AdminAuthLogin() {
   const loaderData = useLoaderData();
-  const data = () => loaderData() || { require_2fa: false, session_timeout: 30 };
+  const data = () =>
+    loaderData() || { require_2fa: false, session_timeout: 30 };
 
   return (
     <div class="min-h-screen bg-gray-50 font-sans flex items-center justify-center px-4">
       <div class="w-full max-w-md">
-        <h1 class="text-2xl font-bold text-gray-900 mb-6 text-center">Admin Login</h1>
-        
+        <h1 class="text-2xl font-bold text-gray-900 mb-6 text-center">
+          Admin Login
+        </h1>
+
         <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
           <form>
             <div class="mb-4">

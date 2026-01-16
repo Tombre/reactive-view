@@ -1,0 +1,8 @@
+{
+  "name": "reactive-view-monorepo",
+  "private": true,
+  "workspaces": [
+    "reactive_view/npm",
+    "examples/reactive_view_example"
+  ]
+}

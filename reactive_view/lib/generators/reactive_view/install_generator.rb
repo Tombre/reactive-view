@@ -47,14 +47,6 @@ module ReactiveView
         say 'Created tsconfig.json for TypeScript/editor support', :green
       end
 
-      def create_package_json
-        say 'Setting up package.json...', :yellow
-
-        # Create package.json at project root with @reactive-view/core dependency
-        template 'package.json.tt', 'package.json'
-        say 'Created package.json with @reactive-view/core dependency', :green
-      end
-
       def add_to_gitignore
         gitignore_path = Rails.root.join('.gitignore')
 
@@ -63,13 +55,10 @@ module ReactiveView
         gitignore_entries = [
           '',
           '# ReactiveView',
-          '.reactive_view/node_modules/',
           '.reactive_view/.vinxi/',
           '.reactive_view/.output/',
           '.reactive_view/daemon.log',
           '',
-          '# Node.js',
-          'node_modules/'
         ]
 
         append_to_file '.gitignore', gitignore_entries.join("\n")
@@ -85,20 +74,6 @@ module ReactiveView
         template 'bin_dev', 'bin/dev'
         chmod 'bin/dev', 0o755
         say 'Created bin/dev script', :green
-      end
-
-      def install_npm_dependencies
-        say 'Installing npm dependencies...', :yellow
-
-        # Install dependencies in .reactive_view
-        inside '.reactive_view' do
-          run 'npm install'
-        end
-
-        # Install dependencies at project root (for TypeScript/editor support)
-        run 'npm install'
-
-        say 'npm dependencies installed', :green
       end
 
       def show_next_steps
