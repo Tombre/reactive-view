@@ -34,7 +34,7 @@ module ReactiveView
         #
         # @return [Pathname]
         def gem_template_path
-          Pathname.new(__dir__).parent.parent.join('template')
+          Pathname.new(__dir__).parent.parent.parent.join('template')
         end
 
         private
