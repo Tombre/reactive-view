@@ -2,6 +2,11 @@
   "name": "reactive-view-example-frontend",
   "private": true,
   "type": "module",
+  "scripts": {
+    "dev": "reactiveview dev",
+    "build": "reactiveview build",
+    "start": "reactiveview start"
+  },
   "dependencies": {
     "@reactive-view/core": "*"
   },

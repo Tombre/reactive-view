@@ -2,4 +2,4 @@
 # Run with: bin/dev (or foreman start -f Procfile.dev)
 
 web: bin/rails server -p 3000
-solidstart: cd .reactive_view && npm run dev
+solidstart: npx reactiveview dev
