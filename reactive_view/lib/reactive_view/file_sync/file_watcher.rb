@@ -190,18 +190,26 @@ module ReactiveView
 
         # Sync asset files and update wrappers for TSX files.
         #
+        # In development, file copying is skipped — Vite reads directly from
+        # app/pages via the ~pages alias. Only wrapper generation/removal is needed
+        # for added/removed TSX files.
+        #
         # @param modified [Array<String>] Modified file paths
         # @param added [Array<String>] Added file paths
         # @param removed [Array<String>] Removed file paths
         # @param pages_path [Pathname] Source pages directory
         def handle_asset_changes(modified, added, removed, pages_path)
-          modified.each do |source|
-            ComponentSyncer.sync_file(source, pages_path)
+          # In development, Vite watches app/pages directly — no file copying needed.
+          # In other environments, sync files to the working directory.
+          unless Rails.env.development?
+            modified.each do |source|
+              ComponentSyncer.sync_file(source, pages_path)
+            end
           end
 
           added.each do |source|
             relative = Pathname.new(source).relative_path_from(pages_path)
-            ComponentSyncer.sync_file(source, pages_path)
+            ComponentSyncer.sync_file(source, pages_path) unless Rails.env.development?
 
             # Only generate wrappers for TSX files NOT in private paths
             if relative.extname == '.tsx' && !FileSync.private_path?(relative)
@@ -214,7 +222,7 @@ module ReactiveView
 
           removed.each do |source|
             relative = Pathname.new(source).relative_path_from(pages_path)
-            ComponentSyncer.remove_file(relative)
+            ComponentSyncer.remove_file(relative) unless Rails.env.development?
 
             # Only remove wrappers for TSX files NOT in private paths
             if relative.extname == '.tsx' && !FileSync.private_path?(relative)

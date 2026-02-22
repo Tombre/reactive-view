@@ -10,9 +10,14 @@ require_relative 'file_sync/file_watcher'
 module ReactiveView
   # Facade for file synchronization between Rails app/pages and SolidStart working directory.
   #
+  # In development, Vite reads source files directly from app/pages via the ~pages alias,
+  # so only route wrappers and TypeScript types are generated (no file copying).
+  # In production builds, files are also copied to .reactive_view/src/pages for a
+  # self-contained build.
+  #
   # Delegates to specialized classes:
   # - DirectorySetup: Initial working directory setup and npm install
-  # - ComponentSyncer: Syncs TSX/TS files from app/pages to .reactive_view/src/pages
+  # - ComponentSyncer: Copies TSX/TS files from app/pages to .reactive_view/src/pages (production only)
   # - WrapperGenerator: Generates route wrappers in .reactive_view/src/routes
   # - FileWatcher: Watches for file changes in development
   # - ViteNotifier: Notifies Vite of loader changes for HMR
@@ -49,13 +54,15 @@ module ReactiveView
         path.to_s.split('/').any? { |segment| segment.start_with?('_') }
       end
 
-      # Syncs all files from app/pages to the SolidStart working directory.
+      # Sets up the SolidStart working directory and generates route wrappers and types.
       #
-      # This method performs a full sync:
+      # In development:
       # 1. Sets up the .reactive_view directory (copies template, runs npm install)
-      # 2. Syncs TSX/TS components to .reactive_view/src/pages
-      # 3. Generates route wrappers in .reactive_view/src/routes
-      # 4. Generates TypeScript types from loader signatures
+      # 2. Generates route wrappers in .reactive_view/src/routes (with ~pages alias imports)
+      # 3. Generates TypeScript types from loader signatures
+      #
+      # In production:
+      # Additionally copies TSX/TS components to .reactive_view/src/pages for a self-contained build.
       #
       # @return [void]
       #
@@ -67,7 +74,9 @@ module ReactiveView
       #   ReactiveView::FileSync.sync_all
       def sync_all
         DirectorySetup.setup
-        ComponentSyncer.sync_all
+        # In development, Vite reads directly from app/pages via the ~pages alias.
+        # File copying is only needed for production builds.
+        ComponentSyncer.sync_all unless Rails.env.development?
         WrapperGenerator.generate_all
         sync_loader_types
       end

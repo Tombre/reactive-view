@@ -21,9 +21,9 @@
  * ```
  */
 
-import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { spawn, spawnSync } from "node:child_process";
+import { existsSync, cpSync, rmSync, mkdirSync, readdirSync, statSync } from "node:fs";
+import { resolve, relative, extname } from "node:path";
 
 const WORKING_DIR = ".reactive_view";
 const DEFAULT_DEV_PORT = "3001";
@@ -110,6 +110,55 @@ function parseArgs(argv: string[]): {
 }
 
 /**
+ * Sync page files from app/pages to .reactive_view/src/pages for production builds.
+ *
+ * In development, Vite reads directly from app/pages via the ~pages alias.
+ * For production builds, files must be copied into the working directory so
+ * the build is self-contained.
+ *
+ * @param workingDir - Absolute path to .reactive_view directory
+ * @param pagesDir - Absolute path to app/pages directory
+ */
+function syncPagesForBuild(workingDir: string, pagesDir: string): void {
+  if (!existsSync(pagesDir)) {
+    console.error(`Error: Pages directory not found at ${pagesDir}`);
+    process.exit(1);
+  }
+
+  const destDir = resolve(workingDir, "src", "pages");
+
+  // Clean and recreate destination
+  if (existsSync(destDir)) {
+    rmSync(destDir, { recursive: true });
+  }
+  mkdirSync(destDir, { recursive: true });
+
+  // Copy all files except .loader.rb files
+  copyDirRecursive(pagesDir, destDir);
+
+  console.log(`Synced pages from ${pagesDir} to ${destDir}`);
+}
+
+/**
+ * Recursively copy a directory, excluding .loader.rb files.
+ */
+function copyDirRecursive(src: string, dest: string): void {
+  const entries = readdirSync(src, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const srcPath = resolve(src, entry.name);
+    const destPath = resolve(dest, entry.name);
+
+    if (entry.isDirectory()) {
+      mkdirSync(destPath, { recursive: true });
+      copyDirRecursive(srcPath, destPath);
+    } else if (!entry.name.endsWith(".loader.rb")) {
+      cpSync(srcPath, destPath);
+    }
+  }
+}
+
+/**
  * Run the CLI with the given arguments.
  *
  * @param argv - Arguments from process.argv.slice(2)
@@ -148,6 +197,15 @@ export function run(argv: string[]): void {
 
   // Build the npm run command
   const args = ["run", commandConfig.script, ...passthrough];
+
+  // For the build command, sync page files into .reactive_view/src/pages first.
+  // In development, Vite reads directly from app/pages via the ~pages alias,
+  // but production builds need a self-contained copy.
+  if (command === "build") {
+    const pagesDir = resolve(process.cwd(), "app", "pages");
+    console.log("Syncing pages for production build...");
+    syncPagesForBuild(workingDir, pagesDir);
+  }
 
   // Set up environment
   const env: Record<string, string> = { ...process.env } as Record<

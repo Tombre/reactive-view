@@ -55,10 +55,13 @@ module ReactiveView
         gitignore_entries = [
           '',
           '# ReactiveView',
+          '.reactive_view/src/pages/',
+          '.reactive_view/src/routes/',
+          '.reactive_view/types/',
           '.reactive_view/.vinxi/',
           '.reactive_view/.output/',
           '.reactive_view/daemon.log',
-          '',
+          ''
         ]
 
         append_to_file '.gitignore', gitignore_entries.join("\n")

@@ -16,8 +16,9 @@
     "baseUrl": ".",
     "paths": {
       "~/*": ["./src/*"],
-      "#loaders/*": ["./types/loaders/*"]
+      "#loaders/*": ["./types/loaders/*"],
+      "~pages/*": ["../app/pages/*"]
     }
   },
-  "include": ["src/**/*", "types/**/*", "app.config.ts"]
+  "include": ["src/**/*", "types/**/*", "app.config.ts", "../app/pages/**/*"]
 }

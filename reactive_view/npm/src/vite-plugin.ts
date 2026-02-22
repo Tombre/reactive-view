@@ -29,10 +29,17 @@ export interface ReactiveViewPluginOptions {
    * @default false
    */
   debug?: boolean;
+
+  /**
+   * Absolute path to the pages directory (e.g., Rails.root/app/pages).
+   * When set, a Vite alias `~pages` is registered so route wrappers can
+   * import user source files directly instead of requiring copies.
+   */
+  pagesPath?: string;
 }
 
 const DEFAULT_HMR_WEBSOCKET_PATH = "/@vite/ws";
-const PAGES_FILE_PATTERN = /[\\/]src[\\/]pages[\\/].+\.(tsx|ts)$/;
+const PAGES_FILE_PATTERN = /[\\/](?:src[\\/]pages|app[\\/]pages)[\\/].+\.(tsx|ts)$/;
 const ROUTE_FILE_PATTERN = /[\\/]src[\\/]routes[\\/].+\.tsx$/;
 
 function normalizeBasePath(base?: string): string {
@@ -89,6 +96,34 @@ export function reactiveViewPlugin(
   return {
     name: "reactive-view",
     enforce: "pre",
+
+    /**
+     * Register resolve aliases and filesystem access rules.
+     * In development, maps `~pages` to the Rails app/pages directory so
+     * route wrappers can import user source files directly (no file copy).
+     */
+    config(_userConfig, { command }) {
+      if (options.pagesPath) {
+        const isDev = command === "serve";
+        const pagesAlias = { find: "~pages", replacement: options.pagesPath };
+
+        return {
+          resolve: {
+            alias: isDev ? [pagesAlias] : [],
+          },
+          server: {
+            fs: {
+              // Allow Vite to read files from the Rails root (parent of .reactive_view)
+              allow: [
+                process.cwd(),
+                pathResolve(process.cwd(), ".."),
+              ],
+            },
+          },
+        };
+      }
+      return {};
+    },
 
     /**
      * Store reference to the Vite dev server for HMR event emission
@@ -231,7 +266,7 @@ export function reactiveViewPlugin(
       const { file, modules } = ctx;
 
       if (PAGES_FILE_PATTERN.test(file)) {
-        const [_, pagePart] = file.split(/[\\/]src[\\/]pages[\\/]/);
+        const [_, pagePart] = file.split(/[\\/](?:src|app)[\\/]pages[\\/]/);
         const componentPath = pagePart?.replace(/\.(tsx|ts)$/, "");
 
         log(`HMR update for page component: ${componentPath}`, {

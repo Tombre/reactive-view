@@ -34,6 +34,7 @@ export interface ReactiveViewConfig {
    */
   reactiveView?: {
     debug?: boolean;
+    [key: string]: unknown;
   };
 }
 

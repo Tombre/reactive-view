@@ -14,7 +14,8 @@
     "isolatedModules": true,
     "baseUrl": ".",
     "paths": {
-      "#loaders/*": [".reactive_view/types/loaders/*"]
+      "#loaders/*": [".reactive_view/types/loaders/*"],
+      "~pages/*": ["app/pages/*"]
     }
   },
   "include": [
