@@ -60,7 +60,7 @@ Client Request
 ## Project Structure
 
 ```
-reactive-view-ai/
+reactive-view/
 ├── reactive_view/              # The gem
 │   ├── lib/
 │   │   └── reactive_view/      # Core Ruby code
@@ -425,6 +425,7 @@ ReactiveView uses SolidStart-style file-based routing:
 Files and folders prefixed with underscore (`_`) are **private** - they are included in the SolidStart bundle (so you can import them) but do NOT become routes.
 
 Use this for colocating:
+
 - Shared components: `_components/Button.tsx`
 - Utility functions: `_utils/formatDate.ts`
 - Styles: `_styles/variables.css`

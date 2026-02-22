@@ -2,7 +2,7 @@
 
 ReactiveView is a Ruby on Rails view framework that replaces the view layer with TSX components (TypeScript + SolidJS). All data, auth, and business logic remain in Rails.
 
-Read the README.md document for when you need more context on how the gem works and the motivation behind it.
+Read the `README.md` document for when you need more context on how the gem works and the motivation behind it.
 
 ## Project Structure
 
@@ -110,6 +110,7 @@ app/pages/counter.tsx (source - you edit this)
 ```
 
 **Why this matters:**
+
 - Vinxi triggers full page reload when files in `src/routes/` change
 - By keeping actual components in `src/pages/`, edits don't touch route files
 - Vite's HMR can hot-swap the component without a full reload
@@ -137,26 +138,29 @@ app/pages/counter.tsx (source - you edit this)
 
 ### SolidJS vs React Key Differences (MANDATORY)
 
-| ❌ React (WRONG) | ✅ SolidJS (CORRECT) | Rule |
-|---|---|---|
-| `className="..."` | `class="..."` | Use standard HTML attribute names |
-| `htmlFor="..."` | `for="..."` | Standard HTML attributes |
-| `e.currentTarget` | `e.target` | SolidJS event handling |
-| `{condition && <div/>}` | `<Show when={condition}><div/></Show>` | Control flow components |
-| `{arr.map(item => <div/>)}` | `<For each={arr}>{item => <div/>}</For>` | Control flow components |
+| ❌ React (WRONG)            | ✅ SolidJS (CORRECT)                     | Rule                              |
+| --------------------------- | ---------------------------------------- | --------------------------------- |
+| `className="..."`           | `class="..."`                            | Use standard HTML attribute names |
+| `htmlFor="..."`             | `for="..."`                              | Standard HTML attributes          |
+| `e.currentTarget`           | `e.target`                               | SolidJS event handling            |
+| `{condition && <div/>}`     | `<Show when={condition}><div/></Show>`   | Control flow components           |
+| `{arr.map(item => <div/>)}` | `<For each={arr}>{item => <div/>}</For>` | Control flow components           |
 
 ### SolidJS Coding Standards
 
 1. **HTML Attributes**: Always use standard HTML attribute names:
+
    - `class` not `className`
    - `for` not `htmlFor`
    - `tabindex` not `tabIndex`
 
 2. **Event Handling**:
+
    - Use `e.target` not `e.currentTarget`
    - Event names are camelCase: `onClick`, `onChange`, `onSubmit`
 
 3. **Control Flow**: Use SolidJS control flow components:
+
    - `<Show when={condition}>` for conditional rendering
    - `<For each={array}>` for lists
    - `<Switch>` and `<Match>` for complex conditionals
@@ -179,7 +183,7 @@ app/pages/counter.tsx (source - you edit this)
 
 12. **CSS Classes**: Use Tailwind utility classes with the `class` attribute. Global styles belong in `app/pages/styles/tailwind.css` or template CSS files.
 
-13. **Loader Data**: 
+13. **Loader Data**:
     - Import from `#loaders/{route}` for auto-typed hooks (e.g., `import { useLoaderData } from "#loaders/users/index"`)
     - For cross-route loading, import from `@reactive-view/core` and specify the route: `useLoaderData("users/[id]", { id })`
 
@@ -194,17 +198,22 @@ export default function ExamplePage() {
   const [visible, setVisible] = createSignal(true);
 
   return (
-    <div class="container mx-auto p-4">  {/* class not className */}
-      <button 
+    <div class="container mx-auto p-4">
+      {" "}
+      {/* class not className */}
+      <button
         class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
         onClick={() => setVisible(!visible())}
       >
         Toggle List
       </button>
-      
-      <Show when={visible()}>  {/* SolidJS conditional */}
+      <Show when={visible()}>
+        {" "}
+        {/* SolidJS conditional */}
         <ul class="mt-4 space-y-2">
-          <For each={items()}>  {/* SolidJS list rendering */}
+          <For each={items()}>
+            {" "}
+            {/* SolidJS list rendering */}
             {(item, index) => (
               <li class="p-2 bg-gray-100 rounded">
                 {index()}: {item}

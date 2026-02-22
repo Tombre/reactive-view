@@ -54,8 +54,15 @@ export default function UsersIndexPage() {
           <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
             <div class="flex items-center justify-between">
               <p class="text-sm text-gray-600">
-                Showing <span class="font-medium text-gray-900">{data()?.users?.length || 0}</span> of{" "}
-                <span class="font-medium text-gray-900">{data()?.total || 0}</span> users
+                Showing{" "}
+                <span class="font-medium text-gray-900">
+                  {data()?.users?.length || 0}
+                </span>{" "}
+                of{" "}
+                <span class="font-medium text-gray-900">
+                  {data()?.total || 0}
+                </span>{" "}
+                users
               </p>
             </div>
           </div>
@@ -70,7 +77,9 @@ export default function UsersIndexPage() {
                 >
                   {/* Avatar */}
                   <div
-                    class={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0 ${getAvatarColor(user.name)}`}
+                    class={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0 ${getAvatarColor(
+                      user.name
+                    )}`}
                   >
                     {getInitials(user.name)}
                   </div>
@@ -120,7 +129,9 @@ export default function UsersIndexPage() {
               />
             </svg>
             <div>
-              <h4 class="text-sm font-semibold text-blue-900">Loader Data Source</h4>
+              <h4 class="text-sm font-semibold text-blue-900">
+                Loader Data Source
+              </h4>
               <p class="text-sm text-blue-700 mt-1">
                 User data is loaded from{" "}
                 <code class="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-xs font-mono">
