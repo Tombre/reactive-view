@@ -1,8 +1,40 @@
 # Mutations/Actions Support
 
-**Status:** Not Started  
+**Status:** Complete  
 **Priority:** High  
 **Category:** Core Functionality
+
+## Implementation Summary
+
+Mutations are fully implemented within the existing loader architecture. Rather than creating separate `.action.rb` files and an `ActionRegistry` as originally envisioned, mutations are defined directly in `.loader.rb` files using the `shape` DSL. Any shape with a name other than `:load` defines a mutation.
+
+### Key implementation details:
+
+- **No separate Action class** - Mutations live in Loader subclasses, keeping related read/write logic together
+- **`shape :mutation_name do ... end`** - DSL for defining mutation param types
+- **`shapes.mutation_name(params)`** - Strong-params-like typed parameter extraction via `ShapesAccessor`
+- **`MutationResult`** - Value object with `.success()`, `.error()`, `.redirect()` factory methods
+- **Response helpers** - `render_success`, `render_error`, `mutation_redirect` on Loader base class
+- **CSRF protection** - Automatic via `X-CSRF-Token` header or `authenticity_token` param
+- **TypeScript generation** - Auto-generates `{Name}Params` interfaces, `{name}Action` constants, and `{Name}Form` components
+- **Client-side** - `createMutation` (FormData) and `createJsonMutation` (JSON) in `@reactive-view/core` npm package
+- **Route**: `POST/PUT/PATCH/DELETE /_reactive_view/loaders/:path/mutate?_mutation=name`
+
+### Files involved:
+
+- `lib/reactive_view/loader.rb` - Base class with mutation helpers
+- `lib/reactive_view/mutation_result.rb` - Response value object
+- `lib/reactive_view/shapes_accessor.rb` - Typed param extraction
+- `app/controllers/reactive_view/loader_data_controller.rb` - Handles `/mutate` endpoint
+- `config/routes.rb` - Engine route for mutations
+- `npm/src/mutation.ts` - Client-side mutation action creators
+- `npm/src/csrf.ts` - CSRF token handling
+- `lib/reactive_view/types/typescript_generator.rb` - Generates mutation TS types
+
+### Documentation:
+
+- [Mutations Guide](../../guides/mutations.md)
+- [Loaders Guide](../../guides/loaders.md)
 
 ## Context
 

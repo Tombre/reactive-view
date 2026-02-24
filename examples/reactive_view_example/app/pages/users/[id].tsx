@@ -42,8 +42,18 @@ export default function UserShowPage() {
         href="/users"
         class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors mb-6"
       >
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        <svg
+          class="w-4 h-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M10 19l-7-7m0 0l7-7m-7 7h18"
+          />
         </svg>
         Back to Users
       </A>
@@ -52,8 +62,18 @@ export default function UserShowPage() {
       <Show when={updateSubmission.error || deleteSubmission.error}>
         <div class="mb-6 bg-red-50 border border-red-200 rounded-xl p-4">
           <div class="flex gap-3">
-            <svg class="w-5 h-5 text-red-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              class="w-5 h-5 text-red-600 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             <div>
               <h4 class="text-sm font-semibold text-red-900">Error</h4>
@@ -99,7 +119,9 @@ export default function UserShowPage() {
                     {getInitials(user().name)}
                   </div>
                   <div>
-                    <h1 class="text-2xl font-bold text-gray-900">{user().name}</h1>
+                    <h1 class="text-2xl font-bold text-gray-900">
+                      {user().name}
+                    </h1>
                     <p class="text-gray-500">{user().email}</p>
                   </div>
                 </div>
@@ -110,8 +132,18 @@ export default function UserShowPage() {
                       onClick={() => setIsEditing(true)}
                       class="inline-flex items-center justify-center px-4 py-2.5 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
                     >
-                      <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      <svg
+                        class="w-4 h-4 mr-2"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        />
                       </svg>
                       Edit
                     </button>
@@ -123,13 +155,25 @@ export default function UserShowPage() {
                       disabled={deleteSubmission.pending}
                       class="inline-flex items-center justify-center px-4 py-2.5 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
                       onClick={(e) => {
-                        if (!confirm("Are you sure you want to delete this user?")) {
+                        if (
+                          !confirm("Are you sure you want to delete this user?")
+                        ) {
                           e.preventDefault();
                         }
                       }}
                     >
-                      <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      <svg
+                        class="w-4 h-4 mr-2"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
                       </svg>
                       <Show when={deleteSubmission.pending} fallback="Delete">
                         Deleting...
@@ -144,7 +188,9 @@ export default function UserShowPage() {
                 when={isEditing()}
                 fallback={
                   <div class="bg-white rounded-xl border border-gray-200 p-6">
-                    <h2 class="text-lg font-semibold text-gray-900 mb-4">User Details</h2>
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">
+                      User Details
+                    </h2>
                     <dl class="grid gap-4 sm:grid-cols-2">
                       <div>
                         <dt class="text-sm font-medium text-gray-500">ID</dt>
@@ -155,7 +201,9 @@ export default function UserShowPage() {
                         <dd class="mt-1 text-gray-900">{user().email}</dd>
                       </div>
                       <div>
-                        <dt class="text-sm font-medium text-gray-500">Member Since</dt>
+                        <dt class="text-sm font-medium text-gray-500">
+                          Member Since
+                        </dt>
                         <dd class="mt-1 text-gray-900">
                           {new Date(user().created_at).toLocaleDateString()}
                         </dd>
@@ -167,7 +215,9 @@ export default function UserShowPage() {
                 {/* Edit Form */}
                 <div class="bg-white rounded-xl border border-gray-200 p-6">
                   <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-lg font-semibold text-gray-900">Edit User</h2>
+                    <h2 class="text-lg font-semibold text-gray-900">
+                      Edit User
+                    </h2>
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                       Editing
                     </span>
@@ -177,18 +227,37 @@ export default function UserShowPage() {
                     <input type="hidden" name="id" value={user().id} />
 
                     {/* Validation errors */}
-                    <Show when={updateSubmission.result && !updateSubmission.result.success}>
+                    <Show
+                      when={
+                        updateSubmission.result &&
+                        !updateSubmission.result.success
+                      }
+                    >
                       <div class="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
                         <div class="flex gap-3">
-                          <svg class="w-5 h-5 text-red-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          <svg
+                            class="w-5 h-5 text-red-600 flex-shrink-0"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
                           </svg>
                           <div class="text-sm text-red-700">
                             <Show when={updateSubmission.result?.errors?.name}>
-                              <p>Name: {updateSubmission.result?.errors?.name}</p>
+                              <p>
+                                Name: {updateSubmission.result?.errors?.name}
+                              </p>
                             </Show>
                             <Show when={updateSubmission.result?.errors?.email}>
-                              <p>Email: {updateSubmission.result?.errors?.email}</p>
+                              <p>
+                                Email: {updateSubmission.result?.errors?.email}
+                              </p>
                             </Show>
                             <Show when={updateSubmission.result?.errors?.base}>
                               <p>{updateSubmission.result?.errors?.base}</p>
@@ -200,7 +269,10 @@ export default function UserShowPage() {
 
                     <div class="space-y-4">
                       <div>
-                        <label for="name" class="block text-sm font-medium text-gray-700 mb-1.5">
+                        <label
+                          for="name"
+                          class="block text-sm font-medium text-gray-700 mb-1.5"
+                        >
                           Name
                         </label>
                         <input
@@ -213,7 +285,10 @@ export default function UserShowPage() {
                       </div>
 
                       <div>
-                        <label for="email" class="block text-sm font-medium text-gray-700 mb-1.5">
+                        <label
+                          for="email"
+                          class="block text-sm font-medium text-gray-700 mb-1.5"
+                        >
                           Email
                         </label>
                         <input
@@ -232,7 +307,10 @@ export default function UserShowPage() {
                         disabled={updateSubmission.pending}
                         class="inline-flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
                       >
-                        <Show when={updateSubmission.pending} fallback="Save Changes">
+                        <Show
+                          when={updateSubmission.pending}
+                          fallback="Save Changes"
+                        >
                           Saving...
                         </Show>
                       </button>
@@ -251,21 +329,40 @@ export default function UserShowPage() {
               {/* Info Box */}
               <div class="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
                 <div class="flex gap-3">
-                  <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg
+                    class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                   <div>
-                    <h4 class="text-sm font-semibold text-blue-900">Dynamic Route with Mutations</h4>
+                    <h4 class="text-sm font-semibold text-blue-900">
+                      Dynamic Route with Mutations
+                    </h4>
                     <p class="text-sm text-blue-700 mt-1">
                       This page uses a dynamic route segment{" "}
-                      <code class="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-xs font-mono">[id]</code>.
-                      Current ID: <strong>{params.id}</strong>
+                      <code class="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-xs font-mono">
+                        [id]
+                      </code>
+                      . Current ID: <strong>{params.id}</strong>
                     </p>
                     <p class="text-sm text-blue-700 mt-2">
                       Mutations are defined using{" "}
-                      <code class="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-xs font-mono">shape :update</code> and{" "}
-                      <code class="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-xs font-mono">shape :delete</code>,
-                      which auto-generate typed form components.
+                      <code class="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-xs font-mono">
+                        shape :update
+                      </code>{" "}
+                      and{" "}
+                      <code class="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-xs font-mono">
+                        shape :delete
+                      </code>
+                      , which auto-generate typed form components.
                     </p>
                   </div>
                 </div>

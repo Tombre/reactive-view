@@ -16,56 +16,60 @@ Mutations are defined in your `.loader.rb` files using the `shape` DSL:
 
 ```ruby
 # app/pages/users/[id].loader.rb
-class Users::IdLoader < ReactiveView::Loader
-  # Load shape for reading data
-  shape :load do
-    param :user, ReactiveView::Types::Hash.schema(
-      id: ReactiveView::Types::Integer,
-      name: ReactiveView::Types::String,
-      email: ReactiveView::Types::String
-    )
-  end
+module Pages
+  module Users
+    class IdLoader < ReactiveView::Loader
+      # Load shape for reading data
+      shape :load do
+        param :user, ReactiveView::Types::Hash.schema(
+          id: ReactiveView::Types::Integer,
+          name: ReactiveView::Types::String,
+          email: ReactiveView::Types::String
+        )
+      end
 
-  # Update mutation shape
-  shape :update do
-    param :name, ReactiveView::Types::String
-    param :email, ReactiveView::Types::String
-  end
+      # Update mutation shape
+      shape :update do
+        param :name, ReactiveView::Types::String
+        param :email, ReactiveView::Types::String
+      end
 
-  # Delete mutation (no params needed)
-  shape :delete do
-  end
+      # Delete mutation (no params needed)
+      shape :delete do
+      end
 
-  def load
-    { user: serialize_user(user) }
-  end
+      def load
+        { user: serialize_user(user) }
+      end
 
-  def update
-    typed_params = shapes.update(params)
+      def update
+        typed_params = shapes.update(params)
 
-    if user.update(typed_params)
-      render_success(user: serialize_user(user))
-    else
-      render_error(user)
+        if user.update(typed_params)
+          render_success(user: serialize_user(user))
+        else
+          render_error(user)
+        end
+      end
+
+      def delete
+        if user.destroy
+          mutation_redirect "/users"
+        else
+          render_error(user)
+        end
+      end
+
+      private
+
+      def user
+        @user ||= User.find(params[:id])
+      end
+
+      def serialize_user(user)
+        { id: user.id, name: user.name, email: user.email }
+      end
     end
-  end
-
-  def delete
-    if user.destroy
-      redirect_to "/users"
-    else
-      render_error(user)
-    end
-  end
-
-  private
-
-  def user
-    @user ||= User.find(params[:id])
-  end
-
-  def serialize_user(user)
-    { id: user.id, name: user.name, email: user.email }
   end
 end
 ```
@@ -158,10 +162,12 @@ Response format:
 ```json
 {
   "success": true,
-  "data": { "user": { ... } },
+  "user": { "id": 1, "name": "John", "email": "john@example.com" },
   "revalidate": ["users/index"]
 }
 ```
+
+Note: data keys are spread at the top level of the response (not nested under a `"data"` key).
 
 ### render_error
 
@@ -202,29 +208,38 @@ Response:
 ```json
 {
   "success": false,
-  "errors": { "base": "Something went wrong" }
+  "errors": { "base": ["Something went wrong"] }
 }
 ```
 
-### redirect_to
+### mutation_redirect
 
-For client-side requests, returns a redirect response:
+For mutations that should redirect after completion, use `mutation_redirect`:
 
 ```ruby
 def delete
   user.destroy
-  redirect_to "/users"
+  mutation_redirect "/users"
 end
 ```
 
 Response:
 ```json
 {
-  "redirect": "/users"
+  "_redirect": "/users"
 }
 ```
 
-For non-client requests (direct browser navigation), performs a standard Rails redirect.
+You can also include routes to revalidate:
+
+```ruby
+def delete
+  user.destroy
+  mutation_redirect "/users", revalidate: ["users/index"]
+end
+```
+
+The client will automatically navigate to the redirect path. For non-client requests (direct browser navigation), a standard HTTP redirect is performed.
 
 ## Handling Submissions in Components
 
@@ -268,8 +283,7 @@ export default function EditUser() {
 For programmatic submissions (not using a form):
 
 ```tsx
-import { useAction } from "@solidjs/router";
-import { updateAction } from "#loaders/users/[id]";
+import { updateAction, useAction } from "#loaders/users/[id]";
 
 export default function EditUser() {
   const submitUpdate = useAction(updateAction);
@@ -288,6 +302,38 @@ export default function EditUser() {
   return <button onClick={handleSave}>Save Programmatically</button>;
 }
 ```
+
+### createJsonMutation
+
+For programmatic mutations that send JSON instead of FormData, use `createJsonMutation` from `@reactive-view/core`:
+
+```tsx
+import { createJsonMutation, useAction } from "@reactive-view/core";
+
+// Create a JSON mutation action (typed input)
+const updateAction = createJsonMutation<{ name: string; email: string }>(
+  "users/[id]",
+  "update"
+);
+
+export default function EditUser() {
+  const submitUpdate = useAction(updateAction);
+
+  const handleSave = async () => {
+    const result = await submitUpdate({
+      name: "New Name",
+      email: "new@example.com",
+    });
+    if (result.success) {
+      console.log("Updated!");
+    }
+  };
+
+  return <button onClick={handleSave}>Save</button>;
+}
+```
+
+`createJsonMutation` sends a JSON body with `Content-Type: application/json` instead of `multipart/form-data`. This is useful when you need type-safe input without using form elements.
 
 ## CSRF Protection
 
@@ -321,31 +367,35 @@ The client will automatically invalidate cached data for the specified routes.
 You can define multiple mutations in a single loader:
 
 ```ruby
-class Posts::IdLoader < ReactiveView::Loader
-  shape :update do
-    param :title, ReactiveView::Types::String
-    param :content, ReactiveView::Types::String
-  end
+module Pages
+  module Posts
+    class IdLoader < ReactiveView::Loader
+      shape :update do
+        param :title, ReactiveView::Types::String
+        param :content, ReactiveView::Types::String
+      end
 
-  shape :publish do
-    param :published_at, ReactiveView::Types::String.optional
-  end
+      shape :publish do
+        param :published_at, ReactiveView::Types::String.optional
+      end
 
-  shape :delete do
-  end
+      shape :delete do
+      end
 
-  def update
-    # ...
-  end
+      def update
+        # ...
+      end
 
-  def publish
-    typed_params = shapes.publish(params)
-    post.update(published: true, published_at: typed_params[:published_at] || Time.current)
-    render_success(post: serialize_post(post))
-  end
+      def publish
+        typed_params = shapes.publish(params)
+        post.update(published: true, published_at: typed_params[:published_at] || Time.current)
+        render_success(post: serialize_post(post))
+      end
 
-  def delete
-    # ...
+      def delete
+        # ...
+      end
+    end
   end
 end
 ```

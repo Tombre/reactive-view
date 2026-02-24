@@ -9,6 +9,7 @@ Build your frontend with TSX components (TypeScript + SolidJS), with all data, a
 - **SSR with Reactive Interactivity** - Server-side rendered pages that hydrate into fully interactive SolidJS applications
 - **Type Safety** - Automatic TypeScript type generation from your Ruby shape definitions
 - **Directory-Based Routing** - SolidStart-style file-based routing from `app/pages/`
+- **Mutations** - Define data mutations alongside loaders with auto-generated forms, CSRF protection, and typed params
 - **Rails Integration** - Use Rails for auth, models, business logic - SolidJS for the UI
 
 ## Motivation
@@ -85,6 +86,10 @@ reactive-view/
 │
 └── docs/
     ├── design/overview.md      # Design document
+    ├── guides/                 # User-facing guides
+    │   ├── loaders.md          # Loaders guide
+    │   ├── mutations.md        # Mutations guide
+    │   └── configuration.md    # Configuration guide
     └── agent/tasks/            # Follow-up tasks
 ```
 
@@ -230,16 +235,18 @@ bundle exec rspec spec/reactive_view/types/
 
 ### Gem Structure
 
-| File                                   | Purpose                        |
-| -------------------------------------- | ------------------------------ |
-| `lib/reactive_view.rb`                 | Main entry point               |
-| `lib/reactive_view/engine.rb`          | Rails Engine                   |
-| `lib/reactive_view/loader.rb`          | Base controller class          |
-| `lib/reactive_view/router.rb`          | File-based route generation    |
-| `lib/reactive_view/renderer.rb`        | HTTP client to SolidStart      |
-| `lib/reactive_view/daemon.rb`          | SolidStart process manager     |
-| `lib/reactive_view/request_context.rb` | Token-based auth for callbacks |
-| `lib/reactive_view/types/`             | Type system (Dry::Types)       |
+| File                                   | Purpose                         |
+| -------------------------------------- | ------------------------------- |
+| `lib/reactive_view.rb`                 | Main entry point                |
+| `lib/reactive_view/engine.rb`          | Rails Engine                    |
+| `lib/reactive_view/loader.rb`          | Base controller class           |
+| `lib/reactive_view/mutation_result.rb` | Mutation response value object  |
+| `lib/reactive_view/shapes_accessor.rb` | Typed param extraction          |
+| `lib/reactive_view/router.rb`          | File-based route generation     |
+| `lib/reactive_view/renderer.rb`        | HTTP client to SolidStart       |
+| `lib/reactive_view/daemon.rb`          | SolidStart process manager      |
+| `lib/reactive_view/request_context.rb` | Token-based auth for callbacks  |
+| `lib/reactive_view/types/`             | Type system (Dry::Types)        |
 
 ### SolidStart Template
 
@@ -360,6 +367,9 @@ Current tests cover:
 - `RequestContext` - Token generation, storage, retrieval, validation
 - `Types::SignatureBuilder` - DSL for defining loader signatures
 - `Types::Validator` - Response validation against schemas
+- `MutationResult` - Success, error, redirect result objects
+- `ShapesAccessor` - Typed parameter extraction for mutations
+- `LoaderRegistry` - Loader class discovery and mapping
 
 ### Testing Your Application
 
@@ -498,7 +508,7 @@ shape :load do
 end
 ```
 
-The `shape` method takes a method name as its first argument (defaults to `:load`), allowing you to define type signatures for different loader methods. Currently, only `:load` is used, but this opens the door for future features like mutations:
+The `shape` method takes a method name as its first argument (defaults to `:load`). Use `:load` for data loading and any other name for mutations:
 
 ```ruby
 # Explicit method name
@@ -511,10 +521,13 @@ shape do
   param :users, ReactiveView::Types::Array[...]
 end
 
-# Future: mutations
-shape :mutate do
+# Mutations - any name except :load
+shape :update do
   param :name, ReactiveView::Types::String
   param :email, ReactiveView::Types::String
+end
+
+shape :delete do
 end
 ```
 
@@ -538,7 +551,7 @@ bin/rails reactive_view:types:generate
 
 This creates:
 
-1. **Per-route loader files** in `.reactive_view/types/loaders/` - auto-typed `useLoaderData()` hooks
+1. **Per-route loader files** in `.reactive_view/types/loaders/` - auto-typed `useLoaderData()` hooks, plus mutation actions and Form components when mutations are defined
 2. **Central route map** in `.reactive_view/types/loader-data.d.ts` - for cross-route loading
 
 ## TypeScript & Editor Setup
@@ -621,14 +634,99 @@ import { createSignal, createEffect, For, Show } from "solid-js";
 import { A, useParams } from "@solidjs/router";
 ```
 
+### Mutations
+
+Define data mutations alongside your loaders in `.loader.rb` files. Mutations are any `shape` with a name other than `:load`:
+
+```ruby
+# app/pages/users/[id].loader.rb
+module Pages
+  module Users
+    class IdLoader < ReactiveView::Loader
+      shape :load do
+        param :user, ReactiveView::Types::Hash.schema(
+          id: ReactiveView::Types::Integer,
+          name: ReactiveView::Types::String,
+          email: ReactiveView::Types::String
+        )
+      end
+
+      shape :update do
+        param :name, ReactiveView::Types::String
+        param :email, ReactiveView::Types::String
+      end
+
+      def load
+        { user: { id: user.id, name: user.name, email: user.email } }
+      end
+
+      def update
+        typed_params = shapes.update(params)
+
+        if user.update(typed_params)
+          render_success(user: { id: user.id, name: user.name, email: user.email })
+        else
+          render_error(user)
+        end
+      end
+
+      private
+
+      def user
+        @user ||= User.find(params[:id])
+      end
+    end
+  end
+end
+```
+
+After running `rails reactive_view:types:generate`, ReactiveView auto-generates typed actions and Form components:
+
+```tsx
+// app/pages/users/[id].tsx
+import { Show } from "solid-js";
+import {
+  useLoaderData,
+  UpdateForm,
+  updateAction,
+  useSubmission,
+} from "#loaders/users/[id]";
+
+export default function UserPage() {
+  const data = useLoaderData();
+  const submission = useSubmission(updateAction);
+
+  return (
+    <div>
+      <h1>{data()?.user.name}</h1>
+
+      <UpdateForm>
+        <input name="name" value={data()?.user.name} />
+        <input name="email" value={data()?.user.email} />
+        <button type="submit" disabled={submission.pending}>
+          {submission.pending ? "Saving..." : "Save"}
+        </button>
+      </UpdateForm>
+
+      <Show when={submission.result?.errors}>
+        <p>Error: {JSON.stringify(submission.result?.errors)}</p>
+      </Show>
+    </div>
+  );
+}
+```
+
+For the full guide on mutations including response helpers, programmatic submissions, CSRF handling, and error patterns, see [docs/guides/mutations.md](docs/guides/mutations.md).
+
+For a detailed guide on data loading, see [docs/guides/loaders.md](docs/guides/loaders.md).
+
 ## Current Limitations (MVP)
 
 This is an MVP implementation. Known limitations:
 
 1. **Client-side navigation** - After hydration, client navigation needs manual data fetching setup
-2. **No mutations** - Only read operations (loaders), no action/mutation support yet
-3. **Zeitwerk incompatibility** - Loader files are manually loaded due to `[param].loader.rb` naming
-4. **Basic error handling** - No error boundary components yet
+2. **Zeitwerk incompatibility** - Loader files are manually loaded due to `[param].loader.rb` naming
+3. **Basic error handling** - No error boundary components yet
 
 See [docs/agent/tasks/post-mvp.md](docs/agent/tasks/post-mvp.md) for the full roadmap.
 
