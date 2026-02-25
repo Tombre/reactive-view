@@ -166,10 +166,10 @@ module ReactiveView
         imports = []
 
         imports << 'import { createLoaderQuery } from "@reactive-view/core";'
-        imports << 'import { createAsync, useParams } from "@solidjs/router";'
-        imports << 'import type { Accessor, JSX } from "solid-js";'
+        imports << 'import { createAsync, useParams, type AccessorWithLatest } from "@solidjs/router";'
 
         if has_mutations
+          imports << 'import type { JSX } from "solid-js";'
           imports << 'import { createMutation, useAction, useSubmission, useSubmissions } from "@reactive-view/core";'
           imports << 'import type { MutationResult } from "@reactive-view/core";'
         end
@@ -207,11 +207,35 @@ module ReactiveView
           /**
            * Load data for the #{loader[:path]} route.
            * Uses cached data from preload when available, avoiding loading flash.
+           *
+           * @param options - Options passed through to SolidJS `createAsync`
+           * @param options.initialValue - Initial value before data loads. When provided, the return type excludes `undefined`.
+           * @param options.deferStream - When `true`, defers SSR streaming until data resolves.
+           * @param options.name - Name for debugging tools.
            * @returns Accessor containing the loader data
+           *
+           * @example Basic usage (data may be undefined until loaded)
+           * ```tsx
+           * const data = useLoaderData();
+           * // data() is LoaderData | undefined
+           * ```
+           *
+           * @example With initialValue (data is never undefined)
+           * ```tsx
+           * const data = useLoaderData({ initialValue: { #{loader[:load_schema]&.respond_to?(:keys) ? loader[:load_schema].keys.first&.name.to_s + ': ...' : '...'} } });
+           * // data() is LoaderData
+           * ```
+           *
+           * @example With deferStream (waits for data during SSR streaming)
+           * ```tsx
+           * const data = useLoaderData({ deferStream: true });
+           * ```
            */
-          export function useLoaderData(): Accessor<LoaderData | undefined> {
+          export function useLoaderData(options: { initialValue: LoaderData; name?: string; deferStream?: boolean }): AccessorWithLatest<LoaderData>;
+          export function useLoaderData(options?: { name?: string; initialValue?: undefined; deferStream?: boolean }): AccessorWithLatest<LoaderData | undefined>;
+          export function useLoaderData(options?: { name?: string; initialValue?: LoaderData; deferStream?: boolean }): AccessorWithLatest<LoaderData | undefined> {
             const params = useParams<Record<string, string>>();
-            return createAsync(() => getLoaderData({ ...params }));
+            return createAsync(() => getLoaderData({ ...params }), options as any);
           }
         TYPESCRIPT
       end
