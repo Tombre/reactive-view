@@ -1,13 +1,6 @@
 import { createSignal, createEffect, Suspense, Show } from "solid-js";
 import { A, useParams } from "@solidjs/router";
-import {
-  useLoaderData,
-  UpdateForm,
-  DeleteForm,
-  updateAction,
-  deleteAction,
-  useSubmission,
-} from "#loaders/users/[id]";
+import { useLoaderData, useForm } from "#loaders/users/[id]";
 import MainLayout from "../_components/MainLayout";
 
 export default function UserShowPage() {
@@ -15,8 +8,8 @@ export default function UserShowPage() {
   const data = useLoaderData();
 
   const [isEditing, setIsEditing] = createSignal(false);
-  const updateSubmission = useSubmission(updateAction);
-  const deleteSubmission = useSubmission(deleteAction);
+  const [UpdateForm, updateSubmission] = useForm("update");
+  const [DeleteForm, deleteSubmission] = useForm("delete");
 
   // Reset editing mode on successful update
   createEffect(() => {

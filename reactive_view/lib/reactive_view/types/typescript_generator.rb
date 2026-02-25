@@ -255,6 +255,9 @@ module ReactiveView
           parts << build_mutation(loader[:path], mutation_name, schema)
         end
 
+        # useForm hook that returns [Form, submission] tuple
+        parts << build_use_form_hook(loader[:mutation_schemas])
+
         # Re-export action utilities for convenience
         parts << <<~TYPESCRIPT
 
@@ -318,6 +321,78 @@ module ReactiveView
             props: Omit<JSX.FormHTMLAttributes<HTMLFormElement>, "action" | "method">
           ) {
             return <form action={#{action_name}} method="post" {...props} />;
+          }
+        TYPESCRIPT
+      end
+
+      # Build the useForm hook that returns [Form, submission] for a given mutation name.
+      #
+      # Generates a type-safe hook where the mutation name argument is a generic
+      # constrained to the union of available mutations. The return type is fully
+      # inferred from the action/Form types -- no casts, no manual type annotations --
+      # so that `submission.result?.success` etc. are end-to-end type safe.
+      #
+      # @param mutation_schemas [Hash] Map of mutation_name => schema
+      # @return [String] TypeScript code for the useForm hook
+      def build_use_form_hook(mutation_schemas)
+        entries = mutation_schemas.map do |mutation_name, _schema|
+          base_name = mutation_name.to_s
+          capitalized_name = base_name.camelize
+          action_name = "#{base_name}Action"
+          form_name = "#{capitalized_name}Form"
+
+          # Apply same sanitization as build_mutation
+          action_name = sanitize_js_identifier(action_name) unless valid_js_identifier?(action_name)
+          form_name = sanitize_js_identifier(form_name) unless valid_js_identifier?(form_name)
+
+          { name: base_name, action_name: action_name, form_name: form_name }
+        end
+
+        # Build the MutationName union type
+        mutation_names_union = entries.map { |e| "\"#{e[:name]}\"" }.join(' | ')
+
+        # Build the _mutations map entries
+        map_entries = entries.map do |e|
+          "  #{e[:name]}: { action: #{e[:action_name]}, Form: #{e[:form_name]} }"
+        end.join(",\n")
+
+        <<~TYPESCRIPT
+
+          // ============================================================================
+          // useForm Hook
+          // ============================================================================
+
+          /** Available mutation names for this route */
+          type MutationName = #{mutation_names_union};
+
+          /** @internal Mapping of mutation names to their actions and Form components */
+          const _mutations = {
+          #{map_entries},
+          } as const;
+
+          /**
+           * Returns a `[Form, submission]` tuple for the given mutation.
+           *
+           * The Form component is pre-configured to submit to the correct endpoint.
+           * The submission object tracks pending state, results, and errors
+           * with full type safety (`submission.result?.success`, `submission.result?.errors`, etc.).
+           *
+           * @param name - The mutation name (#{entries.map { |e| "\"#{e[:name]}\"" }.join(', ')})
+           * @returns A readonly tuple of `[FormComponent, Submission]`
+           *
+           * @example
+           * const [#{entries.first[:form_name]}, submission] = useForm("#{entries.first[:name]}");
+           *
+           * <#{entries.first[:form_name]}>
+           *   <input name="fieldName" />
+           *   <button type="submit" disabled={submission.pending}>
+           *     Submit
+           *   </button>
+           * </#{entries.first[:form_name]}>
+           */
+          export function useForm<T extends MutationName>(name: T) {
+            const mutation = _mutations[name];
+            return [mutation.Form, useSubmission(mutation.action)] as const;
           }
         TYPESCRIPT
       end

@@ -235,18 +235,18 @@ bundle exec rspec spec/reactive_view/types/
 
 ### Gem Structure
 
-| File                                   | Purpose                         |
-| -------------------------------------- | ------------------------------- |
-| `lib/reactive_view.rb`                 | Main entry point                |
-| `lib/reactive_view/engine.rb`          | Rails Engine                    |
-| `lib/reactive_view/loader.rb`          | Base controller class           |
-| `lib/reactive_view/mutation_result.rb` | Mutation response value object  |
-| `lib/reactive_view/shapes_accessor.rb` | Typed param extraction          |
-| `lib/reactive_view/router.rb`          | File-based route generation     |
-| `lib/reactive_view/renderer.rb`        | HTTP client to SolidStart       |
-| `lib/reactive_view/daemon.rb`          | SolidStart process manager      |
-| `lib/reactive_view/request_context.rb` | Token-based auth for callbacks  |
-| `lib/reactive_view/types/`             | Type system (Dry::Types)        |
+| File                                   | Purpose                        |
+| -------------------------------------- | ------------------------------ |
+| `lib/reactive_view.rb`                 | Main entry point               |
+| `lib/reactive_view/engine.rb`          | Rails Engine                   |
+| `lib/reactive_view/loader.rb`          | Base controller class          |
+| `lib/reactive_view/mutation_result.rb` | Mutation response value object |
+| `lib/reactive_view/shapes_accessor.rb` | Typed param extraction         |
+| `lib/reactive_view/router.rb`          | File-based route generation    |
+| `lib/reactive_view/renderer.rb`        | HTTP client to SolidStart      |
+| `lib/reactive_view/daemon.rb`          | SolidStart process manager     |
+| `lib/reactive_view/request_context.rb` | Token-based auth for callbacks |
+| `lib/reactive_view/types/`             | Type system (Dry::Types)       |
 
 ### SolidStart Template
 
