@@ -21,31 +21,36 @@ module Pages
     class IdLoader < ReactiveView::Loader
       # Load shape for reading data
       shape :load do
-        param :user, ReactiveView::Types::Hash.schema(
-          id: ReactiveView::Types::Integer,
-          name: ReactiveView::Types::String,
-          email: ReactiveView::Types::String
-        )
+        hash :user do
+          param :id, :integer
+          param :name
+          param :email
+        end
       end
 
       # Update mutation shape
       shape :update do
-        param :name, ReactiveView::Types::String
-        param :email, ReactiveView::Types::String
+        param :name
+        param :email
       end
 
       # Delete mutation (no params needed)
       shape :delete do
       end
 
+      # Assign shapes to actions
+      response_shape :load, :load
+      params_shape :update, :update
+      params_shape :delete, :delete
+
       def load
         { user: serialize_user(user) }
       end
 
       def update
-        typed_params = shapes.update(params)
+        result = shapes.update.call!(params)
 
-        if user.update(typed_params)
+        if user.update(result.data)
           render_success(user: serialize_user(user))
         else
           render_error(user)
@@ -124,22 +129,37 @@ export default function UserPage() {
 
 ## Typed Parameter Extraction
 
-Use `shapes.mutation_name(params)` to extract and validate typed parameters:
+Use `shapes.mutation_name.call!(params)` to extract and validate typed parameters. The `shapes` accessor returns the Shape **class**, and `.call!` validates and returns a Shape instance:
 
 ```ruby
 def update
   # Extract only the declared params with type coercion
-  typed_params = shapes.update(params)
-  # => { name: "John", email: "john@example.com" }
+  result = shapes.update.call!(params)
+  # result.data => { name: "John", email: "john@example.com" }
 
-  user.update(typed_params)
+  user.update(result.data)
 end
 ```
 
-The `shapes` accessor:
-- Extracts only the params declared in the shape definition
-- Coerces types (strings to integers, booleans, etc.)
-- Returns a hash ready for use with ActiveRecord
+The Shape instance provides:
+- `.data` — coerced and validated params hash, ready for ActiveRecord
+- `.valid?` — whether validation passed
+- `.errors` — structured field-level errors (e.g., `{ "email" => ["must be String"] }`)
+
+Use `.call(params)` for non-raising validation:
+
+```ruby
+def update
+  result = shapes.update.call(params)
+
+  if result.valid?
+    user.update(result.data)
+    render_success(user: serialize_user(user))
+  else
+    render json: { success: false, errors: result.errors }, status: :unprocessable_entity
+  end
+end
+```
 
 ## Response Helpers
 
@@ -149,7 +169,9 @@ Returns a successful JSON response:
 
 ```ruby
 def update
-  if user.update(typed_params)
+  result = shapes.update.call!(params)
+
+  if user.update(result.data)
     render_success(
       user: serialize_user(user),
       revalidate: ["users/index"]  # Routes to revalidate on client
@@ -176,7 +198,8 @@ Returns an error JSON response. Accepts:
 1. **ActiveModel errors** (from a model with validation errors):
 ```ruby
 def create
-  user = User.new(typed_params)
+  result = shapes.create.call!(params)
+  user = User.new(result.data)
   unless user.save
     render_error(user)
   end
@@ -351,7 +374,9 @@ After a mutation, you often want to refresh cached data on other routes. Use the
 
 ```ruby
 def update
-  if user.update(typed_params)
+  result = shapes.update.call!(params)
+
+  if user.update(result.data)
     render_success(
       user: serialize_user(user),
       revalidate: ["users/index", "users/[id]"]
@@ -371,8 +396,8 @@ module Pages
   module Posts
     class IdLoader < ReactiveView::Loader
       shape :update do
-        param :title, ReactiveView::Types::String
-        param :content, ReactiveView::Types::String
+        param :title
+        param :content
       end
 
       shape :publish do
@@ -382,13 +407,18 @@ module Pages
       shape :delete do
       end
 
+      # Assign shapes to actions
+      params_shape :update, :update
+      params_shape :publish, :publish
+      params_shape :delete, :delete
+
       def update
         # ...
       end
 
       def publish
-        typed_params = shapes.publish(params)
-        post.update(published: true, published_at: typed_params[:published_at] || Time.current)
+        result = shapes.publish.call!(params)
+        post.update(published: true, published_at: result.data[:published_at] || Time.current)
         render_success(post: serialize_post(post))
       end
 
@@ -454,7 +484,7 @@ export type DeleteParams = Record<string, unknown>;
 ## Best Practices
 
 1. **Keep mutations focused**: Each mutation should do one thing well
-2. **Use typed params**: Always use `shapes.mutation_name(params)` for type safety
+2. **Use typed params**: Always use `shapes.mutation_name.call!(params)` for type safety
 3. **Handle all error cases**: Check for validation errors and return appropriate responses
 4. **Revalidate related routes**: Keep the UI consistent by revalidating affected routes
 5. **Show loading states**: Use `submission.pending` to indicate progress

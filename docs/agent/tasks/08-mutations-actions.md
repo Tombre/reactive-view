@@ -12,7 +12,7 @@ Mutations are fully implemented within the existing loader architecture. Rather 
 
 - **No separate Action class** - Mutations live in Loader subclasses, keeping related read/write logic together
 - **`shape :mutation_name do ... end`** - DSL for defining mutation param types
-- **`shapes.mutation_name(params)`** - Strong-params-like typed parameter extraction via `ShapesAccessor`
+- **`shapes.mutation_name.call!(params)`** - Typed parameter extraction via `ShapesAccessor` — returns a Shape class, call `.call!` or `.call` for validation
 - **`MutationResult`** - Value object with `.success()`, `.error()`, `.redirect()` factory methods
 - **Response helpers** - `render_success`, `render_error`, `mutation_redirect` on Loader base class
 - **CSRF protection** - Automatic via `X-CSRF-Token` header or `authenticity_token` param

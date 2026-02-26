@@ -49,15 +49,15 @@ module Pages
   module Users
     class IndexLoader < ReactiveView::Loader
       shape :load do
-        param :users, ReactiveView::Types::Array[
-          ReactiveView::Types::Hash.schema(
-            id: ReactiveView::Types::Integer,
-            name: ReactiveView::Types::String,
-            email: ReactiveView::Types::String
-          )
-        ]
-        param :total, ReactiveView::Types::Integer
+        collection :users do
+          param :id, :integer
+          param :name
+          param :email
+        end
+        param :total, :integer
       end
+
+      response_shape :load, :load
 
       def load
         {
@@ -82,13 +82,15 @@ module Pages
   module Users
     class IdLoader < ReactiveView::Loader
       shape :load do
-        param :user, ReactiveView::Types::Hash.schema(
-          id: ReactiveView::Types::Integer,
-          name: ReactiveView::Types::String,
-          email: ReactiveView::Types::String,
-          created_at: ReactiveView::Types::String
-        )
+        hash :user do
+          param :id, :integer
+          param :name
+          param :email
+          param :created_at
+        end
       end
+
+      response_shape :load, :load
 
       def load
         user = User.find(params[:id])
@@ -117,61 +119,78 @@ The `shape` DSL defines the type signature for your loader's return value. This 
 
 ```ruby
 shape :load do
-  param :id, ReactiveView::Types::Integer
-  param :name, ReactiveView::Types::String
-  param :email, ReactiveView::Types::Optional[ReactiveView::Types::String]
-  param :active, ReactiveView::Types::Bool
+  param :id, :integer
+  param :name                                                  # defaults to String
+  param :email, ReactiveView::Types::Optional[Types::String]   # explicit Dry type
+  param :active, :boolean
 end
+
+response_shape :load, :load
 ```
 
 ### Available Types
 
 | Ruby Type | TypeScript Type | Description |
 | --- | --- | --- |
-| `ReactiveView::Types::String` | `string` | String values |
-| `ReactiveView::Types::Integer` | `number` | Integer values |
-| `ReactiveView::Types::Float` | `number` | Floating point values |
-| `ReactiveView::Types::Bool` | `boolean` | Boolean values |
-| `ReactiveView::Types::Array[T]` | `T[]` | Typed arrays |
-| `ReactiveView::Types::Hash.schema(...)` | `{ ... }` | Typed objects |
+| `ReactiveView::Types::String` or `:string` | `string` | String values (default when no type given) |
+| `ReactiveView::Types::Integer` or `:integer` | `number` | Integer values |
+| `ReactiveView::Types::Float` or `:float` | `number` | Floating point values |
+| `ReactiveView::Types::Bool` or `:boolean` | `boolean` | Boolean values |
+| `ReactiveView::Types::Date` or `:date` | `string` | Date values |
+| `ReactiveView::Types::DateTime` or `:date_time` | `string` | DateTime values |
+| `ReactiveView::Types::Time` or `:time` | `string` | Time values |
+| `ReactiveView::Types::Array[T]` | `T[]` | Typed arrays (for simple types) |
+| `collection :name do ... end` | `{ ... }[]` | Array of hashes (DSL helper) |
+| `hash :name do ... end` | `{ ... }` | Nested hash (DSL helper) |
 | `ReactiveView::Types::Optional[T]` | `T \| null` | Nullable values |
-| `ReactiveView::Types::Any` | `unknown` | Any type |
+| `ReactiveView::Types::Any` or `:any` | `unknown` | Any type |
 
 ### Nested Types
 
 ```ruby
 shape :load do
-  param :user, ReactiveView::Types::Hash.schema(
-    id: ReactiveView::Types::Integer,
-    name: ReactiveView::Types::String,
-    address: ReactiveView::Types::Hash.schema(
-      street: ReactiveView::Types::String,
-      city: ReactiveView::Types::String,
-      zip: ReactiveView::Types::String
-    )
-  )
+  hash :user do
+    param :id, :integer
+    param :name
+    hash :address do
+      param :street
+      param :city
+      param :zip
+    end
+  end
   param :tags, ReactiveView::Types::Array[ReactiveView::Types::String]
-  param :metadata, ReactiveView::Types::Hash.schema(
-    created_at: ReactiveView::Types::String,
-    updated_at: ReactiveView::Types::String
-  )
+  hash :metadata do
+    param :created_at
+    param :updated_at
+  end
 end
+
+response_shape :load, :load
 ```
 
-### Implicit :load
+Use `hash` for nested objects and `collection` for arrays of objects. For simple typed arrays (e.g., an array of strings), use `Types::Array[T]` directly.
 
-When you call `shape` without a method name, it defaults to `:load`:
+### Shape Registration and Assignment
+
+The `shape` method **registers** a named shape definition — it does not automatically assign it to an action. Use `response_shape` and `params_shape` to assign shapes:
 
 ```ruby
-# These are equivalent:
+# Register shapes
 shape :load do
-  param :name, ReactiveView::Types::String
+  param :name
 end
 
-shape do
-  param :name, ReactiveView::Types::String
+shape :update do
+  param :name
+  param :email
 end
+
+# Assign to actions
+response_shape :load, :load      # :load action uses :load shape for response validation
+params_shape :update, :update    # :update action uses :update shape for param validation
 ```
+
+You can reuse the same shape for multiple purposes, or use different shapes for params and response of the same action.
 
 ### Response Validation
 
@@ -273,11 +292,13 @@ module Pages
       before_action :authenticate_admin!
 
       shape :load do
-        param :stats, ReactiveView::Types::Hash.schema(
-          total_users: ReactiveView::Types::Integer,
-          active_users: ReactiveView::Types::Integer
-        )
+        hash :stats do
+          param :total_users, :integer
+          param :active_users, :integer
+        end
       end
+
+      response_shape :load, :load
 
       def load
         { stats: { total_users: User.count, active_users: User.where(active: true).count } }

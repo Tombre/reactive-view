@@ -8,15 +8,15 @@ module Pages
       # 1. Generate TypeScript types for the frontend
       # 2. Validate the response in development/test modes
       shape :load do
-        param :users, ReactiveView::Types::Array[
-          ReactiveView::Types::Hash.schema(
-            id: ReactiveView::Types::Integer,
-            name: ReactiveView::Types::String,
-            email: ReactiveView::Types::String
-          )
-        ]
-        param :total, ReactiveView::Types::Integer
+        collection :users do
+          param :id, :integer
+          param :name
+          param :email
+        end
+        param :total, :integer
       end
+
+      response_shape :load, :load
 
       # Load the data for this page
       # This is called when SolidStart requests data during SSR
