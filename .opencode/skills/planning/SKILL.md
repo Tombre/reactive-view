@@ -1,6 +1,6 @@
 ---
 name: planning
-description: Write and store plans
+description: Writes and store plans for future use.
 ---
 
 ## What I do

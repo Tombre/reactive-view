@@ -1,66 +1,56 @@
 ---
 name: testing
-description: Selects and runs ReactiveView test commands by change scope with fast feedback loops and reproducible evidence. Use for validating gem, example app, and template changes.
-compatibility: opencode
-metadata:
-  scope: project
-  workflow: testing
+description: Selects and runs ReactiveView test and build validation commands by change scope with fast feedback loops. Use when implementing code changes, debugging regressions, or preparing PR verification notes.
 ---
 
-## What it does
+# ReactiveView Testing
 
-Maps code-change scope to the smallest reliable test commands, then scales to broader verification when needed.
+Run the smallest useful validation first, then broaden only when needed.
 
-## When to use
+## When To Use
 
-- Any code change before handoff.
-- Test failures that need focused reproduction.
-- PR prep requiring exact verification commands.
+- After changing Ruby gem code under `reactive_view/`.
+- After changing SolidStart/template or npm package code.
+- After changing example app pages/loaders/config that affect runtime behavior.
+- Before handing work back to the user or opening a PR.
 
-## Default workflow
+## Workflow
 
-1. Run targeted tests first.
-2. Fix failures.
-3. Re-run the same targeted tests.
-4. Run broader coverage only after targeted checks pass.
+1. Classify changed files by area (gem, template, npm package, example app, docs-only).
+2. Run targeted checks for each changed area.
+3. If targeted checks fail, fix and re-run the same command first.
+4. If changes are cross-cutting, run the broader safety check set.
+5. Report exact commands and outcomes.
 
-## Command matrix
+## Command Selection
 
-Gem/root:
+Use `references/command-matrix.md` to choose commands.
 
-```bash
-bundle install
-bundle exec rspec spec/reactive_view/request_context_spec.rb:42
-bundle exec rspec spec/reactive_view/request_context_spec.rb
-bundle exec rspec
-bundle exec rubocop
+Default order:
+
+1. Fastest targeted command for touched area.
+2. Broader command in same area (if risk is medium/high).
+3. Cross-area sanity checks only when changes span multiple areas.
+
+## Execution Rules
+
+- Run commands from the correct working directory.
+- Prefer deterministic commands (no long-running watch mode).
+- Do not claim tests were run if a required dependency/setup step blocked execution.
+- If a command cannot run locally, state the blocker and give the exact follow-up command.
+
+## Output Template
+
+Use this structure in status updates:
+
+```md
+Validation run
+- Scope: <files or subsystem>
+- Command: `<command>` (workdir: `<dir>`)
+- Result: pass | fail | blocked
+- Notes: <short failure/blocker detail>
 ```
 
-Example app (`examples/reactive_view_example/`):
+## References
 
-```bash
-bundle install
-bin/rails db:prepare
-bin/rails test test/models/user_test.rb:12
-bin/rails test
-```
-
-Template (`reactive_view/template/`):
-
-```bash
-npm install
-npm run build
-```
-
-## Validation loop
-
-1. Start with a path:line or single-file command.
-2. If failing, fix code and re-run the same command.
-3. When green, expand to suite-level command for that area.
-4. Record exact commands used for reproducibility.
-
-## Guardrails
-
-- Keep tests deterministic; avoid flaky integration additions.
-- Mirror source paths in `spec/` and use `described_class` where practical.
-- For loader changes, test auth callbacks, params validation, and response shape behavior.
+- Command matrix: `references/command-matrix.md`

@@ -1,59 +1,41 @@
 ---
 name: solidjs
-description: Enforces SolidJS TSX conventions for ReactiveView pages and components, including anti-React guardrails and loader-data usage rules. Use for TSX implementation and frontend code review.
-compatibility: opencode
-metadata:
-  scope: project
-  workflow: frontend
+description: Writes and reviews SolidJS TSX for ReactiveView pages with Rails loader integration. Use when creating or editing `app/pages/**/*.tsx`, wiring `#loaders/*` helpers, or fixing React-to-Solid regressions.
 ---
 
-## What it does
+# ReactiveView SolidJS
 
-Prevents React-pattern regressions and keeps TSX code aligned with SolidJS and ReactiveView loader conventions.
+Write SolidJS code that matches ReactiveView's routing, loader, and mutation conventions.
 
-## When to use
+## When To Use
 
-- Writing or editing `app/pages/**/*.tsx`.
-- Reviewing frontend diffs for framework mismatches.
-- Touching loader-data hooks or route data access.
+- Creating or updating TSX route files in `app/pages/`.
+- Wiring loader data with generated `#loaders/*` modules.
+- Implementing typed mutations and streaming UI with generated helpers.
+- Reviewing TSX for framework mismatches (React patterns in Solid files).
 
-## Default workflow
+## Workflow
 
-1. Implement using Solid primitives and control-flow components.
-2. Verify no React attribute aliases or render shortcuts are used.
-3. Verify loader-data imports match route conventions.
-4. Build and fix compile or type issues.
+1. Identify route context from file location (`app/pages/...`) and nearby loader (`*.loader.rb`) when present.
+2. Import primitives from `@reactive-view/core`; import route-typed helpers from `#loaders/<route>`.
+3. Use Solid control flow and signals (`<Show>`, `<For>`, `createSignal`, `createEffect`) instead of React patterns.
+4. Keep TSX aligned with generated types (`useLoaderData`, `useForm`, `useStream`) instead of handwritten request code.
+5. If shapes or loaders changed, run type regeneration command listed in references.
 
-## Required guardrails
+## Non-Negotiables
 
-- Use `class`, `for`, `tabindex`.
-- Use `e.target` for event handling.
-- Use `<Show>`, `<For>`, `<Switch>/<Match>` instead of React-style `&&` and `.map()` JSX shortcuts.
-- Use `createSignal`/`createResource` and avoid mutating signal getter outputs.
+- Use HTML/Solid attributes: `class`, `for`, `tabindex`, `onInput`.
+- Do not use React-only APIs or patterns (`className`, `htmlFor`, `tabIndex`, `useState`, `map`-based JSX loops as default control flow).
+- Prefer generated route modules (`#loaders/...`) for typed page data and mutation forms.
+- Keep Rails as source of truth for auth/business logic; TSX handles rendering and interaction.
 
-## Loader data conventions
+## Quick Checks
 
-Per-route import:
+- Are imports from `@reactive-view/core` and `#loaders/...` (not ad hoc frontend wrappers)?
+- Are conditionals/lists using Solid control-flow components?
+- Are mutation UIs using generated form/stream helpers?
+- If Ruby `shape` changed, was type generation run?
 
-```ts
-import { useLoaderData } from "#loaders/users/index";
-```
+## References
 
-Cross-route access:
-
-```ts
-useLoaderData("users/[id]", { id });
-```
-
-## Validation loop
-
-1. Run a frontend build.
-2. Fix type or runtime issues.
-3. Re-run build until clean.
-4. Re-scan changed TSX for React-pattern leakage.
-
-## Pitfalls
-
-- Copying React snippets without Solid adaptation.
-- Using `className`, `htmlFor`, or `tabIndex`.
-- Hiding async failures instead of rendering explicit fallback states.
+- Patterns and examples: `references/patterns.md`
