@@ -1,0 +1,33 @@
+{
+  "name": "ReactiveView Dev",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "workspaceFolder": "/workspaces/reactive-view",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/reactive-view,type=bind,consistency=cached",
+  "forwardPorts": [3000, 3001],
+  "portsAttributes": {
+    "3000": {
+      "label": "Rails app"
+    },
+    "3001": {
+      "label": "SolidStart daemon"
+    }
+  },
+  "mounts": [
+    "source=reactive-view-bundle-cache,target=/usr/local/bundle,type=volume",
+    "source=reactive-view-npm-cache,target=/root/.npm,type=volume"
+  ],
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "Shopify.ruby-lsp",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss"
+      ]
+    }
+  }
+}

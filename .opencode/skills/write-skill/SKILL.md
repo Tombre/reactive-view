@@ -70,6 +70,16 @@ The context window is a shared resource. Your skill shares it with everything el
 
 Skills act as additions to models, so effectiveness depends on the underlying model. Test your skill with all models you plan to use it with.
 
+## Repository Sync Requirement
+
+When creating, renaming, or substantially updating a project-local skill under `.opencode/skills/`, also update `AGENTS.md` so the "Project-Scoped Skills" section reflects the current skill set and descriptions.
+
+Minimum sync checklist:
+
+1. Add/remove/rename the matching bullet in `AGENTS.md`.
+2. Keep the short description aligned with the skill frontmatter intent.
+3. If workflow expectations changed, update nearby AGENTS guidance to match.
+
 ## References
 
 For detailed guidance, see:

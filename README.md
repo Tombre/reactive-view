@@ -230,6 +230,25 @@ end
 - Node.js 18+
 - npm
 
+### Dev Container (Repo Root)
+
+For full gem + example app development in one environment, use the repo-root dev container.
+
+1. Open the repository in your editor and run "Reopen in Container".
+2. Wait for post-create setup to finish (installs gems, runs example setup, prepares DB).
+3. Start the example app from repo root:
+
+```bash
+bin/start-example
+```
+
+The container forwards:
+
+- `3000` for Rails
+- `3001` for the SolidStart daemon
+
+Dev container files live in `.devcontainer/`.
+
 ### Working on the Gem
 
 ```bash

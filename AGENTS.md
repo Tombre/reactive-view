@@ -69,11 +69,8 @@ CRITICAL: ReactiveView uses SolidJS TSX, not React JSX.
 
 Load task-specific guidance from local skills under `.opencode/skills/`.
 
-- `setup`: environment setup and context switching commands.
-- `automation-hooks`: route/type sync commands and HMR wrapper workflow.
+- `write-skill`: guide for creating/updating skills, including structure and best practices.
 - `testing`: test strategy, command matrix, and RSpec conventions.
-- `debugging`: logs, daemon troubleshooting, and failure triage.
 - `solidjs`: full SolidJS coding standards and anti-React guardrails.
-- `pr-checklist`: PR readiness and documentation/release checklist.
-
-See `docs/agent/skills-index.md` for a task-to-skill lookup.
+- `pull-request`: create/update GitHub PRs with complete summaries and manual testing notes.
+- `planning`: write and store planning documents under `plans/`.
