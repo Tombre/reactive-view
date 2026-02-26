@@ -31,6 +31,7 @@ Note: no JS test runner is configured in this repo yet, so build is the current 
 
 ## 4) Example app (`examples/reactive_view_example/`)
 
+- **Primary RSpec:** `bundle exec rspec`
 - **Primary sync/type checks:**
   - `bin/rails reactive_view:sync`
   - `bin/rails reactive_view:types:generate`
@@ -74,12 +75,20 @@ Run one command per affected area, usually in this order:
 
 Escalate to full `bundle exec rspec` when changes impact shared internals.
 
-## 6) Docs-only changes
+## 6) Required Handoff Verification (default)
+
+Unless the user explicitly opts out, run all of the following before final handoff:
+
+1. `bundle exec rspec` in `reactive_view`
+2. `bundle exec rspec` in `examples/reactive_view_example`
+3. `bin/e2e` in `examples/reactive_view_example`
+
+## 7) Docs-only changes
 
 - No test command required.
 - State explicitly: "Docs-only change; code validation not required."
 
-## Failure Loop
+## 8) Failure Loop
 
 1. Run selected command.
 2. Fix the first meaningful failure.

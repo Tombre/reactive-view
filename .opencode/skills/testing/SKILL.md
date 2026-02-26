@@ -7,6 +7,8 @@ description: Selects and runs ReactiveView test and build validation commands by
 
 Run the smallest useful validation first, then broaden only when needed.
 
+Before handing work back, always run both regular specs and Playwright e2e coverage across the gem and example app.
+
 ## When To Use
 
 - After changing Ruby gem code under `reactive_view/`.
@@ -20,7 +22,18 @@ Run the smallest useful validation first, then broaden only when needed.
 2. Run targeted checks for each changed area.
 3. If targeted checks fail, fix and re-run the same command first.
 4. If changes are cross-cutting, run the broader safety check set.
-5. Report exact commands and outcomes.
+5. Run the required full verification set (gem + example regular specs + example Playwright e2e) before final handoff.
+6. Report exact commands and outcomes.
+
+## Required Full Verification Set
+
+Run this full set for any code change unless the user explicitly says not to:
+
+1. `bundle exec rspec` in `reactive_view`.
+2. `bundle exec rspec` in `examples/reactive_view_example`.
+3. `bin/e2e` in `examples/reactive_view_example` (Playwright Ruby e2e).
+
+If one command is blocked, report the blocker and provide the exact command the user should run next.
 
 ## Command Selection
 
