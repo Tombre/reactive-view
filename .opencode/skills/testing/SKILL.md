@@ -39,6 +39,16 @@ Default order:
 - Do not claim tests were run if a required dependency/setup step blocked execution.
 - If a command cannot run locally, state the blocker and give the exact follow-up command.
 
+## Docker Validation Rule
+
+When changes include `Dockerfile`, `docker-compose.yml`, or container startup scripts for the example app, validation must include:
+
+1. Successful Docker image build.
+2. Container boot that serves the app.
+3. Curl smoke check against `http://127.0.0.1:3000`.
+
+Use the command set in `references/command-matrix.md` and always stop/remove the smoke-test container at the end.
+
 ## Output Template
 
 Use this structure in status updates:

@@ -47,6 +47,31 @@ This will start:
 - Rails server on http://localhost:3000
 - SolidStart daemon on http://localhost:3001
 
+## Running with Docker
+
+You can run the example app in a single container (Rails + SolidStart daemon).
+
+### Docker Compose (recommended)
+
+From `examples/reactive_view_example/`:
+
+```bash
+docker compose up --build
+```
+
+Then open http://localhost:3000.
+
+### Plain Docker
+
+From the repository root:
+
+```bash
+docker build -f examples/reactive_view_example/Dockerfile -t reactive-view-example .
+docker run --rm -p 3000:3000 reactive-view-example
+```
+
+Then open http://localhost:3000.
+
 ## Demo Pages
 
 The example includes several pages demonstrating ReactiveView features:

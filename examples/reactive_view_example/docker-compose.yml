@@ -1,0 +1,12 @@
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: examples/reactive_view_example/Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - reactive_view_example_storage:/app/examples/reactive_view_example/storage
+
+volumes:
+  reactive_view_example_storage:

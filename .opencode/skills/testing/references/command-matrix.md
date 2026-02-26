@@ -39,6 +39,27 @@ Note: no JS test runner is configured in this repo yet, so build is the current 
 - **Workdir:** `examples/reactive_view_example`
 - **Use when:** editing `app/pages/**`, `.loader.rb` files, example config, or ReactiveView integration wiring.
 
+### Example app Docker validation (single-container)
+
+- **Primary:** build image + run container + curl smoke check
+- **Workdir:** repo root
+- **Use when:** editing `examples/reactive_view_example/Dockerfile`, `examples/reactive_view_example/docker-compose.yml`, `examples/reactive_view_example/Procfile.dev`, or container startup scripts.
+
+Commands:
+
+```bash
+docker build -f examples/reactive_view_example/Dockerfile -t reactive-view-example .
+docker run --rm -d --name reactive-view-example-smoke -p 3000:3000 reactive-view-example
+curl --fail --retry 30 --retry-connrefused --retry-delay 1 http://127.0.0.1:3000
+docker stop reactive-view-example-smoke
+```
+
+Safer single-command variant with cleanup trap:
+
+```bash
+docker build -f examples/reactive_view_example/Dockerfile -t reactive-view-example . && bash -lc 'set -euo pipefail; trap "docker rm -f reactive-view-example-smoke >/dev/null 2>&1 || true" EXIT; docker run --rm -d --name reactive-view-example-smoke -p 3000:3000 reactive-view-example; curl --fail --retry 30 --retry-connrefused --retry-delay 1 http://127.0.0.1:3000'
+```
+
 ## 5) Cross-area changes
 
 Run one command per affected area, usually in this order:

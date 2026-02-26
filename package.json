@@ -4,5 +4,8 @@
   "workspaces": [
     "reactive_view/npm",
     "examples/reactive_view_example"
-  ]
+  ],
+  "devDependencies": {
+    "agent-browser": "^0.15.0"
+  }
 }
