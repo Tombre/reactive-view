@@ -246,6 +246,17 @@ The container forwards:
 
 - `3000` for Rails
 - `3001` for the SolidStart daemon
+- `9223` for optional `agent-browser` stream preview
+
+`agent-browser` is preinstalled in the dev container for agent-driven visual testing.
+
+```bash
+# Example: run a quick visual smoke check against the app
+agent-browser open http://127.0.0.1:3000
+agent-browser wait --load networkidle
+agent-browser snapshot -i
+agent-browser screenshot --annotate /tmp/reactive-view-home.png
+```
 
 Dev container files live in `.devcontainer/`.
 

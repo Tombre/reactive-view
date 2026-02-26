@@ -27,4 +27,11 @@ if [ -d "$EXAMPLE_DIR" ]; then
   (cd "$EXAMPLE_DIR" && bin/rails db:prepare)
 fi
 
+if command -v agent-browser >/dev/null 2>&1; then
+  echo "agent-browser is available: $(agent-browser --version)"
+else
+  echo "agent-browser is not available in PATH" >&2
+  exit 1
+fi
+
 echo "Dev container setup complete."

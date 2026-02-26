@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential \
   git \
   libsqlite3-dev \
+  libyaml-dev \
   nodejs \
   npm \
   pkg-config \

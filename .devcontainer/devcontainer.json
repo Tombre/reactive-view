@@ -6,18 +6,23 @@
   },
   "workspaceFolder": "/workspaces/reactive-view",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/reactive-view,type=bind,consistency=cached",
-  "forwardPorts": [3000, 3001],
+  "forwardPorts": [3000, 3001, 9223],
   "portsAttributes": {
     "3000": {
       "label": "Rails app"
     },
     "3001": {
       "label": "SolidStart daemon"
+    },
+    "9223": {
+      "label": "agent-browser stream"
     }
   },
   "mounts": [
     "source=reactive-view-bundle-cache,target=/usr/local/bundle,type=volume",
-    "source=reactive-view-npm-cache,target=/root/.npm,type=volume"
+    "source=reactive-view-npm-cache,target=/root/.npm,type=volume",
+    "source=reactive-view-agent-browser-state,target=/root/.agent-browser,type=volume",
+    "source=reactive-view-playwright-cache,target=/root/.cache/ms-playwright,type=volume"
   ],
   "postCreateCommand": "bash .devcontainer/post-create.sh",
   "customizations": {
