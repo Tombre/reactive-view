@@ -13,6 +13,11 @@ module ReactiveView
     # 2. Central route map in `.reactive_view/types/loader-data.d.ts`
     #    This enables cross-route loading with `useLoaderData("route/path", params)`.
     #
+    # The generator reads from the new shape system:
+    # - `_shapes` for named shape definitions
+    # - `_params_shapes` for mutation input types
+    # - `_response_shapes` for loader output types
+    #
     # @example Per-route loader file with mutations
     #   // .reactive_view/types/loaders/users/[id].ts
     #   import { createMutation, useAction, useSubmission } from "@reactive-view/core";
@@ -85,24 +90,103 @@ module ReactiveView
 
       private
 
+      # Collect loader metadata from all registered loaders.
+      # Uses the new shape system: _shapes, _params_shapes, _response_shapes.
       def collect_loaders
         LoaderRegistry.all_loader_paths.filter_map do |path|
           loader_class = LoaderRegistry.class_for_path(path)
 
-          load_schema = loader_class._method_shapes[:load]
+          # Response shape for :load action (used for LoaderData interface)
+          load_response_schema = resolve_schema_for_response(loader_class, :load)
 
-          # Collect mutation schemas (all shapes except :load)
-          mutation_schemas = loader_class._method_shapes.except(:load)
+          # Collect mutation schemas (params shapes for non-:load actions)
+          mutation_data = collect_mutation_data(loader_class)
 
           # Skip if no load shape and no mutations
-          next unless load_schema || mutation_schemas.any?
+          next unless load_response_schema || mutation_data.any?
 
           {
             path: path,
             class_name: LoaderRegistry.path_to_class_name(path),
             interface_name: path_to_interface_name(path),
-            load_schema: load_schema,
-            mutation_schemas: mutation_schemas
+            load_schema: load_response_schema,
+            mutation_data: mutation_data
+          }
+        end
+      end
+
+      # Resolve the Dry::Types schema for a response shape on a loader.
+      #
+      # @param loader_class [Class] The loader class
+      # @param action [Symbol] The action name
+      # @return [Dry::Types::Type, nil] The Dry schema, or nil
+      def resolve_schema_for_response(loader_class, action)
+        ref = loader_class._response_shapes[action]
+        return nil unless ref
+
+        shape_class = loader_class.resolve_shape(ref)
+        return nil unless shape_class
+
+        shape_class.dry_schema
+      end
+
+      # Resolve the Dry::Types schema for a params shape on a loader.
+      #
+      # @param loader_class [Class] The loader class
+      # @param action [Symbol] The action name
+      # @return [Dry::Types::Type, nil] The Dry schema, or nil
+      def resolve_schema_for_params(loader_class, action)
+        ref = loader_class._params_shapes[action]
+        return nil unless ref
+
+        shape_class = loader_class.resolve_shape(ref)
+        return nil unless shape_class
+
+        shape_class.dry_schema
+      end
+
+      # Collect mutation data for a loader: both params and response schemas.
+      #
+      # Mutations are discovered from:
+      # - _params_shapes entries (excluding :load)
+      # - _response_shapes entries (excluding :load)
+      # - _shapes entries that are not :load (fallback for shapes without explicit assignment)
+      #
+      # @param loader_class [Class] The loader class
+      # @return [Hash<Symbol, Hash>] Mutation name => { params_schema:, response_schema: }
+      def collect_mutation_data(loader_class)
+        # Collect all mutation names from params_shapes and response_shapes
+        mutation_names = Set.new
+        mutation_names.merge(loader_class._params_shapes.keys - [:load])
+        mutation_names.merge(loader_class._response_shapes.keys - [:load])
+
+        # Also include shapes that aren't :load and don't have explicit params/response assignment
+        # This handles the case where a shape is defined but only used via shapes accessor
+        loader_class._shapes.each_key do |name|
+          next if name == :load
+
+          mutation_names.add(name) if loader_class._params_shapes.key?(name) ||
+                                      !loader_class._response_shapes.key?(name)
+        end
+
+        mutation_names.each_with_object({}) do |name, result|
+          params_schema = resolve_schema_for_params(loader_class, name)
+          response_schema = resolve_schema_for_response(loader_class, name)
+
+          # Fall back to the shape definition if no explicit params/response assignment
+          if params_schema.nil? && response_schema.nil?
+            shape_class = loader_class._shapes[name]
+            if shape_class
+              # Use the shape as params schema by default (backward compat for mutations)
+              params_schema = shape_class.dry_schema
+            end
+          end
+
+          next unless params_schema || response_schema
+
+          result[name] = {
+            params_schema: params_schema,
+            response_schema: response_schema
           }
         end
       end
@@ -138,7 +222,7 @@ module ReactiveView
         param_names = loader[:path].scan(/\[(\w+)\]/).flatten
         param_names_comment = param_names.empty? ? '' : " (#{param_names.join(', ')})"
 
-        has_mutations = loader[:mutation_schemas]&.any?
+        has_mutations = loader[:mutation_data]&.any?
 
         parts = []
 
@@ -250,12 +334,12 @@ module ReactiveView
           // ============================================================================
         TYPESCRIPT
 
-        loader[:mutation_schemas].each do |mutation_name, schema|
-          parts << build_mutation(loader[:path], mutation_name, schema)
+        loader[:mutation_data].each do |mutation_name, data|
+          parts << build_mutation(loader[:path], mutation_name, data)
         end
 
         # useForm hook that returns [Form, submission] tuple
-        parts << build_use_form_hook(loader[:mutation_schemas])
+        parts << build_use_form_hook(loader[:mutation_data])
 
         # Re-export action utilities for convenience
         parts << <<~TYPESCRIPT
@@ -268,7 +352,7 @@ module ReactiveView
       end
 
       # Build a single mutation (interface, action, form)
-      def build_mutation(loader_path, mutation_name, schema)
+      def build_mutation(loader_path, mutation_name, data)
         # Use the original mutation name for compound identifiers (e.g., deleteAction, DeleteForm)
         # These are safe because they're combined with suffixes that make them valid identifiers
         base_name = mutation_name.to_s
@@ -287,18 +371,40 @@ module ReactiveView
           ReactiveView.logger.warn "[ReactiveView] Form name sanitized to '#{form_name}'"
         end
 
-        # Generate params interface if schema has keys
-        params_interface = if schema&.respond_to?(:keys) && schema.keys.any?
-                             generate_nested_interfaces(schema, "#{capitalized_name}Params")
+        params_schema = data[:params_schema]
+        response_schema = data[:response_schema]
+
+        # Generate params interface
+        params_interface = if params_schema&.respond_to?(:keys) && params_schema.keys.any?
+                             generate_nested_interfaces(params_schema, "#{capitalized_name}Params")
                            else
                              "export type #{capitalized_name}Params = Record<string, unknown>;"
                            end
 
-        <<~TYPESCRIPT
+        # Generate response interface if different from params
+        response_interface = if response_schema && response_schema != params_schema
+                               if response_schema.respond_to?(:keys) && response_schema.keys.any?
+                                 generate_nested_interfaces(response_schema, "#{capitalized_name}Response")
+                               else
+                                 "export type #{capitalized_name}Response = Record<string, unknown>;"
+                               end
+                             end
+
+        result = <<~TYPESCRIPT
 
           // --- #{mutation_name} mutation ---
 
           #{params_interface}
+        TYPESCRIPT
+
+        if response_interface
+          result += <<~TYPESCRIPT
+
+            #{response_interface}
+          TYPESCRIPT
+        end
+
+        result += <<~TYPESCRIPT
 
           /**
            * Action for the #{mutation_name} mutation.
@@ -322,6 +428,8 @@ module ReactiveView
             return <form action={#{action_name}} method="post" {...props} />;
           }
         TYPESCRIPT
+
+        result
       end
 
       # Build the useForm hook that returns [Form, submission] for a given mutation name.
@@ -331,10 +439,10 @@ module ReactiveView
       # inferred from the action/Form types -- no casts, no manual type annotations --
       # so that `submission.result?.success` etc. are end-to-end type safe.
       #
-      # @param mutation_schemas [Hash] Map of mutation_name => schema
+      # @param mutation_data [Hash] Map of mutation_name => { params_schema:, response_schema: }
       # @return [String] TypeScript code for the useForm hook
-      def build_use_form_hook(mutation_schemas)
-        entries = mutation_schemas.map do |mutation_name, _schema|
+      def build_use_form_hook(mutation_data)
+        entries = mutation_data.map do |mutation_name, _data|
           base_name = mutation_name.to_s
           capitalized_name = base_name.camelize
           action_name = "#{base_name}Action"

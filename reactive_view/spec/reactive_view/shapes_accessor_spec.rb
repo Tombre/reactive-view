@@ -4,126 +4,135 @@ require 'spec_helper'
 
 RSpec.describe ReactiveView::ShapesAccessor do
   let(:update_shape) do
-    ReactiveView::Types::Hash.schema(
-      name: ReactiveView::Types::String,
-      email: ReactiveView::Types::String
-    )
+    Class.new(ReactiveView::Shape) do
+      shape do
+        param :name
+        param :email
+      end
+    end
   end
 
   let(:settings_shape) do
-    ReactiveView::Types::Hash.schema(
-      count: ReactiveView::Types::Integer,
-      price: ReactiveView::Types::Float,
-      enabled: ReactiveView::Types::Boolean
-    )
+    Class.new(ReactiveView::Shape) do
+      shape do
+        param :count, :integer
+        param :price, :float
+        param :enabled, :boolean
+      end
+    end
   end
 
-  let(:method_shapes) do
+  let(:shapes) do
     {
       update: update_shape,
       settings: settings_shape
     }
   end
 
-  subject(:accessor) { described_class.new(method_shapes) }
+  subject(:accessor) { described_class.new(shapes) }
 
   describe '#method_missing' do
     context 'with a defined shape' do
-      it 'extracts params for the update shape' do
-        params = { 'name' => 'John', 'email' => 'john@example.com' }
-        result = accessor.update(params)
-
-        expect(result).to eq({ name: 'John', email: 'john@example.com' })
+      it 'returns the Shape class for a known shape name' do
+        expect(accessor.update).to eq(update_shape)
       end
 
-      it 'filters out params not defined in the shape' do
-        params = { 'name' => 'John', 'email' => 'john@example.com', 'password' => 'secret', '_csrf' => 'token' }
-        result = accessor.update(params)
-
-        expect(result).to eq({ name: 'John', email: 'john@example.com' })
-        expect(result).not_to have_key(:password)
-        expect(result).not_to have_key(:_csrf)
+      it 'returns different Shape classes for different names' do
+        expect(accessor.update).to eq(update_shape)
+        expect(accessor.settings).to eq(settings_shape)
       end
 
-      it 'symbolizes keys in the result' do
-        params = { 'name' => 'John', 'email' => 'john@example.com' }
-        result = accessor.update(params)
+      it 'returns a class that responds to .call' do
+        expect(accessor.update).to respond_to(:call)
+      end
 
-        expect(result.keys).to all(be_a(Symbol))
+      it 'returns a class that responds to .call!' do
+        expect(accessor.update).to respond_to(:call!)
       end
     end
 
-    context 'with type coercion' do
-      it 'coerces string to integer' do
-        params = { 'count' => '42', 'price' => '3.14', 'enabled' => 'true' }
-        result = accessor.settings(params)
+    context 'using the returned Shape class' do
+      it 'validates and coerces params via .call' do
+        result = accessor.update.call('name' => 'John', 'email' => 'john@example.com')
 
-        expect(result[:count]).to eq(42)
-        expect(result[:count]).to be_a(Integer)
+        expect(result).to be_a(ReactiveView::Shape)
+        expect(result.valid?).to be true
+        expect(result.data).to eq({ name: 'John', email: 'john@example.com' })
+      end
+
+      it 'filters out params not defined in the shape' do
+        result = accessor.update.call(
+          'name' => 'John', 'email' => 'john@example.com',
+          'password' => 'secret', '_csrf' => 'token'
+        )
+
+        expect(result.valid?).to be true
+        expect(result.data.keys).to contain_exactly(:name, :email)
+        expect(result.data).not_to have_key(:password)
+        expect(result.data).not_to have_key(:_csrf)
+      end
+
+      it 'symbolizes keys in the result data' do
+        result = accessor.update.call('name' => 'John', 'email' => 'john@example.com')
+        expect(result.data.keys).to all(be_a(Symbol))
+      end
+    end
+
+    context 'with type coercion via Shape.call' do
+      it 'coerces string to integer' do
+        result = accessor.settings.call('count' => '42', 'price' => '3.14', 'enabled' => 'true')
+
+        expect(result.data[:count]).to eq(42)
+        expect(result.data[:count]).to be_a(Integer)
       end
 
       it 'coerces string to float' do
-        params = { 'count' => '42', 'price' => '3.14', 'enabled' => 'true' }
-        result = accessor.settings(params)
+        result = accessor.settings.call('count' => '42', 'price' => '3.14', 'enabled' => 'true')
 
-        expect(result[:price]).to eq(3.14)
-        expect(result[:price]).to be_a(Float)
+        expect(result.data[:price]).to eq(3.14)
+        expect(result.data[:price]).to be_a(Float)
       end
 
       it 'coerces string to boolean' do
-        params = { 'count' => '1', 'price' => '0', 'enabled' => 'true' }
-        result = accessor.settings(params)
-
-        expect(result[:enabled]).to eq(true)
+        result = accessor.settings.call('count' => '1', 'price' => '0', 'enabled' => 'true')
+        expect(result.data[:enabled]).to eq(true)
       end
 
       it 'handles various truthy boolean values' do
         [['true', true], ['1', true], ['yes', true], ['on', true],
          ['false', false], ['0', false], ['no', false], ['off', false]].each do |value, expected|
-          params = { 'count' => '1', 'price' => '1.0', 'enabled' => value }
-          result = accessor.settings(params)
+          result = accessor.settings.call('count' => '1', 'price' => '1.0', 'enabled' => value)
 
-          expect(result[:enabled]).to eq(expected), "Expected '#{value}' to coerce to #{expected}"
+          expect(result.data[:enabled]).to eq(expected), "Expected '#{value}' to coerce to #{expected}"
         end
       end
 
       it 'preserves already-correct types' do
-        params = { 'count' => 42, 'price' => 3.14, 'enabled' => true }
-        result = accessor.settings(params)
+        result = accessor.settings.call('count' => 42, 'price' => 3.14, 'enabled' => true)
 
-        expect(result[:count]).to eq(42)
-        expect(result[:price]).to eq(3.14)
-        expect(result[:enabled]).to eq(true)
+        expect(result.data[:count]).to eq(42)
+        expect(result.data[:price]).to eq(3.14)
+        expect(result.data[:enabled]).to eq(true)
+      end
+    end
+
+    context 'raising validation via .call!' do
+      it 'returns a valid Shape instance for valid data' do
+        result = accessor.update.call!('name' => 'John', 'email' => 'john@example.com')
+        expect(result.valid?).to be true
+        expect(result.data[:name]).to eq('John')
+      end
+
+      it 'raises ValidationError for invalid data' do
+        expect {
+          accessor.update.call!('name' => 123, 'email' => 456)
+        }.to raise_error(ReactiveView::ValidationError)
       end
     end
 
     context 'with undefined shape' do
       it 'raises NoMethodError' do
-        expect { accessor.unknown_method({}) }.to raise_error(NoMethodError)
-      end
-    end
-
-    context 'with nil params' do
-      before do
-        # Disable validation for this test - validation would fail on missing required params
-        allow(ReactiveView.configuration).to receive(:should_validate_responses?).and_return(false)
-      end
-
-      it 'returns empty hash' do
-        result = accessor.update(nil)
-        expect(result).to eq({})
-      end
-    end
-
-    context 'with empty params' do
-      before do
-        # Disable validation for this test - validation would fail on missing required params
-        allow(ReactiveView.configuration).to receive(:should_validate_responses?).and_return(false)
-      end
-
-      it 'returns empty hash' do
-        result = accessor.update({})
-        expect(result).to eq({})
+        expect { accessor.unknown_method }.to raise_error(NoMethodError)
       end
     end
   end
@@ -152,34 +161,20 @@ RSpec.describe ReactiveView::ShapesAccessor do
       end
     end
 
-    it 'extracts params using to_unsafe_h' do
+    it 'extracts params using to_unsafe_h via Shape.call' do
       params = params_class.new({ 'name' => 'John', 'email' => 'john@example.com' })
-      result = accessor.update(params)
+      result = accessor.update.call(params)
 
-      expect(result).to eq({ name: 'John', email: 'john@example.com' })
+      expect(result.valid?).to be true
+      expect(result.data).to eq({ name: 'John', email: 'john@example.com' })
     end
   end
 
-  describe 'with empty method_shapes' do
+  describe 'with nil shapes' do
     subject(:accessor) { described_class.new(nil) }
 
-    it 'handles nil method_shapes gracefully' do
-      expect { accessor.update({}) }.to raise_error(NoMethodError)
-    end
-  end
-
-  describe 'with empty shape' do
-    let(:empty_shape) do
-      ReactiveView::Types::Hash
-    end
-
-    let(:method_shapes) { { delete: empty_shape } }
-
-    it 'returns empty hash for shapes with no defined keys' do
-      params = { 'id' => '123', '_csrf' => 'token' }
-      result = accessor.delete(params)
-
-      expect(result).to eq({})
+    it 'handles nil shapes gracefully' do
+      expect { accessor.update }.to raise_error(NoMethodError)
     end
   end
 end

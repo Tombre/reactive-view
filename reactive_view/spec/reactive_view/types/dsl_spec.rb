@@ -58,6 +58,181 @@ RSpec.describe ReactiveView::Types::SignatureBuilder do
       expect(result.failure?).to be true
     end
   end
+
+  describe 'symbol type shortcuts' do
+    it 'resolves :string to Types::String' do
+      builder = described_class.new do
+        param :name, :string
+      end
+
+      schema = builder.build
+      result = schema.try({ name: 'hello' })
+      expect(result.success?).to be true
+    end
+
+    it 'resolves :integer to Types::Integer' do
+      builder = described_class.new do
+        param :count, :integer
+      end
+
+      schema = builder.build
+      result = schema.try({ count: 42 })
+      expect(result.success?).to be true
+
+      bad_result = schema.try({ count: 'not_int' })
+      expect(bad_result.failure?).to be true
+    end
+
+    it 'resolves :float to Types::Float' do
+      builder = described_class.new do
+        param :price, :float
+      end
+
+      schema = builder.build
+      result = schema.try({ price: 3.14 })
+      expect(result.success?).to be true
+    end
+
+    it 'resolves :boolean to Types::Boolean' do
+      builder = described_class.new do
+        param :active, :boolean
+      end
+
+      schema = builder.build
+      result = schema.try({ active: true })
+      expect(result.success?).to be true
+    end
+
+    it 'resolves :bool as alias for :boolean' do
+      builder = described_class.new do
+        param :active, :bool
+      end
+
+      schema = builder.build
+      result = schema.try({ active: false })
+      expect(result.success?).to be true
+    end
+
+    it 'resolves :any to Types::Any' do
+      builder = described_class.new do
+        param :data, :any
+      end
+
+      schema = builder.build
+      result = schema.try({ data: 'anything' })
+      expect(result.success?).to be true
+
+      result2 = schema.try({ data: 42 })
+      expect(result2.success?).to be true
+    end
+
+    it 'raises ArgumentError for unknown symbol shortcuts' do
+      expect {
+        described_class.new do
+          param :x, :unknown_type
+        end
+      }.to raise_error(ArgumentError, /Unknown type shortcut :unknown_type/)
+    end
+  end
+
+  describe 'default type (nil)' do
+    it 'defaults to Types::String when no type is given' do
+      builder = described_class.new do
+        param :name
+      end
+
+      schema = builder.build
+      result = schema.try({ name: 'hello' })
+      expect(result.success?).to be true
+
+      bad_result = schema.try({ name: 123 })
+      expect(bad_result.failure?).to be true
+    end
+  end
+
+  describe '#collection' do
+    it 'defines an array of hashes from a block' do
+      builder = described_class.new do
+        collection :pets do
+          param :name
+          param :species
+        end
+      end
+
+      schema = builder.build
+      result = schema.try({ pets: [{ name: 'Fido', species: 'dog' }] })
+      expect(result.success?).to be true
+    end
+
+    it 'validates elements against the nested schema' do
+      builder = described_class.new do
+        collection :items do
+          param :count, :integer
+        end
+      end
+
+      schema = builder.build
+      result = schema.try({ items: [{ count: 1 }, { count: 2 }] })
+      expect(result.success?).to be true
+
+      bad_result = schema.try({ items: [{ count: 'not_int' }] })
+      expect(bad_result.failure?).to be true
+    end
+
+    it 'rejects non-array values' do
+      builder = described_class.new do
+        collection :pets do
+          param :name
+        end
+      end
+
+      schema = builder.build
+      result = schema.try({ pets: 'not an array' })
+      expect(result.failure?).to be true
+    end
+  end
+
+  describe '#hash' do
+    it 'defines a nested hash from a block' do
+      builder = described_class.new do
+        hash :contact do
+          param :email
+          param :phone
+        end
+      end
+
+      schema = builder.build
+      result = schema.try({ contact: { email: 'a@b.com', phone: '555-1234' } })
+      expect(result.success?).to be true
+    end
+
+    it 'validates nested hash fields' do
+      builder = described_class.new do
+        hash :address do
+          param :zip, :integer
+        end
+      end
+
+      schema = builder.build
+      result = schema.try({ address: { zip: 12345 } })
+      expect(result.success?).to be true
+
+      bad_result = schema.try({ address: { zip: 'not_int' } })
+      expect(bad_result.failure?).to be true
+    end
+
+    it 'rejects non-hash values' do
+      builder = described_class.new do
+        hash :meta do
+          param :key
+        end
+      end
+
+      schema = builder.build
+      result = schema.try({ meta: 'not a hash' })
+      expect(result.failure?).to be true
+    end
+  end
 end
 
 RSpec.describe ReactiveView::Types::Signature do
