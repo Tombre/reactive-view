@@ -518,9 +518,12 @@ module ReactiveView
       # @param loader [Hash] Loader metadata including path and mutation_schemas
       # @return [String] TypeScript code for the streaming section
       def build_streaming_section(loader)
-        entries = loader[:mutation_schemas].map do |mutation_name, _schema|
+        mutation_schemas = loader[:mutation_schemas] || {}
+        return '' if mutation_schemas.empty?
+
+        entries = mutation_schemas.map do |mutation_name, _schema|
           base_name = mutation_name.to_s
-          {name: base_name}
+          { name: base_name }
         end
 
         mutation_names_union = entries.map { |e| "\"#{e[:name]}\"" }.join(' | ')

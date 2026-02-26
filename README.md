@@ -326,6 +326,10 @@ bin/dev
 # Or start them separately:
 bin/rails server                    # Rails on :3000
 cd .reactive_view && npm run dev    # SolidStart on :3001
+
+# Run Playwright Ruby E2E smoke test in Docker
+docker compose build
+docker compose run --rm app bin/e2e
 ```
 
 ### Useful Rake Tasks

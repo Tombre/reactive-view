@@ -94,6 +94,7 @@ GEM
     debug (1.11.1)
       irb (~> 1.10)
       reline (>= 0.3.8)
+    diff-lcs (1.6.2)
     drb (2.2.3)
     dry-core (1.2.0)
       concurrent-ruby (~> 1.0)
@@ -155,6 +156,10 @@ GEM
       net-pop
       net-smtp
     marcel (1.1.0)
+    mime-types (3.7.0)
+      logger
+      mime-types-data (~> 3.2025, >= 3.2025.0507)
+    mime-types-data (3.2026.0224)
     mini_mime (1.1.5)
     minitest (6.0.1)
       prism (~> 1.5)
@@ -174,6 +179,10 @@ GEM
       racc (~> 1.4)
     nokogiri (1.19.0-arm64-darwin)
       racc (~> 1.4)
+    playwright-ruby-client (1.58.1)
+      base64
+      concurrent-ruby (>= 1.1.6)
+      mime-types (>= 3.0)
     pp (0.6.3)
       prettyprint
     prettyprint (0.2.0)
@@ -236,6 +245,19 @@ GEM
       tsort
     reline (0.6.3)
       io-console (~> 0.5)
+    rspec (3.13.2)
+      rspec-core (~> 3.13.0)
+      rspec-expectations (~> 3.13.0)
+      rspec-mocks (~> 3.13.0)
+    rspec-core (3.13.6)
+      rspec-support (~> 3.13.0)
+    rspec-expectations (3.13.5)
+      diff-lcs (>= 1.2.0, < 2.0)
+      rspec-support (~> 3.13.0)
+    rspec-mocks (3.13.7)
+      diff-lcs (>= 1.2.0, < 2.0)
+      rspec-support (~> 3.13.0)
+    rspec-support (3.13.7)
     securerandom (0.4.1)
     sqlite3 (2.9.0-aarch64-linux-gnu)
     sqlite3 (2.9.0-arm64-darwin)
@@ -259,10 +281,12 @@ PLATFORMS
 
 DEPENDENCIES
   debug
+  playwright-ruby-client
   propshaft
   puma (>= 5.0)
   rails (~> 8.0.4)
   reactive_view!
+  rspec
   sqlite3 (>= 2.1)
   tzinfo-data
 

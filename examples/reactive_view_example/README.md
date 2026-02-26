@@ -61,6 +61,36 @@ docker compose up --build
 
 Then open http://localhost:3000.
 
+## End-to-End Tests (RSpec + Playwright Ruby)
+
+This example app includes browser E2E tests powered by `playwright-ruby-client` and RSpec.
+
+Run locally:
+
+```bash
+bin/e2e
+```
+
+Useful options:
+
+```bash
+# Run headed browser mode
+PLAYWRIGHT_HEADLESS=0 bin/e2e
+
+# Run one file
+bin/e2e spec/e2e/smoke_spec.rb
+```
+
+Run inside Docker:
+
+```bash
+docker compose build
+docker compose run --rm app bin/e2e
+```
+
+The Docker image installs Chromium and required Playwright OS dependencies at build time.
+The E2E runner uses an isolated SQLite database at `tmp/e2e.sqlite3`.
+
 ### Plain Docker
 
 From the repository root:
@@ -263,4 +293,7 @@ bin/rails reactive_view:types:generate
 
 # Check daemon status
 bin/rails reactive_view:daemon:status
+
+# Run E2E browser tests
+bin/e2e
 ```

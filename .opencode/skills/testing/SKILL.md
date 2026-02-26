@@ -55,6 +55,7 @@ Use this structure in status updates:
 
 ```md
 Validation run
+
 - Scope: <files or subsystem>
 - Command: `<command>` (workdir: `<dir>`)
 - Result: pass | fail | blocked

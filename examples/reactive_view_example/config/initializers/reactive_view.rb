@@ -2,8 +2,8 @@
 
 ReactiveView.configure do |config|
   # SolidStart daemon settings
-  config.daemon_host = 'localhost'
-  config.daemon_port = 3001
+  config.daemon_host = ENV.fetch('REACTIVE_VIEW_DAEMON_HOST', 'localhost')
+  config.daemon_port = ENV.fetch('REACTIVE_VIEW_DAEMON_PORT', 3001).to_i
   config.daemon_timeout = 30
 
   # Don't auto-start daemon - we'll use Procfile.dev instead

@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+APP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$APP_ROOT"
+
+E2E_DATABASE_URL="sqlite3:${APP_ROOT}/tmp/e2e.sqlite3"
+PLAYWRIGHT_CLI="${PLAYWRIGHT_CLI:-npx --yes playwright@1.58.2}"
+
+echo "Installing Ruby dependencies if needed..."
+if ! bundle check >/dev/null 2>&1; then
+  bundle install
+fi
+
+echo "Ensuring Chromium is installed for Playwright..."
+${PLAYWRIGHT_CLI} install chromium
+
+if [ ! -d ".reactive_view" ]; then
+  echo "Setting up ReactiveView working directory..."
+  bin/rails reactive_view:setup
+fi
+
+echo "Syncing ReactiveView files and generating loader types..."
+DATABASE_URL="$E2E_DATABASE_URL" RAILS_ENV=test bin/rails reactive_view:sync
+DATABASE_URL="$E2E_DATABASE_URL" RAILS_ENV=test bin/rails reactive_view:types:generate
+
+echo "Resetting and seeding test database..."
+DATABASE_URL="$E2E_DATABASE_URL" RAILS_ENV=test bin/rails db:drop db:create db:migrate db:seed
+
+echo "Running E2E specs..."
+export PLAYWRIGHT_CLI
+
+if [ "$#" -gt 0 ]; then
+  TEST_TARGETS=("$@")
+elif [ "${CI:-}" = "true" ] || [ "${CI:-}" = "1" ]; then
+  TEST_TARGETS=("spec/e2e/smoke_spec.rb")
+else
+  TEST_TARGETS=("spec/e2e")
+fi
+
+bundle exec rspec "${TEST_TARGETS[@]}"

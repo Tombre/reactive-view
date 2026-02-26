@@ -36,6 +36,9 @@ Note: no JS test runner is configured in this repo yet, so build is the current 
   - `bin/rails reactive_view:types:generate`
   - `bin/rails reactive_view:routes`
 - **Build check:** `npm run build`
+- **E2E browser tests (RSpec + Playwright Ruby):**
+  - `bin/e2e spec/e2e/smoke_spec.rb` (targeted)
+  - `bin/e2e` (full local e2e scope; CI defaults to smoke)
 - **Workdir:** `examples/reactive_view_example`
 - **Use when:** editing `app/pages/**`, `.loader.rb` files, example config, or ReactiveView integration wiring.
 
