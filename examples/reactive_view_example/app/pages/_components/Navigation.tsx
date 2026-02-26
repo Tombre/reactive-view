@@ -62,6 +62,9 @@ export default function Navigation() {
             <A href="/counter" class={navLinkClass("/counter", true)}>
               Counter
             </A>
+            <A href="/ai/chat" class={navLinkClass("/ai/chat", true)}>
+              AI Chat
+            </A>
           </nav>
         </div>
       </div>
