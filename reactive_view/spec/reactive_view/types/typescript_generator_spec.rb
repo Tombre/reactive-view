@@ -131,58 +131,128 @@ RSpec.describe ReactiveView::Types::TypescriptGenerator do
   end
 
   describe '#build_use_form_hook' do
-    let(:update_schema) do
+    let(:update_params_schema) do
       ReactiveView::Types::Hash.schema(
         name: ReactiveView::Types::String,
         email: ReactiveView::Types::String
       )
     end
 
-    let(:delete_schema) { ReactiveView::Types::Hash }
+    let(:update_mutation_data) do
+      { update: { params_schema: update_params_schema, response_schema: nil } }
+    end
+
+    let(:delete_mutation_data) do
+      { delete: { params_schema: ReactiveView::Types::Hash, response_schema: nil } }
+    end
+
+    let(:multi_mutation_data) do
+      {
+        update: { params_schema: update_params_schema, response_schema: nil },
+        delete: { params_schema: ReactiveView::Types::Hash, response_schema: nil }
+      }
+    end
 
     it 'generates a MutationName union type from mutation names' do
-      result = generator.send(:build_use_form_hook, { update: update_schema })
+      result = generator.send(:build_use_form_hook, update_mutation_data)
       expect(result).to include('type MutationName = "update";')
     end
 
     it 'generates a union of multiple mutation names' do
-      schemas = { update: update_schema, delete: delete_schema }
-      result = generator.send(:build_use_form_hook, schemas)
+      result = generator.send(:build_use_form_hook, multi_mutation_data)
       expect(result).to include('type MutationName = "update" | "delete";')
     end
 
     it 'generates a _mutations map with action and Form entries' do
-      schemas = { update: update_schema, delete: delete_schema }
-      result = generator.send(:build_use_form_hook, schemas)
+      result = generator.send(:build_use_form_hook, multi_mutation_data)
       expect(result).to include('update: { action: updateAction, Form: UpdateForm }')
       expect(result).to include('delete: { action: deleteAction, Form: DeleteForm }')
     end
 
     it 'generates a generic useForm function with inferred return type' do
-      schemas = { update: update_schema, delete: delete_schema }
-      result = generator.send(:build_use_form_hook, schemas)
+      result = generator.send(:build_use_form_hook, multi_mutation_data)
       expect(result).to include('export function useForm<T extends MutationName>(name: T)')
       expect(result).not_to include('FormSubmission')
       expect(result).not_to include('as any')
     end
 
     it 'generates the useForm implementation with as const tuple' do
-      result = generator.send(:build_use_form_hook, { update: update_schema })
+      result = generator.send(:build_use_form_hook, update_mutation_data)
       expect(result).to include('export function useForm<T extends MutationName>(name: T)')
       expect(result).to include('const mutation = _mutations[name];')
       expect(result).to include('return [mutation.Form, useSubmission(mutation.action)] as const;')
     end
 
     it 'generates JSDoc with example using the first mutation' do
-      result = generator.send(:build_use_form_hook, { update: update_schema })
+      result = generator.send(:build_use_form_hook, update_mutation_data)
       expect(result).to include('const [UpdateForm, submission] = useForm("update");')
     end
 
     it 'works with a single mutation' do
-      result = generator.send(:build_use_form_hook, { delete: delete_schema })
+      result = generator.send(:build_use_form_hook, delete_mutation_data)
       expect(result).to include('type MutationName = "delete";')
       expect(result).to include('delete: { action: deleteAction, Form: DeleteForm }')
       expect(result).to include('export function useForm<T extends MutationName>(name: T)')
+    end
+  end
+
+  describe '#build_mutation' do
+    let(:params_schema) do
+      ReactiveView::Types::Hash.schema(
+        name: ReactiveView::Types::String,
+        email: ReactiveView::Types::String
+      )
+    end
+
+    it 'generates params interface from params_schema' do
+      data = { params_schema: params_schema, response_schema: nil }
+      result = generator.send(:build_mutation, 'users/[id]', :update, data)
+
+      expect(result).to include('export interface UpdateParams')
+      expect(result).to include('name: string')
+      expect(result).to include('email: string')
+    end
+
+    it 'generates action constant' do
+      data = { params_schema: params_schema, response_schema: nil }
+      result = generator.send(:build_mutation, 'users/[id]', :update, data)
+
+      expect(result).to include('export const updateAction = createMutation<UpdateParams>("users/[id]", "update")')
+    end
+
+    it 'generates Form component' do
+      data = { params_schema: params_schema, response_schema: nil }
+      result = generator.send(:build_mutation, 'users/[id]', :update, data)
+
+      expect(result).to include('export function UpdateForm(')
+      expect(result).to include('action={updateAction}')
+    end
+
+    it 'generates response interface when response_schema differs from params_schema' do
+      response_schema = ReactiveView::Types::Hash.schema(
+        id: ReactiveView::Types::Integer,
+        name: ReactiveView::Types::String
+      )
+      data = { params_schema: params_schema, response_schema: response_schema }
+      result = generator.send(:build_mutation, 'users/[id]', :update, data)
+
+      expect(result).to include('export interface UpdateParams')
+      expect(result).to include('export interface UpdateResponse')
+      expect(result).to include('id: number')
+    end
+
+    it 'does not generate response interface when response_schema is nil' do
+      data = { params_schema: params_schema, response_schema: nil }
+      result = generator.send(:build_mutation, 'users/[id]', :update, data)
+
+      expect(result).not_to include('UpdateResponse')
+    end
+
+    it 'generates Record<string, unknown> for empty params schema' do
+      data = { params_schema: ReactiveView::Types::Hash, response_schema: nil }
+      result = generator.send(:build_mutation, 'users/[id]', :delete, data)
+
+      expect(result).to include('export type DeleteParams = Record<string, unknown>')
     end
   end
 

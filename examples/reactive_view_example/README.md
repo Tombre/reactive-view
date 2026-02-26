@@ -93,12 +93,14 @@ module Pages
   module Users
     class IdLoader < ReactiveView::Loader
       shape :load do
-        param :user, ReactiveView::Types::Hash.schema(
-          id: ReactiveView::Types::Integer,
-          name: ReactiveView::Types::String,
-          email: ReactiveView::Types::String
-        )
+        hash :user do
+          param :id, :integer
+          param :name
+          param :email
+        end
       end
+
+      response_shape :load, :load
 
       def load
         {

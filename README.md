@@ -160,10 +160,10 @@ module Pages
   module Users
     class IdLoader < ReactiveView::Loader
       shape :load do
-        param :user, ReactiveView::Types::Hash.schema(
-          id: ReactiveView::Types::Integer,
-          name: ReactiveView::Types::String
-        )
+        hash :user do
+          param :id, :integer
+          param :name
+        end
       end
 
       def load
@@ -493,42 +493,45 @@ export default function BlogLayout(props: RouteSectionProps) {
 
 ## Type System
 
-ReactiveView uses [Dry::Types](https://dry-rb.org/gems/dry-types/) for type definitions. Use the `shape` method to define the type signature for your loader methods:
+ReactiveView uses [Dry::Types](https://dry-rb.org/gems/dry-types/) for type definitions. Use the `shape` method to define named type signatures, then assign them to actions with `params_shape` and `response_shape`:
 
 ```ruby
 shape :load do
-  param :id, ReactiveView::Types::Integer
-  param :name, ReactiveView::Types::String
-  param :email, ReactiveView::Types::Optional[ReactiveView::Types::String]
-  param :tags, ReactiveView::Types::Array[ReactiveView::Types::String]
-  param :metadata, ReactiveView::Types::Hash.schema(
-    created_at: ReactiveView::Types::String,
-    updated_at: ReactiveView::Types::String
-  )
+  param :id, :integer
+  param :name                                                    # defaults to String
+  param :email, ReactiveView::Types::Optional[Types::String]     # explicit Dry type
+  param :tags, ReactiveView::Types::Array[Types::String]         # simple typed array
+  hash :metadata do                                              # nested hash
+    param :created_at
+    param :updated_at
+  end
 end
+
+response_shape :load, :load
 ```
 
-The `shape` method takes a method name as its first argument (defaults to `:load`). Use `:load` for data loading and any other name for mutations:
+The `shape` method registers a named shape definition. Use `response_shape` to assign a shape as the response type for an action, and `params_shape` to assign it as the params type for a mutation. Symbol shortcuts (`:integer`, `:string`, `:boolean`, `:float`, `:date`, `:date_time`, `:time`, `:any`) and the `collection`/`hash` DSL helpers make definitions concise:
 
 ```ruby
-# Explicit method name
+# Response shape for the load action
 shape :load do
-  param :users, ReactiveView::Types::Array[...]
+  collection :users do    # array of hashes
+    param :id, :integer
+    param :name
+  end
 end
+response_shape :load, :load
 
-# Implicit :load (same as above)
-shape do
-  param :users, ReactiveView::Types::Array[...]
-end
-
-# Mutations - any name except :load
+# Mutation shapes
 shape :update do
-  param :name, ReactiveView::Types::String
-  param :email, ReactiveView::Types::String
+  param :name
+  param :email
 end
+params_shape :update, :update
 
 shape :delete do
 end
+params_shape :delete, :delete
 ```
 
 ### Response Validation
@@ -636,7 +639,7 @@ import { A, useParams } from "@solidjs/router";
 
 ### Mutations
 
-Define data mutations alongside your loaders in `.loader.rb` files. Mutations are any `shape` with a name other than `:load`:
+Define data mutations alongside your loaders in `.loader.rb` files. Mutations use `shape` to define their params, then `params_shape` to assign:
 
 ```ruby
 # app/pages/users/[id].loader.rb
@@ -644,26 +647,30 @@ module Pages
   module Users
     class IdLoader < ReactiveView::Loader
       shape :load do
-        param :user, ReactiveView::Types::Hash.schema(
-          id: ReactiveView::Types::Integer,
-          name: ReactiveView::Types::String,
-          email: ReactiveView::Types::String
-        )
+        hash :user do
+          param :id, :integer
+          param :name
+          param :email
+        end
       end
 
       shape :update do
-        param :name, ReactiveView::Types::String
-        param :email, ReactiveView::Types::String
+        param :name
+        param :email
       end
+
+      # Assign shapes to actions
+      response_shape :load, :load
+      params_shape :update, :update
 
       def load
         { user: { id: user.id, name: user.name, email: user.email } }
       end
 
       def update
-        typed_params = shapes.update(params)
+        result = shapes.update.call!(params)
 
-        if user.update(typed_params)
+        if user.update(result.data)
           render_success(user: { id: user.id, name: user.name, email: user.email })
         else
           render_error(user)
@@ -677,6 +684,22 @@ module Pages
       end
     end
   end
+end
+```
+
+The `shapes.update` call returns the Shape **class** (not validated data). Call `.call!(params)` for raising validation or `.call(params)` for non-raising. The result is a Shape instance with `.valid?`, `.data`, and `.errors`:
+
+```ruby
+# Raising — raises ReactiveView::ValidationError on failure
+result = shapes.update.call!(params)
+result.data  # => { name: "Alice", email: "alice@example.com" }
+
+# Non-raising — check .valid? / .errors
+result = shapes.update.call(params)
+if result.valid?
+  user.update(result.data)
+else
+  render json: { errors: result.errors }, status: :unprocessable_entity
 end
 ```
 

@@ -5,27 +5,23 @@ module Pages
     module Dashboard
       class AnalyticsLoader < ReactiveView::Loader
         shape :load do
-          param :chart_data, ReactiveView::Types::Array[
-            ReactiveView::Types::Hash.schema(
-              label: ReactiveView::Types::String,
-              value: ReactiveView::Types::Integer
-            )
-          ]
-          param :top_pages, ReactiveView::Types::Array[
-            ReactiveView::Types::Hash.schema(
-              path: ReactiveView::Types::String,
-              views: ReactiveView::Types::Integer
-            )
-          ]
-          param :traffic_sources, ReactiveView::Types::Array[
-            ReactiveView::Types::Hash.schema(
-              source: ReactiveView::Types::String,
-              percentage: ReactiveView::Types::Integer
-            )
-          ]
-          param :total_views, ReactiveView::Types::Integer
-          param :period, ReactiveView::Types::String
+          collection :chart_data do
+            param :label
+            param :value, :integer
+          end
+          collection :top_pages do
+            param :path
+            param :views, :integer
+          end
+          collection :traffic_sources do
+            param :source
+            param :percentage, :integer
+          end
+          param :total_views, :integer
+          param :period
         end
+
+        response_shape :load, :load
 
         def load
           period = params[:period] || 'week'

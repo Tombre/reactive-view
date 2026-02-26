@@ -214,9 +214,12 @@ module ReactiveView
 
     def validate_response!(loader_class, data)
       return unless ReactiveView.configuration.should_validate_responses?
-      return unless loader_class._method_shapes[:load]
 
-      validator = Types::Validator.new(loader_class._method_shapes[:load])
+      # Resolve the response shape for the :load action
+      shape_class = loader_class.resolve_response_shape(:load)
+      return unless shape_class
+
+      validator = Types::Validator.new(shape_class.dry_schema)
       validator.validate!(data)
     end
 

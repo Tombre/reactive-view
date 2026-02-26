@@ -9,9 +9,11 @@ module ReactiveView
   #   # app/pages/users/[id].loader.rb
   #   class Pages::Users::IdLoader < ReactiveView::Loader
   #     shape :load do
-  #       param :id, ReactiveView::Types::Integer
-  #       param :name, ReactiveView::Types::String
+  #       param :id, :integer
+  #       param :name
   #     end
+  #
+  #     response_shape :load, :load
   #
   #     def load
   #       { id: user.id, name: user.name }
@@ -34,16 +36,20 @@ module ReactiveView
   #     end
   #
   #     shape :update do
-  #       param :name, ReactiveView::Types::String
-  #       param :email, ReactiveView::Types::String
+  #       param :name
+  #       param :email
   #     end
+  #
+  #     response_shape :load, :load
+  #     params_shape :update, :update
   #
   #     def load
   #       { user: { id: user.id, name: user.name } }
   #     end
   #
   #     def update
-  #       if user.update(shapes.update(params))
+  #       result = shapes.update.call!(params)
+  #       if user.update(result.data)
   #         render_success(user: { id: user.id, name: user.name })
   #       else
   #         render_error(user)
@@ -65,6 +71,8 @@ module ReactiveView
   #       param :stats, ReactiveView::Types::Hash
   #     end
   #
+  #     response_shape :load, :load
+  #
   #     def load
   #       { stats: AdminStats.current }
   #     end
@@ -76,45 +84,135 @@ module ReactiveView
   #     end
   #   end
   #
+  # @example Using a standalone Shape class
+  #   class UserUpdateShape < ReactiveView::Shape
+  #     shape do
+  #       param :name
+  #       param :email
+  #     end
+  #   end
+  #
+  #   class Pages::Users::IdLoader < ReactiveView::Loader
+  #     params_shape :update, UserUpdateShape
+  #
+  #     def update
+  #       result = shapes.update.call!(params)
+  #       user.update(result.data)
+  #     end
+  #   end
+  #
   class Loader < ActionController::Base
-    # Store the type shapes for loader methods
-    # Supports multiple methods like :load, :mutate, etc.
-    class_attribute :_method_shapes, default: {}
+    # Named shape definitions: { name => Shape class }
+    # Shapes defined via the block DSL or assigned as Shape classes
+    class_attribute :_shapes, default: {}
+
+    # Params shape assignments: { action_name => shape_ref (Symbol or Class) }
+    # Defines which shape validates incoming params for a given action
+    class_attribute :_params_shapes, default: {}
+
+    # Response shape assignments: { action_name => shape_ref (Symbol or Class) }
+    # Defines which shape validates outgoing response data for a given action
+    class_attribute :_response_shapes, default: {}
 
     class << self
-      # Define the type shape for a loader method
-      # Used for TypeScript type generation and runtime validation
+      # Define a named shape. Creates an anonymous Shape subclass from the block
+      # and stores it under the given name. Can also accept a Shape class directly.
       #
-      # @param method_name [Symbol] The method to define the shape for (defaults to :load)
-      # @yield Block defining the parameters
+      # Shapes defined here are stored in `_shapes` and can be referenced by name
+      # in `params_shape` and `response_shape` declarations.
       #
-      # @example Define a load shape
+      # @param name [Symbol] The name to register the shape under
+      # @param klass [Class, nil] An optional Shape class to use directly
+      # @yield Block defining the shape's parameters (evaluated via SignatureBuilder DSL)
+      #
+      # @example Define a shape with a block
       #   shape :load do
-      #     param :id, ReactiveView::Types::Integer
-      #     param :name, ReactiveView::Types::String
+      #     param :id, :integer
+      #     param :name
       #   end
       #
-      # @example Using default method (:load)
-      #   shape do
-      #     param :users, ReactiveView::Types::Array[...]
-      #   end
-      #
-      # @example Define a mutation shape
-      #   shape :update do
-      #     param :name, ReactiveView::Types::String
-      #     param :email, ReactiveView::Types::String
-      #   end
-      def shape(method_name = :load, &block)
-        builder = Types::SignatureBuilder.new(&block)
-        self._method_shapes = _method_shapes.merge(method_name => builder.build)
+      # @example Register a Shape class
+      #   shape :update, UserUpdateShape
+      def shape(name, klass = nil, &block)
+        if klass
+          unless klass.is_a?(Class) && klass <= ReactiveView::Shape
+            raise ArgumentError, "Expected a ReactiveView::Shape subclass, got #{klass}"
+          end
+
+          self._shapes = _shapes.merge(name => klass)
+        elsif block_given?
+          shape_class = Class.new(ReactiveView::Shape) { shape(&block) }
+          self._shapes = _shapes.merge(name => shape_class)
+        else
+          raise ArgumentError, "shape requires either a Shape class or a block"
+        end
       end
 
-      # Internal helper to access the :load shape
-      # Maintains compatibility with existing code that accesses _loader_sig
+      # Assign a shape as the params validator for an action.
+      # The shape will be used to validate and coerce incoming params
+      # when the action is called as a mutation.
       #
-      # @return [Dry::Types::Type, nil] The load method's type schema
-      def _loader_sig
-        _method_shapes[:load]
+      # @param action [Symbol] The action (mutation) name
+      # @param shape_ref [Symbol, Class] A symbol key referencing a shape in `_shapes`,
+      #   or a Shape class directly
+      #
+      # @example Using a symbol key
+      #   params_shape :update, :update
+      #
+      # @example Using a Shape class
+      #   params_shape :update, UserUpdateShape
+      def params_shape(action, shape_ref)
+        self._params_shapes = _params_shapes.merge(action => shape_ref)
+      end
+
+      # Assign a shape as the response validator for an action.
+      # The shape will be used to validate outgoing response data
+      # and to generate TypeScript interfaces for the loader data.
+      #
+      # @param action [Symbol] The action name
+      # @param shape_ref [Symbol, Class] A symbol key referencing a shape in `_shapes`,
+      #   or a Shape class directly
+      #
+      # @example Using a symbol key
+      #   response_shape :load, :load
+      #
+      # @example Using a Shape class
+      #   response_shape :load, UserResponseShape
+      def response_shape(action, shape_ref)
+        self._response_shapes = _response_shapes.merge(action => shape_ref)
+      end
+
+      # Resolve a shape reference (Symbol or Class) to its Shape class.
+      #
+      # @param ref [Symbol, Class] A symbol key or Shape class
+      # @return [Class, nil] The resolved Shape class, or nil if not found
+      def resolve_shape(ref)
+        case ref
+        when Symbol
+          _shapes[ref]
+        when Class
+          ref <= ReactiveView::Shape ? ref : nil
+        else
+          nil
+        end
+      end
+
+      # Resolve the params shape for a given action.
+      #
+      # @param action [Symbol] The action name
+      # @return [Class, nil] The Shape class for params, or nil
+      def resolve_params_shape(action)
+        ref = _params_shapes[action]
+        ref ? resolve_shape(ref) : nil
+      end
+
+      # Resolve the response shape for a given action.
+      #
+      # @param action [Symbol] The action name
+      # @return [Class, nil] The Shape class for response, or nil
+      def resolve_response_shape(action)
+        ref = _response_shapes[action]
+        ref ? resolve_shape(ref) : nil
       end
     end
 
@@ -191,18 +289,29 @@ module ReactiveView
     # Mutation Helpers
     # =========================================================================
 
-    # Accessor for shape-based param extraction.
-    # Use this to extract and validate params based on your shape definitions.
+    # Accessor for shape-based param extraction and validation.
+    # Returns a ShapesAccessor that provides access to Shape classes
+    # for each defined shape.
     #
-    # @return [ShapesAccessor] Helper for extracting typed params
+    # @return [ShapesAccessor] Helper for accessing shapes
     #
-    # @example Extract params for an update mutation
+    # @example Extract and validate params for an update mutation
     #   def update
-    #     attrs = shapes.update(params)  # Only extracts keys defined in shape :update
-    #     user.update(attrs)
+    #     result = shapes.update.call!(params)
+    #     user.update(result.data)
+    #   end
+    #
+    # @example Non-raising validation
+    #   def update
+    #     result = shapes.update.call(params)
+    #     if result.valid?
+    #       user.update(result.data)
+    #     else
+    #       render_error(result.errors)
+    #     end
     #   end
     def shapes
-      @shapes ||= ShapesAccessor.new(self.class._method_shapes)
+      @shapes ||= ShapesAccessor.new(self.class._shapes)
     end
 
     # Return a successful mutation response.
