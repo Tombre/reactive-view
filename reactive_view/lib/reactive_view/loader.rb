@@ -269,6 +269,39 @@ module ReactiveView
       MutationResult.redirect(path, revalidate: revalidate)
     end
 
+    # Return a streaming SSE response from a mutation method.
+    # The block receives a StreamWriter for sending chunks to the client.
+    #
+    # This is used for long-running operations like AI text generation
+    # where results should be streamed to the client as they become available.
+    #
+    # @yield [writer] Block that sends data through the stream
+    # @yieldparam writer [StreamWriter] Writer for sending text, JSON, or custom events
+    # @return [StreamResponse] A stream response object (handled by the controller)
+    #
+    # @example Stream AI-generated text
+    #   def generate
+    #     render_stream do |out|
+    #       AiService.chat(params[:prompt]).each_chunk do |token|
+    #         out << token
+    #       end
+    #     end
+    #   end
+    #
+    # @example Stream with metadata
+    #   def generate
+    #     render_stream do |out|
+    #       result = AiService.chat(params[:prompt])
+    #       result.each_chunk { |token| out << token }
+    #       out.json({ usage: result.usage })
+    #     end
+    #   end
+    def render_stream(&block)
+      raise ArgumentError, "render_stream requires a block" unless block_given?
+
+      StreamResponse.new(block)
+    end
+
     private
 
     def renderer

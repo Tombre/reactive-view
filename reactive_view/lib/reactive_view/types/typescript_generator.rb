@@ -158,6 +158,9 @@ module ReactiveView
         # Mutation interfaces, actions, and forms
         parts << build_mutations_section(loader) if has_mutations
 
+        # Streaming hooks for mutations
+        parts << build_streaming_section(loader) if has_mutations
+
         parts.join("\n")
       end
 
@@ -171,6 +174,7 @@ module ReactiveView
           imports << 'import type { JSX } from "@reactive-view/core";'
           imports << 'import { createMutation, useAction, useSubmission, useSubmissions } from "@reactive-view/core";'
           imports << 'import type { MutationResult } from "@reactive-view/core";'
+          imports << 'import { createStream, type StreamState } from "@reactive-view/core";'
         end
 
         imports.join("\n") + "\n"
@@ -392,6 +396,91 @@ module ReactiveView
           export function useForm<T extends MutationName>(name: T) {
             const mutation = _mutations[name];
             return [mutation.Form, useSubmission(mutation.action)] as const;
+          }
+        TYPESCRIPT
+      end
+
+      # Build the streaming section (useStream hook for mutations)
+      #
+      # Generates a `useStream()` hook that returns a `[StreamForm, stream]` tuple,
+      # similar to `useForm`. The StreamForm handles form submission and starts the
+      # SSE stream. The stream object provides reactive state for tracking data,
+      # streaming status, errors, and chunks.
+      #
+      # @param loader [Hash] Loader metadata including path and mutation_schemas
+      # @return [String] TypeScript code for the streaming section
+      def build_streaming_section(loader)
+        entries = loader[:mutation_schemas].map do |mutation_name, _schema|
+          base_name = mutation_name.to_s
+          {name: base_name}
+        end
+
+        mutation_names_union = entries.map { |e| "\"#{e[:name]}\"" }.join(' | ')
+
+        <<~TYPESCRIPT
+
+          // ============================================================================
+          // Streaming (SSE)
+          // ============================================================================
+
+          /** Available stream mutation names for this route */
+          type StreamMutationName = #{mutation_names_union};
+
+          /**
+           * Hook for SSE streaming from a mutation endpoint.
+           * Returns a `[StreamForm, stream]` tuple similar to `useForm`.
+           *
+           * The `StreamForm` component handles form submission and starts the stream.
+           * The `stream` object provides reactive state and a programmatic `start()` method.
+           *
+           * @param name - The mutation name (#{entries.map { |e| "\"#{e[:name]}\"" }.join(', ')})
+           * @returns A readonly tuple of `[StreamFormComponent, StreamState]`
+           *
+           * @example
+           * const [StreamForm, stream] = useStream("#{entries.first[:name]}");
+           *
+           * <StreamForm>
+           *   <input name="prompt" />
+           *   <button type="submit" disabled={stream.streaming()}>Send</button>
+           * </StreamForm>
+           *
+           * <Show when={stream.data()}>
+           *   <p>{stream.data()}</p>
+           * </Show>
+           *
+           * @example Programmatic usage
+           * const [, stream] = useStream("#{entries.first[:name]}");
+           * stream.start({ prompt: "Hello" });
+           */
+          export function useStream<T extends StreamMutationName>(name: T): readonly [
+            (props: Omit<JSX.FormHTMLAttributes<HTMLFormElement>, "action" | "method">) => JSX.Element,
+            StreamState
+          ] {
+            const stream = createStream("#{loader[:path]}", name);
+
+            function StreamForm(
+              props: Omit<JSX.FormHTMLAttributes<HTMLFormElement>, "action" | "method">
+            ) {
+              return (
+                <form
+                  {...props}
+                  onSubmit={(e: SubmitEvent) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.target as HTMLFormElement);
+                    const params: Record<string, unknown> = {};
+                    formData.forEach((value, key) => { params[key] = value; });
+                    // Call user's onSubmit BEFORE starting the stream so UI prep
+                    // (e.g. adding placeholder messages) runs while streaming() is still false.
+                    if (typeof props.onSubmit === "function") {
+                      (props.onSubmit as (e: SubmitEvent) => void)(e);
+                    }
+                    stream.start(params);
+                  }}
+                />
+              );
+            }
+
+            return [StreamForm, stream] as const;
           }
         TYPESCRIPT
       end

@@ -136,6 +136,15 @@ export {
 export type { MutationResult } from "./mutation.js";
 
 // ============================================================================
+// ReactiveView — Streaming
+// ============================================================================
+
+export {
+  createStream,
+} from "./stream.js";
+export type { StreamState, StreamChunk, StreamOptions } from "./stream.js";
+
+// ============================================================================
 // ReactiveView — CSRF Utilities
 // ============================================================================
 
