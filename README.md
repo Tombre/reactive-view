@@ -12,6 +12,12 @@ Build your frontend with TSX components (TypeScript + SolidJS), with all data, a
 - **Mutations** - Define data mutations alongside loaders with auto-generated forms, CSRF protection, and typed params
 - **Rails Integration** - Use Rails for auth, models, business logic - SolidJS for the UI
 
+## Documentation
+
+- Docs home: [docs/README.md](docs/README.md)
+- Guides index: [docs/guides/index.md](docs/guides/index.md)
+- Reference index: [docs/reference/index.md](docs/reference/index.md)
+
 ## Motivation
 
 There has been an explosion of "frontend-first" JS frameworks (Next.js, Remix, SolidStart, etc.) that have made it easier than ever to build highly reactive frontends. These frameworks do incredible things: loading minimal JavaScript, building in reusable components, and enabling reactive stateful UIs.
@@ -85,11 +91,17 @@ reactive-view/
 │               └── routes/     # Generated wrappers
 │
 └── docs/
-    ├── design/overview.md      # Design document
-    ├── guides/                 # User-facing guides
-    │   ├── loaders.md          # Loaders guide
-    │   ├── mutations.md        # Mutations guide
-    │   └── configuration.md    # Configuration guide
+    ├── README.md               # Docs landing page
+    ├── guides/                 # How-to and concept guides
+    │   ├── index.md
+    │   ├── getting-started/
+    │   ├── concepts/
+    │   ├── data/
+    │   └── operations/
+    ├── reference/              # API references (Ruby + TypeScript)
+    │   ├── index.md
+    │   ├── ruby/
+    │   └── typescript/
     └── agent/tasks/            # Follow-up tasks
 ```
 
@@ -739,9 +751,9 @@ export default function UserPage() {
 }
 ```
 
-For the full guide on mutations including response helpers, programmatic submissions, CSRF handling, and error patterns, see [docs/guides/mutations.md](docs/guides/mutations.md).
+For the full guide on mutations including response helpers, programmatic submissions, CSRF handling, and error patterns, see [docs/guides/data/mutations.md](docs/guides/data/mutations.md).
 
-For a detailed guide on data loading, see [docs/guides/loaders.md](docs/guides/loaders.md).
+For a detailed guide on data loading, see [docs/guides/data/loaders.md](docs/guides/data/loaders.md).
 
 ## Current Limitations (MVP)
 
