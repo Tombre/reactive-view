@@ -1,304 +1,79 @@
 # AGENTS.md - Agent Guidelines for ReactiveView
 
-ReactiveView is a Ruby on Rails view framework that replaces the view layer with TSX components (TypeScript + SolidJS). All data, auth, and business logic remain in Rails.
+ReactiveView is a Ruby on Rails view framework gem for building modern reactive frontends without splitting into separate frontend/backend services. It replaces the Rails view layer with TSX components (TypeScript + SolidJS) while keeping data, auth, and business logic in Rails.
 
-Read the `README.md` document for when you need more context on how the gem works and the motivation behind it.
+## What the Gem Does
+
+- SSR + hydration: pages are server-rendered and hydrate into interactive SolidJS apps.
+- Type safety: TypeScript types are generated from Ruby `shape` definitions.
+- File-based routing: routes come from `app/pages/` (SolidStart style).
+- Loader and mutation pattern: data loading and mutations are defined in Ruby loaders with typed params/results.
+- Rails-first architecture: Rails owns auth/models/business rules; SolidJS owns UI rendering and interactivity.
+
+## High-Level Architecture
+
+ReactiveView coordinates a Rails Engine with a SolidStart daemon:
+
+- Rails receives the request, runs loader/auth logic, and coordinates rendering.
+- SolidStart daemon performs SSR for TSX pages.
+- Daemon callbacks hit loader-data endpoints in Rails for typed data payloads.
+- Final response is SSR HTML plus hydration scripts.
+
+Read `README.md` when you need deeper context on architecture and motivation.
 
 ## Project Structure
 
 - `reactive_view/` - Ruby gem (Rails Engine, routing, loaders)
 - `reactive_view/template/` - SolidStart frontend template
 - `examples/reactive_view_example/` - Demo Rails app
-- `docs/`: design notes plus follow-up agent tasks for roadmap work.
+- `docs/` - design notes and roadmap tasks
 
-Use relative paths in discussions so fellow agents can jump straight into files.
+Use relative paths in discussions so other agents can jump directly to files.
 
 ## External File Loading
 
-CRITICAL: When you encounter a file reference (e.g., @docs/general.md), use your Read tool to load it on a need-to-know basis. They're relevant to the SPECIFIC task at hand.
+CRITICAL: When you encounter a file reference (for example `@docs/general.md`), load it on demand.
 
-Instructions:
+- Do not preemptively load all references.
+- When loaded, referenced docs are mandatory instructions that override defaults.
+- Follow references recursively when needed.
 
-- Do NOT preemptively load all references - use lazy loading based on actual need
-- When loaded, treat content as mandatory instructions that override defaults
-- Follow references recursively when needed
+## Non-Negotiables
 
-## Toolchain & Environment Expectations
+- Stay surgical: edit only files needed for the task.
+- Prefer edits over rewrites; keep history meaningful.
+- Run targeted tests for touched areas before handing back work.
+- Keep generated artifacts (`.reactive_view`, `coverage`, `tmp`, `node_modules`) untracked.
+- Keep AGENTS and docs synchronized with reality when workflows change.
 
-1. Ruby 3.1+ with Bundler installed.
-2. Node.js 18+ with npm.
-3. PostgreSQL or SQLite as provided via Rails defaults; do not assume external services.
-4. SolidJS ecosystem (Vinxi, @solidjs/start) lives inside `reactive_view/template` and `.reactive_view` directories generated inside Rails apps.
-5. When switching contexts (gem vs example app) after having made changes to dependencies, re-run `bundle install` or `npm install` inside that context to keep lockfiles aligned.
+## Core Coding Rules
 
-## Setup Checklist by Area
+### Ruby
 
-- **Gem development**: `cd reactive_view && bundle install` then `bundle exec rake -T` to verify tasks.
-- **Example app**: `cd examples/reactive_view_example`, run `bundle install`, then `bin/rails db:prepare`, `bin/rails reactive_view:setup`, and `bin/dev`.
-- **Template work**: `cd reactive_view/template`, install npm deps, and run `npm run dev` to validate.
-- Respect `.reactive_view` artifacts in the example app; regenerate them with `bin/rails reactive_view:setup` whenever the gem changes.
+- Two spaces, no tabs.
+- Prefer guard clauses and small methods.
+- Class/module names in `CamelCase`; methods/vars in `snake_case`.
+- Raise domain-specific errors and log once at boundaries.
+- Use `Rails.logger` over `puts`.
 
-## Build / Lint / Test Commands (Root Level)
+### TypeScript / SolidStart
 
-1. Install dependencies: `bundle install`.
-2. Run the full spec suite: `bundle exec rspec`.
-3. Run a single spec file: `bundle exec rspec spec/reactive_view/request_context_spec.rb`.
-4. Run a single example inside a file: `bundle exec rspec spec/reactive_view/request_context_spec.rb:42` (preferred for rapid iteration).
-5. Format Ruby manually using Standard Ruby conventions (2 spaces, double quotes when interpolation is expected). There is no automated formatter; keep diffs tidy.
-6. Type generation / utility tasks live under `bundle exec rake reactive_view:*`; inspect `reactive_view/tasks/reactive_view.rake` for the canonical list.
-7. No official Ruby lint script is wired up. Follow RuboCop/Standard defaults: snake_case methods, CamelCase classes, explicit `freeze` where needed, and guard clauses. Use `bundle exec rubocop` to validate
+CRITICAL: ReactiveView uses SolidJS TSX, not React JSX.
 
-### Example App (`examples/reactive_view_example/`)
+- Use HTML attributes (`class`, `for`, `tabindex`) rather than React aliases.
+- Use Solid control flow (`<Show>`, `<For>`, `<Switch>/<Match>`), not JSX shortcuts.
+- Use Solid event and state conventions (`e.target`, `createSignal`, `createResource`).
+- Keep loader imports and typed route data aligned with project conventions.
 
-1. Dependencies: `bundle install` plus Node modules generated by `bin/rails reactive_view:setup`.
-2. Database: `bin/rails db:create db:migrate db:seed` (or `bin/rails db:prepare`).
-3. Development servers together: `bin/dev` (Procfile runs Rails + SolidStart daemon); expect Rails on `:3000` and the daemon proxied internally.
-4. Run just Rails server: `bin/rails server`.
-5. Run SolidStart standalone (after setup): `cd .reactive_view && npm run dev -- --port 3001`.
-6. Rails tests use the default minitest harness: `bin/rails test` for the full suite or `bin/rails test test/models/user_test.rb:12` for a single test.
-7. Keep the `.reactive_view` directory out of version control in example scenarios; it is generated.
+## Project-Scoped Skills
 
-```bash
-bundle install && bin/rails db:setup
-bin/rails reactive_view:setup                     # Setup .reactive_view
-bin/dev                                           # Start Rails + SolidStart
-bin/rails reactive_view:routes                    # Show routes
-bin/rails reactive_view:types:generate            # Generate TS types
-```
+Load task-specific guidance from local skills under `.opencode/skills/`.
 
-### Frontend Template (`reactive_view/template/`)
+- `setup`: environment setup and context switching commands.
+- `automation-hooks`: route/type sync commands and HMR wrapper workflow.
+- `testing`: test strategy, command matrix, and RSpec conventions.
+- `debugging`: logs, daemon troubleshooting, and failure triage.
+- `solidjs`: full SolidJS coding standards and anti-React guardrails.
+- `pr-checklist`: PR readiness and documentation/release checklist.
 
-1. `cd reactive_view/template` before running node commands.
-2. Install dependencies: `npm install`.
-3. Dev server: `npm run dev -- --port 3001` (Vinxi / SolidStart dev loop).
-4. Production build: `npm run build`.
-5. Preview built output: `npm run start` (serves the Vinxi bundle pointing at SSR entry points).
-6. There is no lint/test script defined; prefer `npx biome check` or `npx eslint .` if you add configuration, but do not commit tooling without discussion.
-7. TypeScript `tsconfig.json` already targets modern modules; keep custom compiler options consistent.
-
-```bash
-npm install && npm run dev    # Dev server on :3001
-npm run build                 # Production build
-```
-
-## Essential Automation Hooks
-
-- `bin/rails reactive_view:routes`: Inspect generated routes when debugging mismatches.
-- `bin/rails reactive_view:types:generate`: Generate TypeScript types in `.reactive_view/types/`:
-  - Per-route loader files in `.reactive_view/types/loaders/` for auto-typed `useLoaderData()`
-  - Central route map in `.reactive_view/types/loader-data.d.ts` for cross-route loading
-  - Run after modifying `shape` definitions in `.loader.rb` files
-- `bin/rails reactive_view:sync`: Syncs TSX files and generates route wrappers:
-  - Copies `app/pages/*.tsx` to `.reactive_view/src/pages/` (HMR-friendly location)
-  - Generates thin wrappers in `.reactive_view/src/routes/` that import from `src/pages/`
-  - This wrapper pattern enables true HMR (state preserved on component edits)
-- `bin/rails reactive_view:daemon:*`: Start/stop/status for the SSR daemon when not relying on `bin/dev`.
-- Bundle exec wrappers (`bundle exec rails`, `bundle exec rake`) are mandatory inside `reactive_view/` to ensure the gemspec load path is respected.
-
-## File Sync & HMR Architecture
-
-ReactiveView uses a wrapper pattern to work around Vinxi's full-reload behavior for route files:
-
-```
-app/pages/counter.tsx (source - you edit this)
-        │
-        ↓ FileSync
-.reactive_view/src/pages/counter.tsx (synced component - HMR works here)
-        │
-        ↓ imported by
-.reactive_view/src/routes/counter.tsx (generated wrapper - never changes)
-```
-
-**Why this matters:**
-
-- Vinxi triggers full page reload when files in `src/routes/` change
-- By keeping actual components in `src/pages/`, edits don't touch route files
-- Vite's HMR can hot-swap the component without a full reload
-- State (signals, etc.) is preserved during development
-
-## Coding Style Guidelines (Ruby)
-
-1. Use two spaces for indentation; never tabs.
-2. Prefer guard clauses over deep nesting.
-3. Use double quotes when interpolation is expected, single quotes otherwise.
-4. Keep method definitions small; extract service objects or concerns when files exceed ~200 lines.
-5. Names: Classes/Modules are `CamelCase`, methods and variables are `snake_case`, constants are `SCREAMING_SNAKE_CASE`.
-6. Import order: standard library first, third-party gems second, internal relative paths last (use `require_relative` only when absolutely necessary).
-7. Type safety: leverage Dry::Types for loader shape definitions; never bypass validations unless a TODO explains why.
-8. Error handling: raise domain-specific errors (see `ReactiveView::Error` derivatives) and rescue them at controller/daemon boundaries only.
-9. Logging: prefer `Rails.logger.info/debug` with contextual payloads; avoid `puts`.
-10. Comments: document non-obvious side effects or security constraints; avoid narrating obvious code.
-11. Use `@var ||=` pattern for memoization
-12. Add YARD docs to document public methods with `@param`, `@return`, `@example`
-13. Group private at bottom after `private` keyword
-
-## Coding Style Guidelines (TypeScript / SolidStart)
-
-**CRITICAL**: ReactiveView uses SolidJS TSX, NOT React JSX. Follow SolidJS conventions strictly.
-
-### SolidJS vs React Key Differences (MANDATORY)
-
-| ❌ React (WRONG)            | ✅ SolidJS (CORRECT)                     | Rule                              |
-| --------------------------- | ---------------------------------------- | --------------------------------- |
-| `className="..."`           | `class="..."`                            | Use standard HTML attribute names |
-| `htmlFor="..."`             | `for="..."`                              | Standard HTML attributes          |
-| `e.currentTarget`           | `e.target`                               | SolidJS event handling            |
-| `{condition && <div/>}`     | `<Show when={condition}><div/></Show>`   | Control flow components           |
-| `{arr.map(item => <div/>)}` | `<For each={arr}>{item => <div/>}</For>` | Control flow components           |
-
-### SolidJS Coding Standards
-
-1. **HTML Attributes**: Always use standard HTML attribute names:
-
-   - `class` not `className`
-   - `for` not `htmlFor`
-   - `tabindex` not `tabIndex`
-
-2. **Event Handling**:
-
-   - Use `e.target` not `e.currentTarget`
-   - Event names are camelCase: `onClick`, `onChange`, `onSubmit`
-
-3. **Control Flow**: Use SolidJS control flow components:
-
-   - `<Show when={condition}>` for conditional rendering
-   - `<For each={array}>` for lists
-   - `<Switch>` and `<Match>` for complex conditionals
-
-4. **Import Order**: Node built-ins, npm deps (`solid-js`, `@solidjs/router`), loader imports (`#loaders/*`), then relative components.
-
-5. **TypeScript**: Use TypeScript interfaces for public contracts and `type` aliases for unions / utility shapes.
-
-6. **Return Types**: Prefer explicit return types for exported functions, loaders, and hooks.
-
-7. **Immutability**: Enforce immutability where possible (`const` by default, `let` only when reassignment is required).
-
-8. **JSX/TSX Formatting**: Two spaces indentation, closing brackets on their own line for multi-line elements.
-
-9. **Signals/State**: Use SolidJS primitives (`createSignal`, `createResource`) and never mutate the returned getters.
-
-10. **Error Handling**: Error boundaries are not baked in yet; wrap risky UI in local `try/catch` plus fallback UI until global boundaries ship (see `docs/agent/tasks/06-error-boundaries.md`).
-
-11. **Async Operations**: Use async/await with `try/catch` for fetches; surface errors via UI-friendly states rather than `alert`.
-
-12. **CSS Classes**: Use Tailwind utility classes with the `class` attribute. Global styles belong in `app/pages/styles/tailwind.css` or template CSS files.
-
-13. **Loader Data**:
-    - Import from `#loaders/{route}` for auto-typed hooks (e.g., `import { useLoaderData } from "#loaders/users/index"`)
-    - For cross-route loading, import from `@reactive-view/core` and specify the route: `useLoaderData("users/[id]", { id })`
-
-### Example: Correct SolidJS Component
-
-```tsx
-import { createSignal, Show, For } from "solid-js";
-import { A } from "@solidjs/router";
-
-export default function ExamplePage() {
-  const [items, setItems] = createSignal<string[]>(["a", "b"]);
-  const [visible, setVisible] = createSignal(true);
-
-  return (
-    <div class="container mx-auto p-4">
-      {" "}
-      {/* class not className */}
-      <button
-        class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        onClick={() => setVisible(!visible())}
-      >
-        Toggle List
-      </button>
-      <Show when={visible()}>
-        {" "}
-        {/* SolidJS conditional */}
-        <ul class="mt-4 space-y-2">
-          <For each={items()}>
-            {" "}
-            {/* SolidJS list rendering */}
-            {(item, index) => (
-              <li class="p-2 bg-gray-100 rounded">
-                {index()}: {item}
-              </li>
-            )}
-          </For>
-        </ul>
-      </Show>
-    </div>
-  );
-}
-```
-
-## Shared Naming & Organization Rules
-
-- Match file names to default exports (e.g., `users/index.tsx` exports `UsersIndexPage`).
-- Loader files follow `name.loader.rb` and reside next to their TSX counterparts.
-- Tests mirror file structure (`spec/reactive_view/types/validator_spec.rb` for `lib/reactive_view/types/validator.rb`).
-- Generated artifacts (`.reactive_view`, `coverage`, `tmp`) must be ignored; verify `.gitignore` whenever adding tooling.
-- Keep docs in `docs/` using Markdown, referencing files with relative paths.
-
-## Error Handling Expectations
-
-1. Validate incoming params early using Dry::Types; return structured hashes.
-2. Wrap daemon/renderer network calls in retries with exponential backoff where appropriate (consult `reactive_view/lib/reactive_view/daemon.rb`).
-3. For production: surface user-facing errors via HTTP status codes + message payloads; avoid leaking stack traces. This does not apply to the SolidStart process
-4. Frontend loaders should propagate typed error objects; display fallback UI rather than blank screens.
-5. Ensure background processes exit cleanly; trap signals when adding new daemons.
-6. Log errors once – at the boundary – to avoid duplicate noise.
-7. Document known failure modes in code comments or README sections when they cannot be addressed immediately.
-
-## RSpec Conventions
-
-- Mirror source path in `spec/` directory
-- Use `described_class` instead of repeating class name
-- Group tests with `describe` by method (`.method_name` or `#method_name`)
-- Use `let` blocks for fixtures
-- Prefer `expect().to` syntax
-
-## Observability & Debugging
-
-1. Rails logs live under `examples/reactive_view_example/log`; tail them with `tail -f log/development.log` during local debugging.
-2. SolidStart daemon output appears in the Procfile `bin/dev` session; if running standalone, inspect `.reactive_view/log/development.log`.
-3. Enable verbose renderer logging by temporarily setting `Rails.logger.level = :debug` inside the engine initializer (remember to revert).
-4. When investigating token issues, hit `/reactive_view/loader_data` endpoints with `curl -v` and capture headers for the issue report.
-5. Prefer `binding.irb` or `console.log` equivalents only in throwaway branches; never commit ad-hoc debugging statements.
-6. Document recurring failure signatures inside `docs/agent/tasks/post-mvp.md` so future agents can spot regressions quickly.
-
-## Testing Philosophy
-
-Always make sure your code changes are tested and test them to validate your code works.
-
-1. For gem code, prefer unit-level RSpec specs colocated under `reactive_view/spec`.
-2. Failing tests should be reproducible via `bundle exec rspec path:line` – document the exact invocation in PR descriptions.
-3. For example app changes, write request/controller tests using Rails minitest or RSpec (if added) depending on the directory standards.
-4. Loader classes are effectively controllers; test them like any other controller (ensure auth callbacks, parameter validation, and return types).
-5. Template or frontend adjustments should ship with Playwright/Vitest tests once the scripts exist; until then, add Storybook-style manual steps in PRs.
-6. Avoid adding flaky integration suites; keep tests deterministic by seeding DB state with factories/fixtures.
-7. Prefer fast feedback loops: run targeted specs before the full suite whenever possible.
-
-## Documentation & Communication
-
-- Update `README.md` or `docs/agent/tasks/*.md` when you add features that agents must know about.
-- Keep AGENTS.md synchronized with reality; if you change build/test commands, update this file in the same PR.
-- Mention required environment variables in PR descriptions and inline in configuration files.
-- Provide reproduction steps whenever you fix a bug; include the exact commands you ran.
-- If you introduce new tooling, describe its installation and invocation syntax here.
-
-## Pull Request Review Checklist
-
-1. Tests for the touched area pass locally (or you explain why they are skipped).
-2. New loaders/controllers have matching specs or request tests.
-3. TypeScript changes compile via `npm run build` in `reactive_view/template` or `.reactive_view` as applicable.
-4. All public API changes are reflected in `README.md`, `docs/`, or the generated template where relevant.
-5. Sensitive files (`.env`, credentials, `.reactive_view`, `node_modules`) remain untracked.
-6. Screenshots or screen recordings accompany any significant UI change.
-7. Version bumps go through the gemspec and the template package.json together to avoid drift.
-8. Mention any manual follow-up steps (e.g., rerunning `bin/rails reactive_view:sync`) in the PR description.
-9. Capture reproduction steps for every bugfix and include commands that prove the fix.
-10. Double-check ownership of newly created directories so other agents can find them easily.
-
-## Final Notes for Agents
-
-1. Stay surgical: only touch files necessary for the task at hand.
-2. Prefer edits over rewrites; keep history meaningful.
-3. Run targeted tests before handing work back to the user.
-4. Leave TODOs only when accompanied by actionable follow-up tasks.
-5. Keep this handbook close – update it whenever expectations shift.
+See `docs/agent/skills-index.md` for a task-to-skill lookup.
