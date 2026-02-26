@@ -1,5 +1,6 @@
 // ReactiveView client library
-// Re-exports from @reactive-view/core for backwards compatibility with ~/lib/reactive-view imports
+// Re-exports everything from @reactive-view/core for backwards compatibility
+// with ~/lib/reactive-view imports. New code should import from "@reactive-view/core" directly.
 
-export { useLoaderData, createLoaderQuery } from "@reactive-view/core";
+export * from "@reactive-view/core";
 export type { LoaderData, LoaderDataMap, HasLoaderData } from "@reactive-view/core";

@@ -1,4 +1,4 @@
-import { type ParentProps } from "solid-js";
+import { type ParentProps } from "@reactive-view/core";
 import Navigation from "./Navigation";
 import "../_styles/tailwind.css";
 

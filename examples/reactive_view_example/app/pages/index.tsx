@@ -1,4 +1,4 @@
-import { createSignal } from "solid-js";
+import { createSignal } from "@reactive-view/core";
 import MainLayout from "./_components/MainLayout";
 
 export default function HomePage() {

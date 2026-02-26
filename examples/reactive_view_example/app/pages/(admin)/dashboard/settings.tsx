@@ -1,4 +1,4 @@
-import { createSignal, Show } from "solid-js";
+import { createSignal, Show } from "@reactive-view/core";
 
 export default function DashboardSettings() {
   const [emailNotifications, setEmailNotifications] = createSignal(true);

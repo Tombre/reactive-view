@@ -1,4 +1,4 @@
-import { createSignal, createEffect, onCleanup } from "solid-js";
+import { createSignal, createEffect, onCleanup } from "@reactive-view/core";
 import MainLayout from "./_components/MainLayout";
 
 export default function CounterPage() {

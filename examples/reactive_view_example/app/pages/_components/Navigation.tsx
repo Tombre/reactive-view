@@ -1,4 +1,4 @@
-import { A, useLocation } from "@solidjs/router";
+import { A, useLocation } from "@reactive-view/core";
 
 export default function Navigation() {
   const location = useLocation();

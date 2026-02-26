@@ -1,6 +1,5 @@
-import { For } from "solid-js";
+import { For, useNavigate } from "@reactive-view/core";
 import { useLoaderData } from "#loaders/(admin)/dashboard/analytics";
-import { useNavigate } from "@solidjs/router";
 
 export default function DashboardAnalytics() {
   const loaderData = useLoaderData();

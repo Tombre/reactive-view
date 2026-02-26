@@ -1,5 +1,4 @@
-import { createSignal, createEffect, Suspense, Show } from "solid-js";
-import { A, useParams } from "@solidjs/router";
+import { createSignal, createEffect, Suspense, Show, A, useParams } from "@reactive-view/core";
 import { useLoaderData, useForm } from "#loaders/users/[id]";
 import MainLayout from "../_components/MainLayout";
 

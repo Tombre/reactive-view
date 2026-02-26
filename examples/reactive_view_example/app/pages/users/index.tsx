@@ -1,5 +1,4 @@
-import { For, Suspense } from "solid-js";
-import { A } from "@solidjs/router";
+import { For, Suspense, A } from "@reactive-view/core";
 import { useLoaderData } from "#loaders/users/index";
 import MainLayout from "../_components/MainLayout";
 

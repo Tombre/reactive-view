@@ -1,5 +1,4 @@
-import { A, useLocation } from "@solidjs/router";
-import { createSignal, Show, type ParentProps } from "solid-js";
+import { A, useLocation, createSignal, Show, type ParentProps } from "@reactive-view/core";
 
 export default function DashboardLayout(props: ParentProps) {
   const [sidebarOpen, setSidebarOpen] = createSignal(true);

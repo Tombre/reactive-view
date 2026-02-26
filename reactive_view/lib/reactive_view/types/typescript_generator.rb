@@ -165,11 +165,10 @@ module ReactiveView
       def build_imports(has_mutations)
         imports = []
 
-        imports << 'import { createLoaderQuery } from "@reactive-view/core";'
-        imports << 'import { createAsync, useParams, type AccessorWithLatest } from "@solidjs/router";'
+        imports << 'import { createLoaderQuery, createAsync, useParams, type AccessorWithLatest } from "@reactive-view/core";'
 
         if has_mutations
-          imports << 'import type { JSX } from "solid-js";'
+          imports << 'import type { JSX } from "@reactive-view/core";'
           imports << 'import { createMutation, useAction, useSubmission, useSubmissions } from "@reactive-view/core";'
           imports << 'import type { MutationResult } from "@reactive-view/core";'
         end
