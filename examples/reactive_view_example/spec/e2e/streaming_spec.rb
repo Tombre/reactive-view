@@ -1,7 +1,7 @@
 require_relative 'e2e_helper'
 
 RSpec.describe 'ReactiveView streaming mutations', type: :e2e do
-  it 'returns SSE text/json/done events from the stream endpoint' do
+  it 'returns SSE json/done events from the stream endpoint' do
     with_page do |page|
       page.goto("#{e2e_base_url}/ai/chat")
       page.wait_for_selector('text=AI Chat')
@@ -33,11 +33,9 @@ RSpec.describe 'ReactiveView streaming mutations', type: :e2e do
         arg: { prompt: 'Explain ReactiveView streaming' }
       )
 
-      expect(payload).to include('"type":"text"')
       expect(payload).to include('"type":"json"')
       expect(payload).to include('"type":"done"')
-      expect(payload).to include('prompt_tokens')
-      expect(payload).to include('completion_tokens')
+      expect(payload).to include('"word"')
     end
   end
 end

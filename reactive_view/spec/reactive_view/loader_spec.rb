@@ -43,15 +43,15 @@ RSpec.describe ReactiveView::Loader do
     end
 
     it 'raises ArgumentError for non-Shape class' do
-      expect {
+      expect do
         loader_class.shape :load, String
-      }.to raise_error(ArgumentError, /ReactiveView::Shape subclass/)
+      end.to raise_error(ArgumentError, /ReactiveView::Shape subclass/)
     end
 
     it 'raises ArgumentError when neither class nor block provided' do
-      expect {
+      expect do
         loader_class.shape :load
-      }.to raise_error(ArgumentError, /requires either a Shape class or a block/)
+      end.to raise_error(ArgumentError, /requires either a Shape class or a block/)
     end
 
     it 'creates an anonymous Shape subclass that has a dry_schema' do
@@ -113,6 +113,33 @@ RSpec.describe ReactiveView::Loader do
       loader_class.response_shape :load, shape_class
 
       expect(loader_class._response_shapes[:load]).to eq(shape_class)
+    end
+
+    it 'supports response_shape in shape-first order' do
+      loader_class.shape :stream_chunk do
+        param :word, :string
+      end
+
+      loader_class.response_shape :stream_chunk, :generate, mode: :stream
+
+      expect(loader_class._response_shapes[:generate]).to eq(:stream_chunk)
+      expect(loader_class.response_shape_mode(:generate)).to eq(:stream)
+    end
+
+    it 'defaults response mode to :single' do
+      loader_class.shape :load do
+        param :id, :integer
+      end
+
+      loader_class.response_shape :load, :load
+
+      expect(loader_class.response_shape_mode(:load)).to eq(:single)
+    end
+
+    it 'raises for unsupported response mode' do
+      expect do
+        loader_class.response_shape :load, :load, mode: :invalid
+      end.to raise_error(ArgumentError, /mode must be :single or :stream/)
     end
   end
 
@@ -244,6 +271,19 @@ RSpec.describe ReactiveView::Loader do
 
       expect(loader_a._response_shapes).to have_key(:load)
       expect(loader_b._response_shapes).not_to have_key(:load)
+    end
+
+    it 'does not leak response_shape_modes between subclasses' do
+      loader_a = Class.new(described_class)
+      loader_b = Class.new(described_class)
+
+      loader_a.shape :chunk do
+        param :word, :string
+      end
+      loader_a.response_shape :chunk, :generate, mode: :stream
+
+      expect(loader_a.response_shape_mode(:generate)).to eq(:stream)
+      expect(loader_b.response_shape_mode(:generate)).to eq(:single)
     end
   end
 

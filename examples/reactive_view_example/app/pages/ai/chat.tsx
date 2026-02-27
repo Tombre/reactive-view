@@ -1,54 +1,109 @@
 import {
   createSignal,
+  createEffect,
   Show,
   For,
   Suspense,
-  useStreamData,
 } from "@reactive-view/core";
-import type { StreamDataMessage } from "@reactive-view/core";
 import { useLoaderData, useForm, useStream } from "#loaders/ai/chat";
 
-type StreamParams = { prompt: string };
-type StreamUsage = {
-  prompt_tokens: number;
-  completion_tokens: number;
-  model: string;
-};
-type StreamJsonEvent = { usage?: StreamUsage };
-
-interface Message {
+interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   content: string;
-  status: "streaming" | "done" | "error";
-  events: StreamJsonEvent[];
-  error?: string;
-  metadata?: {
-    usage?: StreamUsage;
-  };
+  pending?: boolean;
+  failed?: boolean;
 }
+
+let nextMessageId = 0;
 
 export default function AiChatPage() {
   const data = useLoaderData();
   const stream = useStream("generate");
   const StreamForm = useForm(stream);
   const [input, setInput] = createSignal("");
-  const streamData = useStreamData<StreamParams, StreamJsonEvent, Message["metadata"]>(stream, {
-    getUserContent: (params: StreamParams) => params.prompt,
-    parseJsonChunk: (chunk: { data?: unknown }) => chunk.data as StreamJsonEvent,
-    extractMeta: (events: StreamJsonEvent[]) => ({ usage: events[0]?.usage }),
+  const [history, setHistory] = createSignal<ChatMessage[]>([]);
+
+  createEffect(() => {
+    const streamedText = stream
+      .messages()
+      .map((chunk) => chunk.word)
+      .join("");
+
+    setHistory((prev) => {
+      const last = prev[prev.length - 1];
+      if (!last || last.role != "assistant" || !last.pending) {
+        return prev;
+      }
+
+      return [...prev.slice(0, -1), { ...last, content: streamedText }];
+    });
   });
 
-  const messages = () =>
-    streamData.messages().map((message: StreamDataMessage<StreamJsonEvent, Message["metadata"]>): Message => ({
-      ...message,
-      metadata: message.meta,
-    }));
+  createEffect(() => {
+    const status = stream.status();
+    if (status == "streaming" || status == "idle") return;
+
+    setHistory((prev) => {
+      const last = prev[prev.length - 1];
+      if (!last || last.role != "assistant" || !last.pending) {
+        return prev;
+      }
+
+      return [
+        ...prev.slice(0, -1),
+        {
+          ...last,
+          pending: false,
+          failed: status == "error",
+        },
+      ];
+    });
+  });
 
   const handleSubmit = () => {
     const prompt = input().trim();
     if (!prompt || stream.streaming()) return;
+
+    setHistory((prev) => [
+      ...prev,
+      {
+        id: ++nextMessageId,
+        role: "user",
+        content: prompt,
+      },
+      {
+        id: ++nextMessageId,
+        role: "assistant",
+        content: "",
+        pending: true,
+      },
+    ]);
+
     setInput("");
+  };
+
+  const retry = () => {
+    if (stream.streaming()) return;
+
+    setHistory((prev) => {
+      const last = prev[prev.length - 1];
+      if (!last || last.role != "assistant") {
+        return prev;
+      }
+
+      return [
+        ...prev.slice(0, -1),
+        {
+          ...last,
+          content: "",
+          pending: true,
+          failed: false,
+        },
+      ];
+    });
+
+    stream.retry();
   };
 
   return (
@@ -61,10 +116,9 @@ export default function AiChatPage() {
         </Suspense>
       </div>
 
-      {/* Message history */}
       <div class="space-y-4 mb-6 min-h-[200px]">
         <Show
-          when={messages().length > 0}
+          when={history().length > 0}
           fallback={
             <div class="text-center text-gray-400 py-12">
               <p class="text-lg">No messages yet</p>
@@ -74,11 +128,11 @@ export default function AiChatPage() {
             </div>
           }
         >
-          <For each={messages()}>
+          <For each={history()}>
             {(msg) => (
               <div
                 class={`p-4 rounded-lg ${
-                  msg.role === "user"
+                  msg.role == "user"
                     ? "bg-blue-50 border border-blue-100 ml-8"
                     : "bg-gray-50 border border-gray-100 mr-8"
                 }`}
@@ -86,60 +140,49 @@ export default function AiChatPage() {
                 <div class="flex items-center gap-2 mb-1">
                   <span
                     class={`text-xs font-semibold uppercase tracking-wide ${
-                      msg.role === "user" ? "text-blue-600" : "text-gray-600"
+                      msg.role == "user" ? "text-blue-600" : "text-gray-600"
                     }`}
                   >
-                    {msg.role === "user" ? "You" : "AI"}
+                    {msg.role == "user" ? "You" : "AI"}
                   </span>
-                  <Show when={msg.status === "streaming"}>
+
+                  <Show when={msg.pending}>
                     <span class="text-xs text-green-500 animate-pulse">
                       streaming...
                     </span>
                   </Show>
-                  <Show when={msg.status === "error"}>
+
+                  <Show when={msg.failed}>
                     <span class="text-xs text-red-500">failed</span>
                   </Show>
                 </div>
+
                 <p class="text-gray-800 whitespace-pre-wrap">
                   {msg.content}
-                  <Show when={msg.status === "streaming"}>
+                  <Show when={msg.pending}>
                     <span class="inline-block w-2 h-4 bg-gray-400 animate-pulse ml-0.5" />
                   </Show>
                 </p>
-                <Show when={msg.status === "error" && msg.role === "assistant"}>
-                  <div class="mt-2">
-                    <button
-                      type="button"
-                      class="text-xs text-red-600 hover:text-red-700 underline"
-                      onClick={() => streamData.retry()}
-                      disabled={stream.streaming()}
-                    >
-                      Retry
-                    </button>
-                  </div>
-                </Show>
-                <Show when={msg.metadata?.usage}>
-                  <div class="mt-2 text-xs text-gray-400">
-                    {msg.metadata!.usage!.prompt_tokens} prompt tokens,{" "}
-                    {msg.metadata!.usage!.completion_tokens} completion tokens
-                  </div>
-                </Show>
               </div>
             )}
           </For>
         </Show>
 
-        {/* Error display */}
-        <Show when={streamData.error()}>
+        <Show when={stream.error()}>
           <div class="p-4 rounded-lg bg-red-50 border border-red-200">
-            <p class="text-red-700 text-sm">
-              Error: {streamData.error()?.message}
-            </p>
+            <p class="text-red-700 text-sm">Error: {stream.error()?.message}</p>
+            <button
+              type="button"
+              class="mt-2 text-sm text-red-700 underline hover:text-red-800"
+              onClick={retry}
+              disabled={stream.streaming()}
+            >
+              Retry
+            </button>
           </div>
         </Show>
       </div>
 
-      {/* Input form */}
       <StreamForm onSubmit={handleSubmit}>
         <div class="flex gap-3">
           <input

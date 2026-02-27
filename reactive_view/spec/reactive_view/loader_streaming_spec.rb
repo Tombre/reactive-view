@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
-require "spec_helper"
+require 'spec_helper'
 
-RSpec.describe "Loader streaming" do
-  describe "#render_stream" do
-    it "returns a StreamResponse" do
+RSpec.describe 'Loader streaming' do
+  describe '#render_stream' do
+    it 'returns a StreamResponse' do
       loader_class = Class.new(ReactiveView::Loader) do
         def generate
           render_stream do |out|
-            out << "hello"
+            out << 'hello'
           end
         end
       end
@@ -19,17 +19,17 @@ RSpec.describe "Loader streaming" do
       expect(result.block).to be_a(Proc)
     end
 
-    it "raises ArgumentError without a block" do
+    it 'raises ArgumentError without a block' do
       loader = ReactiveView::Loader.new
       expect { loader.send(:render_stream) }.to raise_error(ArgumentError, /requires a block/)
     end
 
-    it "stores a block that can send text via StreamWriter" do
+    it 'stores a block that can send text via StreamWriter' do
       loader_class = Class.new(ReactiveView::Loader) do
         def generate
           render_stream do |out|
-            out << "hello "
-            out << "world"
+            out << 'hello '
+            out << 'world'
           end
         end
       end
@@ -46,12 +46,12 @@ RSpec.describe "Loader streaming" do
       expect(mock_stream.string).to include('"chunk":"world"')
     end
 
-    it "stores a block that can send JSON via StreamWriter" do
+    it 'stores a block that can send JSON object chunks via StreamWriter' do
       loader_class = Class.new(ReactiveView::Loader) do
         def generate
           render_stream do |out|
-            out << "text"
-            out.json({usage: {tokens: 42}})
+            out << { word: 'hello' }
+            out << { word: 'world' }
           end
         end
       end
@@ -63,17 +63,17 @@ RSpec.describe "Loader streaming" do
       writer = ReactiveView::StreamWriter.new(mock_stream)
       result.block.call(writer)
 
-      expect(mock_stream.string).to include('"type":"text"')
       expect(mock_stream.string).to include('"type":"json"')
-      expect(mock_stream.string).to include('"tokens":42')
+      expect(mock_stream.string).to include('"word":"hello"')
+      expect(mock_stream.string).to include('"word":"world"')
     end
 
-    it "stores a block that can send custom events via StreamWriter" do
+    it 'stores a block that can send custom events via StreamWriter' do
       loader_class = Class.new(ReactiveView::Loader) do
         def generate
           render_stream do |out|
-            out.event("progress", percent: 50)
-            out.event("progress", percent: 100)
+            out.event('progress', percent: 50)
+            out.event('progress', percent: 100)
           end
         end
       end

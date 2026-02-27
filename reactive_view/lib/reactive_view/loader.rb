@@ -114,6 +114,10 @@ module ReactiveView
     # Defines which shape validates outgoing response data for a given action
     class_attribute :_response_shapes, default: {}
 
+    # Response modes for actions: { action_name => :single | :stream }
+    # :single = regular mutation/loader response, :stream = SSE stream of shape objects
+    class_attribute :_response_shape_modes, default: {}
+
     class << self
       # Define a named shape. Creates an anonymous Shape subclass from the block
       # and stores it under the given name. Can also accept a Shape class directly.
@@ -144,7 +148,7 @@ module ReactiveView
           shape_class = Class.new(ReactiveView::Shape) { shape(&block) }
           self._shapes = _shapes.merge(name => shape_class)
         else
-          raise ArgumentError, "shape requires either a Shape class or a block"
+          raise ArgumentError, 'shape requires either a Shape class or a block'
         end
       end
 
@@ -169,7 +173,17 @@ module ReactiveView
       # The shape will be used to validate outgoing response data
       # and to generate TypeScript interfaces for the loader data.
       #
-      # @param action [Symbol] The action name
+      # @param arg1 [Symbol, Class] Action name or shape reference (both orders supported)
+      # @param arg2 [Symbol, Class] Shape reference or action name
+      # @param mode [Symbol] :single (default) or :stream
+      # @return [void]
+      #
+      # The method supports both call styles:
+      # - response_shape :action, :shape
+      # - response_shape :shape, :action
+      #
+      # `mode: :stream` indicates the action emits a stream of response-shape objects.
+      #
       # @param shape_ref [Symbol, Class] A symbol key referencing a shape in `_shapes`,
       #   or a Shape class directly
       #
@@ -178,8 +192,23 @@ module ReactiveView
       #
       # @example Using a Shape class
       #   response_shape :load, UserResponseShape
-      def response_shape(action, shape_ref)
+      def response_shape(arg1, arg2, mode: :single)
+        mode = mode.to_sym
+        raise ArgumentError, 'response_shape mode must be :single or :stream' unless %i[single stream].include?(mode)
+
+        action, shape_ref = resolve_response_shape_arguments(arg1, arg2)
+
         self._response_shapes = _response_shapes.merge(action => shape_ref)
+        self._response_shape_modes = _response_shape_modes.merge(action => mode)
+      end
+
+      # Resolve the configured response mode for an action.
+      # Defaults to :single when unset.
+      #
+      # @param action [Symbol] The action name
+      # @return [Symbol] :single or :stream
+      def response_shape_mode(action)
+        _response_shape_modes[action] || :single
       end
 
       # Resolve a shape reference (Symbol or Class) to its Shape class.
@@ -192,8 +221,6 @@ module ReactiveView
           _shapes[ref]
         when Class
           ref <= ReactiveView::Shape ? ref : nil
-        else
-          nil
         end
       end
 
@@ -213,6 +240,19 @@ module ReactiveView
       def resolve_response_shape(action)
         ref = _response_shapes[action]
         ref ? resolve_shape(ref) : nil
+      end
+
+      private
+
+      def resolve_response_shape_arguments(arg1, arg2)
+        arg1_is_shape_ref = arg1.is_a?(Class) && arg1 <= ReactiveView::Shape
+        arg1_is_named_shape = arg1.is_a?(Symbol) && _shapes.key?(arg1)
+
+        if arg1_is_shape_ref || arg1_is_named_shape
+          [arg2, arg1]
+        else
+          [arg1, arg2]
+        end
       end
     end
 
@@ -406,7 +446,7 @@ module ReactiveView
     #     end
     #   end
     def render_stream(&block)
-      raise ArgumentError, "render_stream requires a block" unless block_given?
+      raise ArgumentError, 'render_stream requires a block' unless block_given?
 
       StreamResponse.new(block)
     end

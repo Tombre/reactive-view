@@ -26,9 +26,14 @@ module ReactiveView
   #   end
   class StreamWriter
     # @param stream [ActionController::Live::Buffer] The response stream
-    def initialize(stream)
+    # @param validator [ReactiveView::Types::Validator, nil] Optional validator for streamed JSON payloads
+    # @param enforced_chunk_type [Symbol, nil] Optional enforced chunk type (:json or :text)
+    def initialize(stream, validator: nil, enforced_chunk_type: nil)
       @stream = stream
       @closed = false
+      @validator = validator
+      @enforced_chunk_type = enforced_chunk_type
+      @chunk_type = nil
     end
 
     # Send a plain text chunk. This is the primary method for AI token streaming.
@@ -36,8 +41,18 @@ module ReactiveView
     #
     # @param text [String] The text chunk to send
     # @return [self] For chaining: out << "hello " << "world"
-    def <<(text)
-      write_event(type: "text", chunk: text.to_s)
+    def <<(value)
+      if value.is_a?(String)
+        write_stream_chunk(:text)
+        write_event(type: 'text', chunk: value)
+      elsif value.is_a?(Hash)
+        write_stream_chunk(:json)
+        @validator&.validate!(value)
+        write_event(type: 'json', data: value)
+      else
+        raise ArgumentError, "Stream chunks must be String or Hash, got #{value.class}"
+      end
+
       self
     end
 
@@ -47,7 +62,9 @@ module ReactiveView
     # @param data [Hash, Array] The data to send
     # @return [void]
     def json(data)
-      write_event(type: "json", data: data)
+      write_stream_chunk(:json)
+      @validator&.validate!(data)
+      write_event(type: 'json', data: data)
     end
 
     # Send a custom named event.
@@ -57,7 +74,7 @@ module ReactiveView
     # @param data [Hash] Additional event data (merged into the payload)
     # @return [void]
     def event(name, data = {})
-      write_event(**{type: name.to_s}.merge(data))
+      write_event(**{ type: name.to_s }.merge(data))
     end
 
     # Close the stream. Sends a "done" event first if not already closed.
@@ -68,7 +85,7 @@ module ReactiveView
     def close
       return if @closed
 
-      write_event(type: "done")
+      write_event(type: 'done')
       @stream.close
       @closed = true
     end
@@ -85,9 +102,23 @@ module ReactiveView
     # @param payload [Hash] The event payload, serialized as JSON
     # @raise [RuntimeError] If the stream is already closed
     def write_event(**payload)
-      raise "Stream already closed" if @closed
+      raise 'Stream already closed' if @closed
 
       @stream.write("data: #{payload.to_json}\n\n")
+    end
+
+    def write_stream_chunk(chunk_type)
+      if @enforced_chunk_type && @enforced_chunk_type != chunk_type
+        raise ArgumentError,
+              "This stream only accepts #{@enforced_chunk_type} chunks, got #{chunk_type}"
+      end
+
+      if @chunk_type && @chunk_type != chunk_type
+        raise ArgumentError,
+              "Cannot mix #{chunk_type} chunks into a #{@chunk_type} stream"
+      end
+
+      @chunk_type ||= chunk_type
     end
   end
 end

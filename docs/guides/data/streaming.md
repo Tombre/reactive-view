@@ -4,14 +4,26 @@ ReactiveView supports SSE streaming for long-running mutation responses.
 
 ## Ruby side
 
-Use `render_stream` in a mutation method:
+Declare a streamed response shape and stream objects that match it:
 
 ```ruby
+shape :generate do
+  param :prompt, ReactiveView::Types::String
+end
+
+shape :generate_response do
+  param :word, ReactiveView::Types::String
+end
+
+params_shape :generate, :generate
+response_shape :generate_response, :generate, mode: :stream
+
 def generate
   render_stream do |out|
-    out << "Hello "
-    out << "world"
-    out.json({ usage: { tokens: 2 } })
+    "Hello world".split(" ").each_with_index do |word, i|
+      separator = i < 1 ? " " : ""
+      out << { word: "#{word}#{separator}" }
+    end
   end
 end
 ```
@@ -19,8 +31,8 @@ end
 `out` is a `ReactiveView::StreamWriter`:
 
 - `out << "text"` emits text chunks
-- `out.json(hash)` emits structured payload
-- `out.event("name", data)` emits custom event
+- `out << { ... }` emits JSON chunks
+- a single stream cannot mix text and JSON chunk types
 
 ## TypeScript side
 
@@ -29,30 +41,24 @@ Use generated `useStream("mutationName")` from `#loaders/*`:
 ```tsx
 const stream = useStream("generate");
 const StreamForm = useForm(stream);
-const streamData = useStreamData(stream, {
-  getUserContent: (params) => params.prompt,
-});
+
+// Fully typed from response_shape(..., mode: :stream)
+const words = stream.messages();
 ```
 
 `stream.start(params)` is strongly typed from the mutation params shape.
+`stream.messages()` is strongly typed from the stream response shape.
 
 `stream` state:
 
-- `stream.data()` accumulated text
 - `stream.streaming()` active status
 - `stream.error()` current error
 - `stream.chunks()` all chunks
+- `stream.messages()` typed streamed objects for this request
 - `stream.start(params)` programmatic start
 - `stream.retry(params?)` retry (uses last params by default)
 - `stream.end()` await completion
 - `stream.abort()` cancel
-
-`useStreamData(stream)` handles common chat-style message state:
-
-- appends user + assistant placeholder messages
-- updates assistant content as text chunks stream in
-- marks failed messages when the stream errors
-- provides `retry()` for restarting the failed prompt
 
 Streams are strict about completion: if the connection closes before a `done` chunk, the stream fails.
 

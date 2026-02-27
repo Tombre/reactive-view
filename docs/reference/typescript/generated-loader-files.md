@@ -22,7 +22,8 @@ Depending on loader definitions, a generated file can include:
 When streams are present:
 
 - `useForm(stream)` returns a stream-bound `Form` component
-- `useStreamData(stream, options?)` from `@reactive-view/core` provides a higher-level typed message helper
+- `useStream("mutation")` exposes `messages()` typed from `response_shape(..., mode: :stream)`
+- `useStreamData(stream, options?)` from `@reactive-view/core` is available for custom chunk mapping
 
 ## Central map
 

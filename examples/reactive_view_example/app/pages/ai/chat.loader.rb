@@ -12,6 +12,12 @@ module Pages
         param :prompt, ReactiveView::Types::String
       end
 
+      shape :generate_response do
+        param :word, ReactiveView::Types::String
+      end
+
+      response_shape :generate_response, :generate, mode: :stream
+
       response_shape :load, :load
       params_shape :generate, :generate
 
@@ -26,24 +32,17 @@ module Pages
         prompt = shapes.generate.call!(params).data[:prompt]
 
         render_stream do |out|
-          # Simulate AI response with delayed token generation
           response_text = generate_response(prompt)
           words = response_text.split(' ')
 
           words.each_with_index do |word, i|
             sleep(rand(0.03..0.08)) # Simulate variable token latency
             separator = i < words.length - 1 ? ' ' : ''
-            out << "#{word}#{separator}"
-          end
 
-          # Send metadata at the end (like token usage)
-          out.json({
-                     usage: {
-                       prompt_tokens: prompt.split(' ').length,
-                       completion_tokens: words.length,
-                       model: 'reactive-view-demo-v1'
-                     }
-                   })
+            out << {
+              word: "#{word}#{separator}"
+            }
+          end
         end
       end
 

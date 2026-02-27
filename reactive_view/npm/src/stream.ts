@@ -78,32 +78,16 @@ export interface StreamOptions {
   onError?: (error: Error) => void;
 }
 
-export interface StreamDataMessage<TJson = unknown, TMeta = unknown> {
-  id: number;
-  role: "user" | "assistant";
-  content: string;
-  status: "streaming" | "done" | "error";
-  events: TJson[];
-  meta?: TMeta;
-  error?: string;
+export interface UseStreamDataOptions<TMessage = unknown> {
+  /**
+   * Optional parser for incoming chunks.
+   * Return undefined to skip a chunk.
+   */
+  parseChunk?: (chunk: StreamChunk) => TMessage | undefined;
 }
 
-export interface UseStreamDataOptions<
-  TParams,
-  TJson = unknown,
-  TMeta = unknown,
-> {
-  getUserContent?: (params: TParams) => string | undefined;
-  parseJsonChunk?: (chunk: StreamChunk) => TJson | undefined;
-  extractMeta?: (events: TJson[]) => TMeta | undefined;
-}
-
-export interface StreamDataState<TParams, TJson = unknown, TMeta = unknown> {
-  messages: () => StreamDataMessage<TJson, TMeta>[];
-  state: () => StreamStatus;
-  error: () => Error | null;
-  send: (params: TParams) => void;
-  retry: (params?: TParams) => void;
+export interface StreamDataState<TMessage = unknown> {
+  messages: () => TMessage[];
   reset: () => void;
 }
 
@@ -290,135 +274,37 @@ export function createStream<TParams = Record<string, unknown>>(
   };
 }
 
-export function useStreamData<TParams, TJson = unknown, TMeta = unknown>(
+export function useStreamData<TParams, TMessage = unknown>(
   stream: StreamState<TParams>,
-  options?: UseStreamDataOptions<TParams, TJson, TMeta>
-): StreamDataState<TParams, TJson, TMeta> {
-  const [messages, setMessages] = createSignal<StreamDataMessage<TJson, TMeta>[]>(
-    []
-  );
-  let nextMessageId = 0;
-  let managedStart = false;
-
-  function replaceLastStreamingAssistant(
-    updater: (
-      message: StreamDataMessage<TJson, TMeta>
-    ) => StreamDataMessage<TJson, TMeta>
-  ) {
-    setMessages((prev) => {
-      const index = prev.findLastIndex(
-        (msg) => msg.role === "assistant" && msg.status === "streaming"
-      );
-      if (index < 0) return prev;
-      const updated = [...prev];
-      updated[index] = updater(updated[index]);
-      return updated;
-    });
-  }
-
-  function appendAssistantPlaceholder() {
-    const assistant: StreamDataMessage<TJson, TMeta> = {
-      id: ++nextMessageId,
-      role: "assistant",
-      content: "",
-      status: "streaming",
-      events: [],
-    };
-    setMessages((prev) => [...prev, assistant]);
-  }
-
-  function send(params: TParams) {
-    if (stream.streaming()) return;
-
-    const userContent = options?.getUserContent?.(params);
-    if (userContent) {
-      const userMessage: StreamDataMessage<TJson, TMeta> = {
-        id: ++nextMessageId,
-        role: "user",
-        content: userContent,
-        status: "done",
-        events: [],
-      };
-      setMessages((prev) => [...prev, userMessage]);
-    }
-
-    appendAssistantPlaceholder();
-    managedStart = true;
-    stream.start(params);
-  }
-
-  function retry(params?: TParams) {
-    if (stream.streaming()) return;
-    const nextParams = params ?? stream.lastParams();
-    if (!nextParams) return;
-    appendAssistantPlaceholder();
-    managedStart = true;
-    stream.start(nextParams);
-  }
-
-  function reset() {
-    setMessages([]);
-  }
+  options?: UseStreamDataOptions<TMessage>
+): StreamDataState<TMessage> {
+  const [messages, setMessages] = createSignal<TMessage[]>([]);
 
   createEffect(() => {
-    const status = stream.status();
-    if (status !== "streaming" || managedStart) return;
-
-    const params = stream.lastParams();
-    if (!params) return;
-
-    const userContent = options?.getUserContent?.(params);
-    if (userContent) {
-      const userMessage: StreamDataMessage<TJson, TMeta> = {
-        id: ++nextMessageId,
-        role: "user",
-        content: userContent,
-        status: "done",
-        events: [],
-      };
-      setMessages((prev) => [...prev, userMessage]);
-    }
-
-    appendAssistantPlaceholder();
-  });
-
-  createEffect(() => {
-    const text = stream.data();
-    replaceLastStreamingAssistant((message) => ({ ...message, content: text }));
-  });
-
-  createEffect(() => {
-    const status = stream.status();
-    if (status === "idle" || status === "streaming") return;
-    managedStart = false;
-
-    const parsedEvents = stream
+    const nextMessages = stream
       .chunks()
-      .filter((chunk) => chunk.type === "json")
       .map((chunk) => {
-        if (options?.parseJsonChunk) {
-          return options.parseJsonChunk(chunk);
+        if (options?.parseChunk) {
+          return options.parseChunk(chunk);
         }
-        return chunk.data as TJson;
-      })
-      .filter((event): event is TJson => event !== undefined);
 
-    replaceLastStreamingAssistant((message) => ({
-      ...message,
-      status: status === "done" ? "done" : "error",
-      events: parsedEvents,
-      meta: options?.extractMeta?.(parsedEvents),
-      error: status === "error" ? stream.error()?.message : undefined,
-    }));
+        if (chunk.type === "json") {
+          return chunk.data as TMessage;
+        }
+        if (chunk.type === "text") {
+          return chunk.chunk as TMessage;
+        }
+
+        return undefined;
+      })
+      .filter((message): message is TMessage => message !== undefined);
+
+    setMessages(nextMessages);
   });
 
   return {
     messages,
-    state: stream.status,
-    error: stream.error,
-    send,
-    retry,
-    reset,
+    reset: () => setMessages([]),
   };
 }
 

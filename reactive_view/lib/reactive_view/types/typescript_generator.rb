@@ -153,7 +153,7 @@ module ReactiveView
       # - _shapes entries that are not :load (fallback for shapes without explicit assignment)
       #
       # @param loader_class [Class] The loader class
-      # @return [Hash<Symbol, Hash>] Mutation name => { params_schema:, response_schema: }
+      # @return [Hash<Symbol, Hash>] Mutation name => { params_schema:, response_schema:, response_mode: }
       def collect_mutation_data(loader_class)
         # Collect all mutation names from params_shapes and response_shapes
         mutation_names = Set.new
@@ -164,6 +164,7 @@ module ReactiveView
         # This handles the case where a shape is defined but only used via shapes accessor
         loader_class._shapes.each_key do |name|
           next if name == :load
+          next unless loader_class.instance_methods(false).include?(name) || loader_class._params_shapes.key?(name)
 
           mutation_names.add(name) if loader_class._params_shapes.key?(name) ||
                                       !loader_class._response_shapes.key?(name)
@@ -186,7 +187,8 @@ module ReactiveView
 
           result[name] = {
             params_schema: params_schema,
-            response_schema: response_schema
+            response_schema: response_schema,
+            response_mode: loader_class.response_shape_mode(name)
           }
         end
       end
@@ -223,6 +225,7 @@ module ReactiveView
         param_names_comment = param_names.empty? ? '' : " (#{param_names.join(', ')})"
 
         has_mutations = loader[:mutation_data]&.any?
+        has_stream_mutations = loader[:mutation_data]&.any? { |_name, data| data[:response_mode] == :stream }
 
         parts = []
 
@@ -234,22 +237,22 @@ module ReactiveView
         TYPESCRIPT
 
         # Imports
-        parts << build_imports(has_mutations)
+        parts << build_imports(has_mutations, has_stream_mutations)
 
         # Loader data interface and hooks (if load shape exists)
         parts << build_loader_section(loader, param_names_comment) if loader[:load_schema]
 
         # Mutation interfaces, actions, and forms
-        parts << build_mutations_section(loader) if has_mutations
+        parts << build_mutations_section(loader, has_stream_mutations) if has_mutations
 
         # Streaming hooks for mutations
-        parts << build_streaming_section(loader) if has_mutations
+        parts << build_streaming_section(loader) if has_stream_mutations
 
         parts.join("\n")
       end
 
       # Build import statements
-      def build_imports(has_mutations)
+      def build_imports(has_mutations, has_stream_mutations)
         imports = []
 
         imports << 'import { createLoaderQuery, createAsync, useParams, type AccessorWithLatest } from "@reactive-view/core";'
@@ -258,7 +261,10 @@ module ReactiveView
           imports << 'import type { JSX } from "@reactive-view/core";'
           imports << 'import { createMutation, useAction, useSubmission, useSubmissions } from "@reactive-view/core";'
           imports << 'import type { MutationResult } from "@reactive-view/core";'
-          imports << 'import { createStream, type StreamState } from "@reactive-view/core";'
+        end
+
+        if has_stream_mutations
+          imports << 'import { createStream, useStreamData, type StreamState } from "@reactive-view/core";'
         end
 
         imports.join("\n") + "\n"
@@ -328,7 +334,7 @@ module ReactiveView
       end
 
       # Build the mutations section (interfaces, actions, forms)
-      def build_mutations_section(loader)
+      def build_mutations_section(loader, has_stream_mutations)
         parts = []
 
         parts << <<~TYPESCRIPT
@@ -343,7 +349,7 @@ module ReactiveView
         end
 
         # useForm hook that returns [Form, submission] tuple
-        parts << build_use_form_hook(loader[:mutation_data])
+        parts << build_use_form_hook(loader[:mutation_data], has_stream_mutations)
 
         # Re-export action utilities for convenience
         parts << <<~TYPESCRIPT
@@ -443,9 +449,10 @@ module ReactiveView
       # inferred from the action/Form types -- no casts, no manual type annotations --
       # so that `submission.result?.success` etc. are end-to-end type safe.
       #
-      # @param mutation_data [Hash] Map of mutation_name => { params_schema:, response_schema: }
+      # @param mutation_data [Hash] Map of mutation_name => { params_schema:, response_schema:, response_mode: }
+      # @param has_stream_mutations [Boolean] Whether this route has :stream response mutations
       # @return [String] TypeScript code for the useForm hook
-      def build_use_form_hook(mutation_data)
+      def build_use_form_hook(mutation_data, has_stream_mutations)
         entries = mutation_data.map do |mutation_name, _data|
           base_name = mutation_name.to_s
           capitalized_name = base_name.camelize
@@ -466,6 +473,47 @@ module ReactiveView
         map_entries = entries.map do |e|
           "  #{e[:name]}: { action: #{e[:action_name]}, Form: #{e[:form_name]} }"
         end.join(",\n")
+
+        stream_example_name = mutation_data.find do |_name, data|
+          data[:response_mode] == :stream
+        end&.first&.to_s || entries.first[:name]
+
+        stream_overload = if has_stream_mutations
+                            <<~TYPESCRIPT
+
+                              /**
+                               * Returns a stream-bound Form component from `useStream()`.
+                               *
+                               * @example
+                               * const stream = useStream("#{stream_example_name}");
+                               * const StreamForm = useForm(stream);
+                               */
+                              export function useForm<T extends StreamMutationName>(stream: StreamHandle<T>): StreamFormComponent;
+                            TYPESCRIPT
+                          else
+                            ''
+                          end
+
+        implementation_signature = if has_stream_mutations
+                                     'nameOrStream: MutationName | StreamHandle<StreamMutationName>'
+                                   else
+                                     'nameOrStream: MutationName'
+                                   end
+
+        implementation_body = if has_stream_mutations
+                                <<~TYPESCRIPT
+                                  if (typeof nameOrStream === "string") {
+                                    const mutation = _mutations[nameOrStream];
+                                    return [mutation.Form, useSubmission(mutation.action)] as const;
+                                  }
+                                  return nameOrStream.Form;
+                                TYPESCRIPT
+                              else
+                                <<~TYPESCRIPT
+                                  const mutation = _mutations[nameOrStream];
+                                  return [mutation.Form, useSubmission(mutation.action)] as const;
+                                TYPESCRIPT
+                              end
 
         <<~TYPESCRIPT
 
@@ -506,23 +554,12 @@ module ReactiveView
              ReturnType<typeof useSubmission>
            ];
 
-           /**
-            * Returns a stream-bound Form component from `useStream()`.
-            *
-            * @example
-            * const stream = useStream("#{entries.first[:name]}");
-            * const StreamForm = useForm(stream);
-            */
-           export function useForm<T extends StreamMutationName>(stream: StreamHandle<T>): StreamFormComponent;
+           #{stream_overload.rstrip}
 
            export function useForm(
-             nameOrStream: MutationName | StreamHandle<StreamMutationName>
+             #{implementation_signature}
            ) {
-             if (typeof nameOrStream === "string") {
-               const mutation = _mutations[nameOrStream];
-               return [mutation.Form, useSubmission(mutation.action)] as const;
-             }
-             return nameOrStream.Form;
+           #{implementation_body.rstrip}
            }
         TYPESCRIPT
       end
@@ -537,16 +574,32 @@ module ReactiveView
       # @return [String] TypeScript code for the streaming section
       def build_streaming_section(loader)
         mutation_data = loader[:mutation_data] || {}
-        return '' if mutation_data.empty?
+        stream_mutations = mutation_data.select { |_name, data| data[:response_mode] == :stream }
+        return '' if stream_mutations.empty?
 
-        entries = mutation_data.map do |mutation_name, _data|
+        entries = stream_mutations.map do |mutation_name, data|
           base_name = mutation_name.to_s
           capitalized_name = base_name.camelize
-          { name: base_name, params_type: "#{capitalized_name}Params" }
+          params_schema = data[:params_schema]
+          response_schema = data[:response_schema]
+          response_type = if response_schema && response_schema != params_schema
+                            "#{capitalized_name}Response"
+                          elsif response_schema
+                            "#{capitalized_name}Params"
+                          else
+                            'Record<string, unknown>'
+                          end
+
+          {
+            name: base_name,
+            params_type: "#{capitalized_name}Params",
+            response_type: response_type
+          }
         end
 
         mutation_names_union = entries.map { |e| "\"#{e[:name]}\"" }.join(' | ')
         stream_params_entries = entries.map { |e| "  \"#{e[:name]}\": #{e[:params_type]};" }.join("\n")
+        stream_response_entries = entries.map { |e| "  \"#{e[:name]}\": #{e[:response_type]};" }.join("\n")
 
         <<~TYPESCRIPT
 
@@ -562,6 +615,11 @@ module ReactiveView
           #{stream_params_entries}
           };
 
+          /** Maps stream mutation names to their streamed message types. */
+          type StreamResponseMap = {
+          #{stream_response_entries}
+          };
+
           type StreamFormComponent = (
             props: Omit<JSX.FormHTMLAttributes<HTMLFormElement>, "action" | "method">
           ) => JSX.Element;
@@ -569,6 +627,7 @@ module ReactiveView
           type StreamHandle<T extends StreamMutationName> = StreamState<StreamParamsMap[T]> & {
             readonly name: T;
             readonly Form: StreamFormComponent;
+            readonly messages: () => StreamResponseMap[T][];
           };
 
           /**
@@ -590,9 +649,19 @@ module ReactiveView
            * @example Programmatic usage
            * const stream = useStream("#{entries.first[:name]}");
            * stream.start({ prompt: "Hello" });
+           *
+           * <For each={stream.messages()}>{(chunk) => chunk.word}</For>
            */
           export function useStream<T extends StreamMutationName>(name: T): StreamHandle<T> {
             const stream = createStream<StreamParamsMap[T]>("#{loader[:path]}", name);
+            const streamData = useStreamData<StreamParamsMap[T], StreamResponseMap[T]>(stream, {
+              parseChunk(chunk) {
+                if (chunk.type === "json") {
+                  return chunk.data as StreamResponseMap[T];
+                }
+                return undefined;
+              }
+            });
 
             function StreamForm(
               props: Omit<JSX.FormHTMLAttributes<HTMLFormElement>, "action" | "method">
@@ -616,7 +685,11 @@ module ReactiveView
               );
             }
 
-            return Object.assign(stream, { name, Form: StreamForm }) as StreamHandle<T>;
+            return Object.assign(stream, {
+              name,
+              Form: StreamForm,
+              messages: streamData.messages,
+            }) as StreamHandle<T>;
           }
         TYPESCRIPT
       end

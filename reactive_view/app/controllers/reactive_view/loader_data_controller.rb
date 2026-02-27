@@ -14,8 +14,8 @@ module ReactiveView
     skip_forgery_protection only: [:show]
 
     # Enable CSRF protection for mutations and streaming
-    protect_from_forgery with: :exception, only: [:mutate, :stream]
-    before_action :verify_csrf_for_mutation, only: [:mutate, :stream]
+    protect_from_forgery with: :exception, only: %i[mutate stream]
+    before_action :verify_csrf_for_mutation, only: %i[mutate stream]
 
     # GET /_reactive_view/loaders/:path/load
     # Fetches data from a loader for SSR or client-side navigation
@@ -92,12 +92,12 @@ module ReactiveView
       loader_class = LoaderRegistry.class_for_path(loader_path)
       loader = build_loader(loader_class)
 
-      mutation_name = params[:_mutation].presence || "stream"
+      mutation_name = params[:_mutation].presence || 'stream'
       mutation_method = mutation_name.to_sym
 
       unless valid_mutation_method?(loader, mutation_method)
-        response.headers["Content-Type"] = "application/json"
-        response.stream.write({error: "Stream mutation '#{mutation_name}' not defined"}.to_json)
+        response.headers['Content-Type'] = 'application/json'
+        response.stream.write({ error: "Stream mutation '#{mutation_name}' not defined" }.to_json)
         response.stream.close
         return
       end
@@ -106,31 +106,46 @@ module ReactiveView
 
       unless result.is_a?(StreamResponse)
         # Not a stream response -- fall back to JSON
-        response.headers["Content-Type"] = "application/json"
+        response.headers['Content-Type'] = 'application/json'
         response.stream.write(render_mutation_result_json(result))
         response.stream.close
         return
       end
 
       # Set SSE headers
-      response.headers["Content-Type"] = "text/event-stream"
-      response.headers["Cache-Control"] = "no-cache"
-      response.headers["Connection"] = "keep-alive"
-      response.headers["X-Accel-Buffering"] = "no"
+      response.headers['Content-Type'] = 'text/event-stream'
+      response.headers['Cache-Control'] = 'no-cache'
+      response.headers['Connection'] = 'keep-alive'
+      response.headers['X-Accel-Buffering'] = 'no'
 
-      writer = StreamWriter.new(response.stream)
+      response_shape_class = loader_class.resolve_response_shape(mutation_method)
+      response_mode = loader_class.response_shape_mode(mutation_method)
+
+      stream_validator = if ReactiveView.configuration.should_validate_responses? &&
+                            response_mode == :stream &&
+                            response_shape_class
+                           Types::Validator.new(response_shape_class.dry_schema)
+                         end
+
+      enforced_chunk_type = response_mode == :stream ? :json : nil
+
+      writer = StreamWriter.new(
+        response.stream,
+        validator: stream_validator,
+        enforced_chunk_type: enforced_chunk_type
+      )
       begin
         result.block.call(writer)
-      rescue => e
+      rescue StandardError => e
         ReactiveView.logger.error "[ReactiveView] Stream error: #{e.message}"
         ReactiveView.logger.error e.backtrace&.first(5)&.join("\n") if e.backtrace
-        writer.event("error", message: e.message) unless writer.closed?
+        writer.event('error', message: e.message) unless writer.closed?
       ensure
         writer.close unless writer.closed?
       end
     rescue LoaderNotFoundError => e
-      response.headers["Content-Type"] = "application/json"
-      response.stream.write({error: e.message}.to_json)
+      response.headers['Content-Type'] = 'application/json'
+      response.stream.write({ error: e.message }.to_json)
       response.stream.close
     rescue StandardError => e
       handle_stream_error(e)
@@ -310,8 +325,8 @@ module ReactiveView
       case result
       when MutationResult then result.to_json_hash.to_json
       when Hash then result.to_json
-      when nil then {success: true}.to_json
-      else {success: true, data: result}.to_json
+      when nil then { success: true }.to_json
+      else { success: true, data: result }.to_json
       end
     end
 
@@ -322,9 +337,9 @@ module ReactiveView
       ReactiveView.logger.error "[ReactiveView] Stream error: #{error.message}"
       ReactiveView.logger.error error.backtrace&.join("\n") if error.backtrace
       begin
-        response.stream.write("data: #{({type: "error", message: error.message}).to_json}\n\n")
+        response.stream.write("data: #{{ type: 'error', message: error.message }.to_json}\n\n")
         response.stream.close
-      rescue => e
+      rescue StandardError => e
         ReactiveView.logger.error "[ReactiveView] Failed to write stream error: #{e.message}"
       end
     end

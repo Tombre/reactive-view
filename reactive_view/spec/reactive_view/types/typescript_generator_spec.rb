@@ -139,59 +139,66 @@ RSpec.describe ReactiveView::Types::TypescriptGenerator do
     end
 
     let(:update_mutation_data) do
-      { update: { params_schema: update_params_schema, response_schema: nil } }
+      { update: { params_schema: update_params_schema, response_schema: nil, response_mode: :single } }
     end
 
     let(:delete_mutation_data) do
-      { delete: { params_schema: ReactiveView::Types::Hash, response_schema: nil } }
+      { delete: { params_schema: ReactiveView::Types::Hash, response_schema: nil, response_mode: :single } }
     end
 
     let(:multi_mutation_data) do
       {
-        update: { params_schema: update_params_schema, response_schema: nil },
-        delete: { params_schema: ReactiveView::Types::Hash, response_schema: nil }
+        update: { params_schema: update_params_schema, response_schema: nil, response_mode: :single },
+        delete: { params_schema: ReactiveView::Types::Hash, response_schema: nil, response_mode: :single }
       }
     end
 
     it 'generates a MutationName union type from mutation names' do
-      result = generator.send(:build_use_form_hook, update_mutation_data)
+      result = generator.send(:build_use_form_hook, update_mutation_data, false)
       expect(result).to include('type MutationName = "update";')
     end
 
     it 'generates a union of multiple mutation names' do
-      result = generator.send(:build_use_form_hook, multi_mutation_data)
+      result = generator.send(:build_use_form_hook, multi_mutation_data, false)
       expect(result).to include('type MutationName = "update" | "delete";')
     end
 
     it 'generates a _mutations map with action and Form entries' do
-      result = generator.send(:build_use_form_hook, multi_mutation_data)
+      result = generator.send(:build_use_form_hook, multi_mutation_data, false)
       expect(result).to include('update: { action: updateAction, Form: UpdateForm }')
       expect(result).to include('delete: { action: deleteAction, Form: DeleteForm }')
     end
 
-    it 'generates useForm overloads for mutation names and streams' do
-      result = generator.send(:build_use_form_hook, multi_mutation_data)
+    it 'generates useForm overload for stream handles when streams exist' do
+      result = generator.send(:build_use_form_hook, multi_mutation_data, true)
       expect(result).to include('export function useForm<T extends MutationName>(name: T): readonly [')
       expect(result).to include('export function useForm<T extends StreamMutationName>(stream: StreamHandle<T>): StreamFormComponent;')
       expect(result).not_to include('FormSubmission')
       expect(result).not_to include('as any')
     end
 
-    it 'generates the useForm implementation for both mutation and stream inputs' do
-      result = generator.send(:build_use_form_hook, update_mutation_data)
+    it 'generates stream-aware implementation when streams exist' do
+      result = generator.send(:build_use_form_hook, update_mutation_data, true)
       expect(result).to include('if (typeof nameOrStream === "string") {')
       expect(result).to include('const mutation = _mutations[nameOrStream];')
       expect(result).to include('return [mutation.Form, useSubmission(mutation.action)] as const;')
       expect(result).to include('return nameOrStream.Form;')
     end
 
+    it 'generates mutation-only implementation when no streams exist' do
+      result = generator.send(:build_use_form_hook, update_mutation_data, false)
+      expect(result).not_to include('StreamMutationName')
+      expect(result).not_to include('nameOrStream.Form')
+      expect(result).to include('const mutation = _mutations[nameOrStream];')
+    end
+
     it 'generates JSDoc with example using the first mutation' do
-      result = generator.send(:build_use_form_hook, update_mutation_data)
+      result = generator.send(:build_use_form_hook, update_mutation_data, false)
       expect(result).to include('const [UpdateForm, submission] = useForm("update");')
     end
 
     it 'works with a single mutation' do
-      result = generator.send(:build_use_form_hook, delete_mutation_data)
+      result = generator.send(:build_use_form_hook, delete_mutation_data, false)
       expect(result).to include('type MutationName = "delete";')
       expect(result).to include('delete: { action: deleteAction, Form: DeleteForm }')
       expect(result).to include('export function useForm<T extends MutationName>(name: T): readonly [')
@@ -274,12 +281,20 @@ RSpec.describe ReactiveView::Types::TypescriptGenerator do
       )
     end
 
+    let(:generate_response_schema) do
+      ReactiveView::Types::Hash.schema(
+        word: ReactiveView::Types::String
+      )
+    end
+
     def mutation_data_for(*names)
       names.each_with_object({}) do |name, memo|
         params_schema = name == :generate ? generate_schema : ReactiveView::Types::Hash
+        response_schema = name == :generate ? generate_response_schema : params_schema
         memo[name] = {
           params_schema: params_schema,
-          response_schema: nil
+          response_schema: response_schema,
+          response_mode: :stream
         }
       end
     end
@@ -318,6 +333,12 @@ RSpec.describe ReactiveView::Types::TypescriptGenerator do
       expect(result).to include('"update": UpdateParams;')
     end
 
+    it 'generates a typed stream response map' do
+      result = build_streaming('ai/chat', mutation_data_for(:generate))
+      expect(result).to include('type StreamResponseMap = {')
+      expect(result).to include('"generate": GenerateResponse;')
+    end
+
     it 'generates a useStream function that returns a StreamHandle' do
       result = build_streaming('users/index', mutation_data_for(:update))
       expect(result).to include('): StreamHandle<T> {')
@@ -332,7 +353,7 @@ RSpec.describe ReactiveView::Types::TypescriptGenerator do
     it 'generates a StreamForm component and attaches it to the stream handle' do
       result = build_streaming('users/index', mutation_data_for(:update))
       expect(result).to include('function StreamForm(')
-      expect(result).to include('return Object.assign(stream, { name, Form: StreamForm }) as StreamHandle<T>;')
+      expect(result).to include('messages: streamData.messages')
     end
 
     it 'generates StreamForm with onSubmit handler that calls stream.start with typed params' do
@@ -359,6 +380,7 @@ RSpec.describe ReactiveView::Types::TypescriptGenerator do
       result = build_streaming('ai/chat', mutation_data_for(:generate))
       expect(result).to include('const stream = useStream("generate")')
       expect(result).to include('stream.start({ prompt: "Hello" })')
+      expect(result).to include('stream.messages()')
     end
 
     it 'works with a single mutation' do
@@ -375,20 +397,21 @@ RSpec.describe ReactiveView::Types::TypescriptGenerator do
   end
 
   describe '#build_imports' do
-    it 'includes createStream and StreamState imports when mutations exist' do
-      result = generator.send(:build_imports, true)
+    it 'includes createStream, useStreamData, and StreamState imports when stream mutations exist' do
+      result = generator.send(:build_imports, true, true)
       expect(result).to include('createStream')
+      expect(result).to include('useStreamData')
       expect(result).to include('StreamState')
     end
 
-    it 'does not include stream imports when no mutations exist' do
-      result = generator.send(:build_imports, false)
+    it 'does not include stream imports when no stream mutations exist' do
+      result = generator.send(:build_imports, true, false)
       expect(result).not_to include('createStream')
       expect(result).not_to include('StreamState')
     end
 
     it 'includes createMutation when mutations exist' do
-      result = generator.send(:build_imports, true)
+      result = generator.send(:build_imports, true, false)
       expect(result).to include('createMutation')
     end
   end
@@ -420,7 +443,9 @@ RSpec.describe ReactiveView::Types::TypescriptGenerator do
     it 'includes streaming section when mutations exist' do
       result = build_file(
         path: 'ai/chat',
-        mutation_data: { generate: { params_schema: generate_schema, response_schema: nil } }
+        mutation_data: {
+          generate: { params_schema: generate_schema, response_schema: generate_schema, response_mode: :stream }
+        }
       )
       expect(result).to include('// Streaming (SSE)')
       expect(result).to include('useStream')
@@ -436,19 +461,34 @@ RSpec.describe ReactiveView::Types::TypescriptGenerator do
       result = build_file(
         path: 'ai/chat',
         load_schema: load_schema,
-        mutation_data: { generate: { params_schema: generate_schema, response_schema: nil } }
+        mutation_data: {
+          generate: { params_schema: generate_schema, response_schema: generate_schema, response_mode: :stream }
+        }
       )
       expect(result).to include('// Mutations')
       expect(result).to include('// Streaming (SSE)')
       expect(result).to include('// Loader Data')
     end
 
-    it 'includes createStream import when mutations exist' do
+    it 'includes createStream import when stream mutations exist' do
       result = build_file(
         path: 'ai/chat',
-        mutation_data: { generate: { params_schema: generate_schema, response_schema: nil } }
+        mutation_data: {
+          generate: { params_schema: generate_schema, response_schema: generate_schema, response_mode: :stream }
+        }
       )
       expect(result).to include('createStream')
+    end
+
+    it 'does not include streaming section for non-stream mutations' do
+      result = build_file(
+        path: 'users/index',
+        mutation_data: {
+          update: { params_schema: generate_schema, response_schema: nil, response_mode: :single }
+        }
+      )
+      expect(result).not_to include('// Streaming (SSE)')
+      expect(result).not_to include('useStream(')
     end
   end
 

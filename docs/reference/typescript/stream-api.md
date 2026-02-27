@@ -10,7 +10,6 @@ Creates SSE mutation stream state.
 
 ## `StreamState`
 
-- `data(): string`
 - `streaming(): boolean`
 - `status(): "idle" | "streaming" | "done" | "error" | "aborted"`
 - `error(): Error | null`
@@ -29,23 +28,19 @@ Streams complete successfully only after a `done` chunk. If the connection close
 - `useStream("mutation")` returns a stream handle (`StreamState<TParams>`) with:
   - `name`
   - `Form` (stream-bound form component)
+  - `messages()` (typed streamed chunks when action uses `response_shape(..., mode: :stream)`)
 - `useForm(stream)` returns the same stream-bound `Form` component
 
 ## `useStreamData(stream, options?)`
 
-Higher-level helper for chat-style streaming UIs.
+Low-level helper for mapping stream chunks into a typed array.
 
-- `messages()` returns typed stream messages
-- `state()` and `error()` expose stream lifecycle status
-- `send(params)` starts a stream and appends a user + assistant message
-- `retry(params?)` retries with last params by default
-- `reset()` clears helper-managed messages
+- `messages()` returns mapped chunk values
+- `reset()` clears local mapped values
 
 Optional `options`:
 
-- `getUserContent(params)`
-- `parseJsonChunk(chunk)`
-- `extractMeta(events)`
+- `parseChunk(chunk)`
 
 ## `StreamChunk`
 

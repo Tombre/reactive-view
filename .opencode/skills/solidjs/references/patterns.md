@@ -99,12 +99,8 @@ Programmatic calls stay typed:
 ```tsx
 stream.start({ prompt: "Hello" });
 
-const streamData = useStreamData(stream, {
-  getUserContent: (params) => params.prompt,
-});
-
-streamData.send({ prompt: "Hello" });
-streamData.retry();
+// typed from response_shape(..., mode: :stream)
+stream.messages().map((chunk) => chunk.word);
 ```
 
 Use stream state helpers:
@@ -113,6 +109,7 @@ Use stream state helpers:
 - `stream.streaming()` in-flight state
 - `stream.error()` request/stream failure
 - `stream.chunks()` mixed text/json events
+- `stream.messages()` typed streamed objects
 
 ## Regeneration Trigger
 

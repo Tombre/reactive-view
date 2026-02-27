@@ -148,7 +148,6 @@ export type {
   StreamChunk,
   StreamOptions,
   StreamStatus,
-  StreamDataMessage,
   UseStreamDataOptions,
   StreamDataState,
 } from "./stream.js";

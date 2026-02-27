@@ -1,5 +1,4 @@
 import type { JSX } from "@reactive-view/core";
-import { useStreamData } from "@reactive-view/core";
 import { useForm, useStream } from "#loaders/ai/chat";
 
 const stream = useStream("generate");
@@ -24,32 +23,14 @@ const [GenerateForm, generateSubmission] = useForm("generate");
 const pendingCheck: boolean = generateSubmission.pending;
 const successCheck: boolean | undefined = generateSubmission.result?.success;
 
-const streamData = useStreamData<
-  { prompt: string },
-  { usage?: { prompt_tokens: number } },
-  { usage?: { prompt_tokens: number } }
->(stream, {
-  getUserContent: (params: { prompt: string }) => params.prompt,
-  parseJsonChunk: (chunk: { data?: unknown }) =>
-    chunk.data as { usage?: { prompt_tokens: number } },
-  extractMeta: (events: Array<{ usage?: { prompt_tokens: number } }>) => ({
-    usage: events[0]?.usage,
-  }),
-});
+const firstWord: string | undefined = stream.messages()[0]?.word;
 
-streamData.send({ prompt: "typed" });
-
-// @ts-expect-error prompt is required for send
-streamData.send({});
-
-const firstMessageStatus:
-  | "streaming"
-  | "done"
-  | "error"
-  | undefined = streamData.messages()[0]?.status;
+// @ts-expect-error word is the only streamed field
+const unexpectedRole = stream.messages()[0]?.role;
 
 void formComponentCheck;
 void GenerateForm;
 void pendingCheck;
 void successCheck;
-void firstMessageStatus;
+void firstWord;
+void unexpectedRole;
