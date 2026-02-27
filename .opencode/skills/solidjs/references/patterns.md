@@ -98,6 +98,13 @@ Programmatic calls stay typed:
 
 ```tsx
 stream.start({ prompt: "Hello" });
+
+const streamData = useStreamData(stream, {
+  getUserContent: (params) => params.prompt,
+});
+
+streamData.send({ prompt: "Hello" });
+streamData.retry();
 ```
 
 Use stream state helpers:

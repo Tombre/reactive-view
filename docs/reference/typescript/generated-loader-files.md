@@ -19,7 +19,10 @@ Depending on loader definitions, a generated file can include:
 - `useForm(name)` helper
 - `useStream(name)` helper
 
-When streams are present, `useForm(stream)` is also supported and returns a stream-bound `Form` component.
+When streams are present:
+
+- `useForm(stream)` returns a stream-bound `Form` component
+- `useStreamData(stream, options?)` from `@reactive-view/core` provides a higher-level typed message helper
 
 ## Central map
 

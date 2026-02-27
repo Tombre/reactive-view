@@ -141,8 +141,18 @@ export type { MutationResult } from "./mutation.js";
 
 export {
   createStream,
+  useStreamData,
 } from "./stream.js";
-export type { StreamState, StreamChunk, StreamOptions } from "./stream.js";
+export type {
+  StreamState,
+  StreamChunk,
+  StreamOptions,
+  StreamStatus,
+  StreamDataMessage,
+  UseStreamDataOptions,
+  StreamDataState,
+} from "./stream.js";
+export { StreamIncompleteError } from "./stream.js";
 
 // ============================================================================
 // ReactiveView — CSRF Utilities

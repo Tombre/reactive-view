@@ -12,12 +12,17 @@ Creates SSE mutation stream state.
 
 - `data(): string`
 - `streaming(): boolean`
+- `status(): "idle" | "streaming" | "done" | "error" | "aborted"`
 - `error(): Error | null`
 - `chunks(): StreamChunk[]`
+- `lastParams(): TParams | null`
 - `start(params: TParams): void`
+- `retry(params?: TParams): void`
+- `end(): Promise<void>`
 - `abort(): void`
 
 `StreamState` is generic in generated loader files, so `start(params)` is typed per mutation.
+Streams complete successfully only after a `done` chunk. If the connection closes early, the stream fails with `StreamIncompleteError`.
 
 ## Generated hooks
 
@@ -25,6 +30,22 @@ Creates SSE mutation stream state.
   - `name`
   - `Form` (stream-bound form component)
 - `useForm(stream)` returns the same stream-bound `Form` component
+
+## `useStreamData(stream, options?)`
+
+Higher-level helper for chat-style streaming UIs.
+
+- `messages()` returns typed stream messages
+- `state()` and `error()` expose stream lifecycle status
+- `send(params)` starts a stream and appends a user + assistant message
+- `retry(params?)` retries with last params by default
+- `reset()` clears helper-managed messages
+
+Optional `options`:
+
+- `getUserContent(params)`
+- `parseJsonChunk(chunk)`
+- `extractMeta(events)`
 
 ## `StreamChunk`
 
