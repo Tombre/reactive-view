@@ -137,7 +137,7 @@ export function createMutation<TResult = unknown>(
       // Parse the response
       let result: MutationResult<TResult>;
       try {
-        result = (await response.json()) as MutationResult<TResult>;
+        result = (await parseResponseJson(response)) as MutationResult<TResult>;
       } catch {
         throw new Error(
           `Mutation failed: ${response.status} ${response.statusText}`
@@ -219,7 +219,7 @@ export function createJsonMutation<TInput = Record<string, unknown>, TResult = u
 
       let result: MutationResult<TResult>;
       try {
-        result = (await response.json()) as MutationResult<TResult>;
+        result = (await parseResponseJson(response)) as MutationResult<TResult>;
       } catch {
         throw new Error(
           `Mutation failed: ${response.status} ${response.statusText}`
@@ -247,3 +247,19 @@ export function createJsonMutation<TInput = Record<string, unknown>, TResult = u
 
 // Re-export Solid Router action primitives for convenience
 export { useAction, useSubmission, useSubmissions } from "@solidjs/router";
+
+async function parseResponseJson(response: Response): Promise<unknown> {
+  const contentType = response.headers.get("content-type") || "";
+  const bodyText = await response.text();
+
+  if (!contentType.includes("application/json")) {
+    throw new Error(
+      `Expected JSON response from ${response.url}, received ${contentType || "unknown content-type"}. Body starts with: ${bodyText.slice(
+        0,
+        120
+      )}`
+    );
+  }
+
+  return JSON.parse(bodyText);
+}

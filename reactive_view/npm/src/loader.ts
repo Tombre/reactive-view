@@ -139,13 +139,15 @@ async function fetchLoaderData<T>(
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
+    const errorData = await parseResponseJson(response);
     throw new Error(
-      errorData.error || `Loader request failed: ${response.statusText}`
+      (errorData as Record<string, unknown>).error as string ||
+        `Loader request failed: ${response.statusText}`
     );
   }
 
-  return response.json() as Promise<T>;
+  const data = await parseResponseJson(response);
+  return data as T;
 }
 
 /**
@@ -308,17 +310,44 @@ export function useLoaderData<T>(
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await parseResponseJson(response);
         throw new Error(
-          errorData.error || `Loader request failed: ${response.statusText}`
+          (errorData as Record<string, unknown>).error as string ||
+            `Loader request failed: ${response.statusText}`
         );
       }
 
-      return response.json() as Promise<T>;
+      const data = await parseResponseJson(response);
+      return data as T;
     }
   );
 
   return data as Resource<T>;
+}
+
+async function parseResponseJson(response: Response): Promise<unknown> {
+  const contentType = response.headers.get("content-type") || "";
+  const bodyText = await response.text();
+
+  if (!contentType.includes("application/json")) {
+    throw new Error(
+      `Expected JSON response from ${response.url}, received ${contentType || "unknown content-type"}. Body starts with: ${bodyText.slice(
+        0,
+        120
+      )}`
+    );
+  }
+
+  try {
+    return JSON.parse(bodyText);
+  } catch {
+    throw new Error(
+      `Invalid JSON response from ${response.url}. Body starts with: ${bodyText.slice(
+        0,
+        120
+      )}`
+    );
+  }
 }
 
 /**

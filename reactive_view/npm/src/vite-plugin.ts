@@ -104,12 +104,11 @@ export function reactiveViewPlugin(
      */
     config(_userConfig, { command }) {
       if (options.pagesPath) {
-        const isDev = command === "serve";
         const pagesAlias = { find: "~pages", replacement: options.pagesPath };
 
         return {
           resolve: {
-            alias: isDev ? [pagesAlias] : [],
+            alias: [pagesAlias],
           },
           server: {
             fs: {
