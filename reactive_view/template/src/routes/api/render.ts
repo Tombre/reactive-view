@@ -60,8 +60,13 @@ export async function POST(event: APIEvent): Promise<Response> {
 
     // Return the rendered HTML
     const html = await renderResponse.text();
+    const clientRailsUrlScript = `<script>window.__RAILS_BASE_URL__=${JSON.stringify(rails_base_url)};</script>`;
+
+    const htmlWithRailsBaseUrl = html.includes("</head>")
+      ? html.replace("</head>", `${clientRailsUrlScript}</head>`)
+      : `${clientRailsUrlScript}${html}`;
     
-    return new Response(html, {
+    return new Response(htmlWithRailsBaseUrl, {
       status: 200,
       headers: { 
         "Content-Type": "text/html; charset=utf-8",

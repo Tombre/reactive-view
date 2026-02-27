@@ -20,7 +20,11 @@ const getRailsBaseUrl = (): string => {
 
     return "http://localhost:3000";
   }
-  // On client, use the current origin (same-origin request)
+  // On client, prefer the injected Rails base URL (for split-origin dev setups)
+  const clientRailsUrl = (window as any).__RAILS_BASE_URL__;
+  if (clientRailsUrl) return clientRailsUrl;
+
+  // Fallback to same-origin requests
   return window.location.origin;
 };
 

@@ -453,5 +453,9 @@ function getRailsBaseUrl(): string {
     if (globalRailsUrl) return globalRailsUrl;
     return "http://localhost:3000";
   }
+
+  const clientRailsUrl = (window as any).__RAILS_BASE_URL__;
+  if (clientRailsUrl) return clientRailsUrl;
+
   return window.location.origin;
 }
