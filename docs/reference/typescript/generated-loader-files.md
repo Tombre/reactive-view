@@ -19,6 +19,8 @@ Depending on loader definitions, a generated file can include:
 - `useForm(name)` helper
 - `useStream(name)` helper
 
+When streams are present, `useForm(stream)` is also supported and returns a stream-bound `Form` component.
+
 ## Central map
 
 `loader-data.d.ts` augments `@reactive-view/core` `LoaderDataMap` for cross-route typed usage.

@@ -436,7 +436,7 @@ module ReactiveView
         result
       end
 
-      # Build the useForm hook that returns [Form, submission] for a given mutation name.
+      # Build the useForm hook that supports both mutation names and streams.
       #
       # Generates a type-safe hook where the mutation name argument is a generic
       # constrained to the union of available mutations. The return type is fully
@@ -501,19 +501,37 @@ module ReactiveView
            *   </button>
            * </#{entries.first[:form_name]}>
            */
-          export function useForm<T extends MutationName>(name: T) {
-            const mutation = _mutations[name];
-            return [mutation.Form, useSubmission(mutation.action)] as const;
-          }
+           export function useForm<T extends MutationName>(name: T): readonly [
+             (props: Omit<JSX.FormHTMLAttributes<HTMLFormElement>, "action" | "method">) => JSX.Element,
+             ReturnType<typeof useSubmission>
+           ];
+
+           /**
+            * Returns a stream-bound Form component from `useStream()`.
+            *
+            * @example
+            * const stream = useStream("#{entries.first[:name]}");
+            * const StreamForm = useForm(stream);
+            */
+           export function useForm<T extends StreamMutationName>(stream: StreamHandle<T>): StreamFormComponent;
+
+           export function useForm(
+             nameOrStream: MutationName | StreamHandle<StreamMutationName>
+           ) {
+             if (typeof nameOrStream === "string") {
+               const mutation = _mutations[nameOrStream];
+               return [mutation.Form, useSubmission(mutation.action)] as const;
+             }
+             return nameOrStream.Form;
+           }
         TYPESCRIPT
       end
 
       # Build the streaming section (useStream hook for mutations)
       #
-      # Generates a `useStream()` hook that returns a `[StreamForm, stream]` tuple,
-      # similar to `useForm`. The StreamForm handles form submission and starts the
-      # SSE stream. The stream object provides reactive state for tracking data,
-      # streaming status, errors, and chunks.
+      # Generates a typed `useStream()` hook that returns a stream object.
+      # The returned stream includes a `.Form` component that handles form
+      # submission and starts the SSE connection.
       #
       # @param loader [Hash] Loader metadata including path and mutation_data
       # @return [String] TypeScript code for the streaming section
@@ -523,10 +541,12 @@ module ReactiveView
 
         entries = mutation_data.map do |mutation_name, _data|
           base_name = mutation_name.to_s
-          { name: base_name }
+          capitalized_name = base_name.camelize
+          { name: base_name, params_type: "#{capitalized_name}Params" }
         end
 
         mutation_names_union = entries.map { |e| "\"#{e[:name]}\"" }.join(' | ')
+        stream_params_entries = entries.map { |e| "  \"#{e[:name]}\": #{e[:params_type]};" }.join("\n")
 
         <<~TYPESCRIPT
 
@@ -537,37 +557,42 @@ module ReactiveView
           /** Available stream mutation names for this route */
           type StreamMutationName = #{mutation_names_union};
 
+          /** Maps stream mutation names to their typed params interfaces. */
+          type StreamParamsMap = {
+          #{stream_params_entries}
+          };
+
+          type StreamFormComponent = (
+            props: Omit<JSX.FormHTMLAttributes<HTMLFormElement>, "action" | "method">
+          ) => JSX.Element;
+
+          type StreamHandle<T extends StreamMutationName> = StreamState<StreamParamsMap[T]> & {
+            readonly name: T;
+            readonly Form: StreamFormComponent;
+          };
+
           /**
            * Hook for SSE streaming from a mutation endpoint.
-           * Returns a `[StreamForm, stream]` tuple similar to `useForm`.
-           *
-           * The `StreamForm` component handles form submission and starts the stream.
-           * The `stream` object provides reactive state and a programmatic `start()` method.
+           * Returns a typed stream object with a `.Form` component.
            *
            * @param name - The mutation name (#{entries.map { |e| "\"#{e[:name]}\"" }.join(', ')})
-           * @returns A readonly tuple of `[StreamFormComponent, StreamState]`
+           * @returns Stream handle with typed `start(params)` and built-in `Form`
            *
            * @example
-           * const [StreamForm, stream] = useStream("#{entries.first[:name]}");
+           * const stream = useStream("#{entries.first[:name]}");
+           * const StreamForm = useForm(stream);
            *
            * <StreamForm>
            *   <input name="prompt" />
            *   <button type="submit" disabled={stream.streaming()}>Send</button>
            * </StreamForm>
            *
-           * <Show when={stream.data()}>
-           *   <p>{stream.data()}</p>
-           * </Show>
-           *
            * @example Programmatic usage
-           * const [, stream] = useStream("#{entries.first[:name]}");
+           * const stream = useStream("#{entries.first[:name]}");
            * stream.start({ prompt: "Hello" });
            */
-          export function useStream<T extends StreamMutationName>(name: T): readonly [
-            (props: Omit<JSX.FormHTMLAttributes<HTMLFormElement>, "action" | "method">) => JSX.Element,
-            StreamState
-          ] {
-            const stream = createStream("#{loader[:path]}", name);
+          export function useStream<T extends StreamMutationName>(name: T): StreamHandle<T> {
+            const stream = createStream<StreamParamsMap[T]>("#{loader[:path]}", name);
 
             function StreamForm(
               props: Omit<JSX.FormHTMLAttributes<HTMLFormElement>, "action" | "method">
@@ -585,13 +610,13 @@ module ReactiveView
                     if (typeof props.onSubmit === "function") {
                       (props.onSubmit as (e: SubmitEvent) => void)(e);
                     }
-                    stream.start(params);
+                    stream.start(params as StreamParamsMap[T]);
                   }}
                 />
               );
             }
 
-            return [StreamForm, stream] as const;
+            return Object.assign(stream, { name, Form: StreamForm }) as StreamHandle<T>;
           }
         TYPESCRIPT
       end

@@ -14,8 +14,17 @@ Creates SSE mutation stream state.
 - `streaming(): boolean`
 - `error(): Error | null`
 - `chunks(): StreamChunk[]`
-- `start(params: Record<string, unknown>): void`
+- `start(params: TParams): void`
 - `abort(): void`
+
+`StreamState` is generic in generated loader files, so `start(params)` is typed per mutation.
+
+## Generated hooks
+
+- `useStream("mutation")` returns a stream handle (`StreamState<TParams>`) with:
+  - `name`
+  - `Form` (stream-bound form component)
+- `useForm(stream)` returns the same stream-bound `Form` component
 
 ## `StreamChunk`
 

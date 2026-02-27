@@ -81,7 +81,8 @@ const [UpdateForm, updateSubmission] = useForm("update");
 For SSE mutation UX:
 
 ```tsx
-const [StreamForm, stream] = useStream("generate");
+const stream = useStream("generate");
+const StreamForm = useForm(stream);
 
 <StreamForm>
   <input name="prompt" />
@@ -91,6 +92,12 @@ const [StreamForm, stream] = useStream("generate");
     </Show>
   </button>
 </StreamForm>;
+```
+
+Programmatic calls stay typed:
+
+```tsx
+stream.start({ prompt: "Hello" });
 ```
 
 Use stream state helpers:

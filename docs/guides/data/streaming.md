@@ -27,8 +27,11 @@ end
 Use generated `useStream("mutationName")` from `#loaders/*`:
 
 ```tsx
-const [StreamForm, stream] = useStream("generate");
+const stream = useStream("generate");
+const StreamForm = useForm(stream);
 ```
+
+`stream.start(params)` is strongly typed from the mutation params shape.
 
 `stream` state:
 
@@ -38,6 +41,11 @@ const [StreamForm, stream] = useStream("generate");
 - `stream.chunks()` all chunks
 - `stream.start(params)` programmatic start
 - `stream.abort()` cancel
+
+`useForm` supports both mutation names and stream handles:
+
+- `useForm("update")` -> `[Form, submission]`
+- `useForm(stream)` -> `StreamForm`
 
 ## Endpoint
 

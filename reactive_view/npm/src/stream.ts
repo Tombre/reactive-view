@@ -27,7 +27,7 @@ export interface StreamChunk {
  * Reactive state for a stream connection.
  * All properties are SolidJS accessors (signals) that update as chunks arrive.
  */
-export interface StreamState {
+export interface StreamState<TParams = Record<string, unknown>> {
   /** Accumulated text data from all "text" chunks */
   data: () => string;
   /** Whether the stream is currently active */
@@ -37,7 +37,7 @@ export interface StreamState {
   /** All received chunks (text, json, and custom) */
   chunks: () => StreamChunk[];
   /** Start the stream with the given params (programmatic trigger) */
-  start: (params: Record<string, unknown>) => void;
+  start: (params: TParams) => void;
   /** Abort the current stream */
   abort: () => void;
 }
@@ -82,11 +82,11 @@ export interface StreamOptions {
  * // stream.data() updates as text arrives
  * // stream.streaming() is true while active
  */
-export function createStream(
+export function createStream<TParams = Record<string, unknown>>(
   loaderPath: string,
   mutationName: string,
   options?: StreamOptions
-): StreamState {
+): StreamState<TParams> {
   // Server-side: return inert state (streams are client-only)
   if (isServer) {
     const noop = () => {};
@@ -107,7 +107,7 @@ export function createStream(
 
   let abortController: AbortController | null = null;
 
-  function start(params: Record<string, unknown>) {
+  function start(params: TParams) {
     // Abort any existing stream
     abort();
 
@@ -121,28 +121,34 @@ export function createStream(
 
     abortController = new AbortController();
 
-    connectSSE(loaderPath, mutationName, params, abortController.signal, {
-      onChunk(chunk: StreamChunk) {
-        batch(() => {
-          setChunks((prev) => [...prev, chunk]);
-          if (chunk.type === "text" && chunk.chunk) {
-            setData((prev) => prev + chunk.chunk);
-          }
-          options?.onChunk?.(chunk);
-        });
-      },
-      onDone() {
-        setStreaming(false);
-        options?.onDone?.();
-      },
-      onError(err: Error) {
-        batch(() => {
-          setError(err);
+    connectSSE(
+      loaderPath,
+      mutationName,
+      params as Record<string, unknown>,
+      abortController.signal,
+      {
+        onChunk(chunk: StreamChunk) {
+          batch(() => {
+            setChunks((prev) => [...prev, chunk]);
+            if (chunk.type === "text" && chunk.chunk) {
+              setData((prev) => prev + chunk.chunk);
+            }
+            options?.onChunk?.(chunk);
+          });
+        },
+        onDone() {
           setStreaming(false);
-        });
-        options?.onError?.(err);
-      },
-    });
+          options?.onDone?.();
+        },
+        onError(err: Error) {
+          batch(() => {
+            setError(err);
+            setStreaming(false);
+          });
+          options?.onError?.(err);
+        },
+      }
+    );
   }
 
   function abort() {

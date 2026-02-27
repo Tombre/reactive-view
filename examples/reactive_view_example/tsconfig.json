@@ -19,6 +19,7 @@
   },
   "include": [
     "app/pages/**/*",
+    "app/type-specs/**/*",
     ".reactive_view/types/**/*"
   ]
 }

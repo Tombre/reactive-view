@@ -5,7 +5,7 @@ import {
   For,
   Suspense,
 } from "@reactive-view/core";
-import { useLoaderData, useStream } from "#loaders/ai/chat";
+import { useLoaderData, useForm, useStream } from "#loaders/ai/chat";
 
 interface Message {
   id: number;
@@ -25,7 +25,8 @@ let messageId = 0;
 
 export default function AiChatPage() {
   const data = useLoaderData();
-  const [StreamForm, stream] = useStream("generate");
+  const stream = useStream("generate");
+  const StreamForm = useForm(stream);
   const [messages, setMessages] = createSignal<Message[]>([]);
   const [input, setInput] = createSignal("");
 
