@@ -515,13 +515,13 @@ module ReactiveView
       # SSE stream. The stream object provides reactive state for tracking data,
       # streaming status, errors, and chunks.
       #
-      # @param loader [Hash] Loader metadata including path and mutation_schemas
+      # @param loader [Hash] Loader metadata including path and mutation_data
       # @return [String] TypeScript code for the streaming section
       def build_streaming_section(loader)
-        mutation_schemas = loader[:mutation_schemas] || {}
-        return '' if mutation_schemas.empty?
+        mutation_data = loader[:mutation_data] || {}
+        return '' if mutation_data.empty?
 
-        entries = mutation_schemas.map do |mutation_name, _schema|
+        entries = mutation_data.map do |mutation_name, _data|
           base_name = mutation_name.to_s
           { name: base_name }
         end

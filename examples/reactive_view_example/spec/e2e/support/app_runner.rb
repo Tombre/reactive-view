@@ -7,7 +7,6 @@ module E2E
   class AppRunner
     APP_HOST = '127.0.0.1'.freeze
     DAEMON_HOST = 'localhost'.freeze
-    E2E_DATABASE_URL = "sqlite3:#{File.expand_path('../../../../tmp/e2e.sqlite3', __dir__)}".freeze
 
     attr_reader :app_port, :daemon_port
 
@@ -40,7 +39,6 @@ module E2E
         {
           'CI' => nil,
           'RAILS_ENV' => 'test',
-          'DATABASE_URL' => E2E_DATABASE_URL,
           'REACTIVE_VIEW_DAEMON_HOST' => DAEMON_HOST,
           'REACTIVE_VIEW_DAEMON_PORT' => daemon_port.to_s
         },
