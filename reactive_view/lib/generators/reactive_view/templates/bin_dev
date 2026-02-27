@@ -3,6 +3,15 @@
 # Development startup script for ReactiveView
 # Starts both Rails and the SolidStart daemon
 
+set -e
+
+daemon_host="${REACTIVE_VIEW_DAEMON_HOST:-localhost}"
+daemon_port="${REACTIVE_VIEW_DAEMON_PORT:-3001}"
+
+port_available() {
+  ruby -rsocket -e 'begin; TCPServer.new("127.0.0.1", Integer(ARGV[0])).close; exit 0; rescue Errno::EADDRINUSE; exit 1; end' "$1"
+}
+
 if ! command -v foreman &> /dev/null; then
   echo "Installing foreman..."
   gem install foreman
@@ -11,6 +20,21 @@ fi
 # Sync files before starting
 echo "Syncing ReactiveView files..."
 bin/rails reactive_view:sync
+
+if ! port_available "$daemon_port"; then
+  echo "Error: ReactiveView daemon port ${daemon_port} is already in use."
+  echo ""
+  echo "This can cause Rails/daemon port mismatch and JSON parse errors in the browser."
+  echo "Free the port or pick another port before running bin/dev."
+  echo ""
+  echo "Examples:"
+  echo "  REACTIVE_VIEW_DAEMON_PORT=3101 bin/dev"
+  echo "  lsof -nP -iTCP:${daemon_port} -sTCP:LISTEN"
+  exit 1
+fi
+
+export REACTIVE_VIEW_DAEMON_HOST="$daemon_host"
+export REACTIVE_VIEW_DAEMON_PORT="$daemon_port"
 
 # Start both processes
 exec foreman start -f Procfile.dev "$@"

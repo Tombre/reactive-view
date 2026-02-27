@@ -5,6 +5,13 @@
 
 set -e
 
+daemon_host="${REACTIVE_VIEW_DAEMON_HOST:-localhost}"
+daemon_port="${REACTIVE_VIEW_DAEMON_PORT:-3001}"
+
+port_available() {
+  ruby -rsocket -e 'begin; TCPServer.new("127.0.0.1", Integer(ARGV[0])).close; exit 0; rescue Errno::EADDRINUSE; exit 1; end' "$1"
+}
+
 # Check if foreman is installed
 if ! command -v foreman &> /dev/null; then
   echo "Installing foreman..."
@@ -17,6 +24,18 @@ if [ ! -d ".reactive_view" ]; then
   bin/rails reactive_view:setup
 fi
 
+if ! port_available "$daemon_port"; then
+  echo "Error: ReactiveView daemon port ${daemon_port} is already in use."
+  echo ""
+  echo "This causes Rails/daemon port mismatch and can surface as JSON parse errors."
+  echo "Free the port or choose another port before running bin/dev."
+  echo ""
+  echo "Examples:"
+  echo "  REACTIVE_VIEW_DAEMON_PORT=3101 bin/dev"
+  echo "  lsof -nP -iTCP:${daemon_port} -sTCP:LISTEN"
+  exit 1
+fi
+
 # Sync files before starting
 echo "Syncing ReactiveView files..."
 bin/rails reactive_view:sync 2>/dev/null || true
@@ -26,6 +45,9 @@ if [ ! -f "db/development.sqlite3" ]; then
   echo "Setting up database..."
   bin/rails db:create db:migrate db:seed
 fi
+
+export REACTIVE_VIEW_DAEMON_HOST="$daemon_host"
+export REACTIVE_VIEW_DAEMON_PORT="$daemon_port"
 
 # Start both processes
 exec foreman start -f Procfile.dev "$@"

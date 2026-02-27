@@ -32,6 +32,7 @@ export default solidStartDefineConfig({
     ],
     server: {
       cors: true,
+      strictPort: true,
     },
     resolve: {
       dedupe: ["solid-js", "@solidjs/router", "@solidjs/start"],
