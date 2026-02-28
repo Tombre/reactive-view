@@ -6,6 +6,7 @@
     "dev": "reactiveview dev",
     "build": "reactiveview build",
     "start": "reactiveview start",
+    "typecheck": "bundle exec rails reactive_view:types:generate && tsc --noEmit",
     "e2e:install": "playwright install chromium"
   },
   "dependencies": {

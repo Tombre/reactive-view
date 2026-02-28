@@ -20,7 +20,7 @@ const formComponentCheck: (
 const [BadForm] = useForm(stream);
 
 const [GenerateForm, generateSubmission] = useForm("generate");
-const pendingCheck: boolean = generateSubmission.pending;
+const pendingCheck: boolean | undefined = generateSubmission.pending;
 const successCheck: boolean | undefined = generateSubmission.result?.success;
 
 const firstWord: string | undefined = stream.messages()[0]?.word;

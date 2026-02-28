@@ -19,7 +19,7 @@ module ReactiveView
     # - `_response_shapes` for loader output types
     #
     # @example Per-route loader file with mutations
-    #   // .reactive_view/types/loaders/users/[id].ts
+    #   // .reactive_view/types/loaders/users/[id].tsx
     #   import { createMutation, useAction, useSubmission } from "@reactive-view/core";
     #
     #   export interface LoaderData {
@@ -202,7 +202,7 @@ module ReactiveView
         FileUtils.rm_rf(@loaders_dir) if @loaders_dir.exist?
 
         loaders.filter_map do |loader|
-          file_path = @loaders_dir.join("#{loader[:path]}.ts")
+          file_path = @loaders_dir.join("#{loader[:path]}.tsx")
           content = build_loader_file(loader)
 
           begin
@@ -383,6 +383,7 @@ module ReactiveView
 
         params_schema = data[:params_schema]
         response_schema = data[:response_schema]
+        response_type = mutation_response_type(capitalized_name, params_schema, response_schema)
 
         # Generate params interface
         params_interface = if params_schema&.respond_to?(:keys) && params_schema.keys.any?
@@ -420,7 +421,7 @@ module ReactiveView
            * Action for the #{mutation_name} mutation.
            * Use with forms or useAction() for programmatic calls.
            */
-          export const #{action_name} = createMutation<#{capitalized_name}Params>("#{loader_path}", "#{mutation_name}");
+          export const #{action_name} = createMutation<#{response_type}>("#{loader_path}", "#{mutation_name}");
 
           /**
            * Form component pre-configured for the #{mutation_name} mutation.
@@ -458,12 +459,13 @@ module ReactiveView
           capitalized_name = base_name.camelize
           action_name = "#{base_name}Action"
           form_name = "#{capitalized_name}Form"
+          response_type = mutation_response_type(capitalized_name, _data[:params_schema], _data[:response_schema])
 
           # Apply same sanitization as build_mutation
           action_name = sanitize_js_identifier(action_name) unless valid_js_identifier?(action_name)
           form_name = sanitize_js_identifier(form_name) unless valid_js_identifier?(form_name)
 
-          { name: base_name, action_name: action_name, form_name: form_name }
+          { name: base_name, action_name: action_name, form_name: form_name, response_type: response_type }
         end
 
         # Build the MutationName union type
@@ -473,6 +475,11 @@ module ReactiveView
         map_entries = entries.map do |e|
           "  #{e[:name]}: { action: #{e[:action_name]}, Form: #{e[:form_name]} }"
         end.join(",\n")
+
+        # Build map of mutation names to their response payload types
+        response_entries = entries.map do |e|
+          "  \"#{e[:name]}\": #{e[:response_type]};"
+        end.join("\n")
 
         stream_example_name = mutation_data.find do |_name, data|
           data[:response_mode] == :stream
@@ -500,6 +507,22 @@ module ReactiveView
                                      'nameOrStream: MutationName'
                                    end
 
+        implementation_return = if has_stream_mutations
+                                  <<~TYPESCRIPT.chomp
+                                    readonly [
+                                      (props: Omit<JSX.FormHTMLAttributes<HTMLFormElement>, "action" | "method">) => JSX.Element,
+                                      MutationSubmission<MutationResponseMap[MutationName]>
+                                    ] | StreamFormComponent
+                                  TYPESCRIPT
+                                else
+                                  <<~TYPESCRIPT.chomp
+                                    readonly [
+                                      (props: Omit<JSX.FormHTMLAttributes<HTMLFormElement>, "action" | "method">) => JSX.Element,
+                                      MutationSubmission<MutationResponseMap[MutationName]>
+                                    ]
+                                  TYPESCRIPT
+                                end
+
         implementation_body = if has_stream_mutations
                                 <<~TYPESCRIPT
                                   if (typeof nameOrStream === "string") {
@@ -523,6 +546,16 @@ module ReactiveView
 
           /** Available mutation names for this route */
           type MutationName = #{mutation_names_union};
+
+          /** Maps mutation names to their typed response payloads. */
+          type MutationResponseMap = {
+          #{response_entries}
+          };
+
+          /** Submission with a mutation-specific typed result payload. */
+          type MutationSubmission<TPayload> = ReturnType<typeof useSubmission> & {
+            result?: MutationResult<TPayload>;
+          };
 
           /** @internal Mapping of mutation names to their actions and Form components */
           const _mutations = {
@@ -551,17 +584,24 @@ module ReactiveView
            */
            export function useForm<T extends MutationName>(name: T): readonly [
              (props: Omit<JSX.FormHTMLAttributes<HTMLFormElement>, "action" | "method">) => JSX.Element,
-             ReturnType<typeof useSubmission>
+             MutationSubmission<MutationResponseMap[T]>
            ];
 
            #{stream_overload.rstrip}
 
-           export function useForm(
-             #{implementation_signature}
-           ) {
-           #{implementation_body.rstrip}
-           }
+            export function useForm(
+              #{implementation_signature}
+            ): #{implementation_return} {
+            #{implementation_body.rstrip}
+            }
         TYPESCRIPT
+      end
+
+      def mutation_response_type(capitalized_name, params_schema, response_schema)
+        return 'unknown' unless response_schema
+        return "#{capitalized_name}Params" if response_schema == params_schema
+
+        "#{capitalized_name}Response"
       end
 
       # Build the streaming section (useStream hook for mutations)
@@ -679,10 +719,10 @@ module ReactiveView
                     if (typeof props.onSubmit === "function") {
                       (props.onSubmit as (e: SubmitEvent) => void)(e);
                     }
-                    stream.start(params as StreamParamsMap[T]);
-                  }}
-                />
-              );
+                  stream.start(params as unknown as StreamParamsMap[T]);
+                }}
+              />
+            );
             }
 
             return Object.assign(stream, {

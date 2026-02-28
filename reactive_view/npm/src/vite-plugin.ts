@@ -21,6 +21,7 @@
  */
 
 import { posix as pathPosix, resolve as pathResolve } from "node:path";
+import { existsSync } from "node:fs";
 import type { Plugin, ViteDevServer, HmrContext } from "vite";
 
 export interface ReactiveViewPluginOptions {
@@ -242,8 +243,8 @@ export function reactiveViewPlugin(
      * These files contain route-specific preloadData() and useLoaderData() functions.
      *
      * For example:
-     * - #loaders/users/index -> ./types/loaders/users/index.ts
-     * - #loaders/users/[id] -> ./types/loaders/users/[id].ts
+     * - #loaders/users/index -> ./types/loaders/users/index.tsx
+     * - #loaders/users/[id] -> ./types/loaders/users/[id].tsx
      */
     async resolveId(id: string, importer: string | undefined) {
       if (id.startsWith("#loaders/")) {
@@ -253,8 +254,11 @@ export function reactiveViewPlugin(
         const loaderTypesPath = options.loaderTypesPath ||
           pathResolve(process.cwd(), ".reactive_view", "types", "loaders");
 
-        // Build the absolute path to the generated loader file
-        const loaderPath = pathResolve(loaderTypesPath, `${routePath}.ts`);
+        // Build the absolute path to the generated loader file.
+        // Prefer .tsx (current generator output), with .ts fallback for compatibility.
+        const tsxLoaderPath = pathResolve(loaderTypesPath, `${routePath}.tsx`);
+        const tsLoaderPath = pathResolve(loaderTypesPath, `${routePath}.ts`);
+        const loaderPath = existsSync(tsxLoaderPath) ? tsxLoaderPath : tsLoaderPath;
 
         log(`Resolving ${id} from ${importer} -> ${loaderPath}`);
 

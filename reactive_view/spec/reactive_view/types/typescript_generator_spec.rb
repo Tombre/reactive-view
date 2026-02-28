@@ -173,6 +173,9 @@ RSpec.describe ReactiveView::Types::TypescriptGenerator do
       result = generator.send(:build_use_form_hook, multi_mutation_data, true)
       expect(result).to include('export function useForm<T extends MutationName>(name: T): readonly [')
       expect(result).to include('export function useForm<T extends StreamMutationName>(stream: StreamHandle<T>): StreamFormComponent;')
+      expect(result).to include('type MutationResponseMap = {')
+      expect(result).to include('type MutationSubmission<TPayload> = ReturnType<typeof useSubmission> & {')
+      expect(result).to include('MutationSubmission<MutationResponseMap[T]>')
       expect(result).not_to include('FormSubmission')
       expect(result).not_to include('as any')
     end
@@ -226,7 +229,7 @@ RSpec.describe ReactiveView::Types::TypescriptGenerator do
       data = { params_schema: params_schema, response_schema: nil }
       result = generator.send(:build_mutation, 'users/[id]', :update, data)
 
-      expect(result).to include('export const updateAction = createMutation<UpdateParams>("users/[id]", "update")')
+      expect(result).to include('export const updateAction = createMutation<unknown>("users/[id]", "update")')
     end
 
     it 'generates Form component' do
@@ -247,7 +250,15 @@ RSpec.describe ReactiveView::Types::TypescriptGenerator do
 
       expect(result).to include('export interface UpdateParams')
       expect(result).to include('export interface UpdateResponse')
+      expect(result).to include('export const updateAction = createMutation<UpdateResponse>("users/[id]", "update")')
       expect(result).to include('id: number')
+    end
+
+    it 'uses params as mutation result type when response schema matches params' do
+      data = { params_schema: params_schema, response_schema: params_schema }
+      result = generator.send(:build_mutation, 'users/[id]', :update, data)
+
+      expect(result).to include('export const updateAction = createMutation<UpdateParams>("users/[id]", "update")')
     end
 
     it 'does not generate response interface when response_schema is nil' do
@@ -358,7 +369,7 @@ RSpec.describe ReactiveView::Types::TypescriptGenerator do
 
     it 'generates StreamForm with onSubmit handler that calls stream.start with typed params' do
       result = build_streaming('users/index', mutation_data_for(:update))
-      expect(result).to include('stream.start(params as StreamParamsMap[T])')
+      expect(result).to include('stream.start(params as unknown as StreamParamsMap[T])')
       expect(result).to include('e.preventDefault()')
       expect(result).to include('new FormData(e.target as HTMLFormElement)')
     end
@@ -366,7 +377,7 @@ RSpec.describe ReactiveView::Types::TypescriptGenerator do
     it 'calls user onSubmit before stream.start so UI prep runs first' do
       result = build_streaming('users/index', mutation_data_for(:update))
       on_submit_pos = result.index('props.onSubmit')
-      start_pos = result.index('stream.start(params as StreamParamsMap[T])')
+      start_pos = result.index('stream.start(params as unknown as StreamParamsMap[T])')
       expect(on_submit_pos).to be < start_pos
     end
 
