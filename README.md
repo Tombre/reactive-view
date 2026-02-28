@@ -87,7 +87,6 @@ reactive-view/
 │       ├── app/pages/          # ReactiveView pages (source)
 │       └── .reactive_view/     # Generated SolidStart project
 │           └── src/
-│               ├── pages/      # Synced components
 │               └── routes/     # Generated wrappers
 │
 └── docs/
@@ -130,7 +129,7 @@ bundle install
 # Setup database
 bin/rails db:create db:migrate db:seed
 
-# Setup ReactiveView (creates .reactive_view directory, installs npm packages)
+# Setup ReactiveView (creates .reactive_view directory, installs required root npm packages)
 bin/rails reactive_view:setup
 
 # Start development servers
@@ -296,7 +295,7 @@ The `reactive_view/template/` directory contains the SolidStart project template
 
 | File                       | Purpose                               |
 | -------------------------- | ------------------------------------- |
-| `src/pages/`               | Synced page components (HMR-friendly) |
+| `app.config.ts`            | SolidStart/Vinxi configuration        |
 | `src/routes/`              | Generated route wrappers              |
 | `src/routes/api/render.ts` | Endpoint Rails calls for SSR          |
 
@@ -305,15 +304,13 @@ The `reactive_view/template/` directory contains the SolidStart project template
 ReactiveView uses a wrapper pattern to enable true Hot Module Replacement:
 
 ```
-app/pages/counter.tsx         → .reactive_view/src/pages/counter.tsx (synced)
-                                         ↓
-                              .reactive_view/src/routes/counter.tsx (wrapper)
+app/pages/counter.tsx         → imported by .reactive_view/src/routes/counter.tsx
 ```
 
-- **`src/pages/`** - Contains actual page components synced from `app/pages/`
-- **`src/routes/`** - Contains thin wrappers that import from `src/pages/`
+- **`app/pages/`** - Source of truth for page components
+- **`.reactive_view/src/routes/`** - Thin wrappers that import from `~pages/*`
 
-When you edit a page, only `src/pages/` changes. Vinxi's router sees no route changes, so Vite can hot-swap the component without a full reload.
+When you edit a page, the wrapper file stays stable. Vinxi's router sees no route shape change, so Vite can hot-swap the component without a full reload.
 
 ### Working on the Example App
 
@@ -325,7 +322,7 @@ bin/dev
 
 # Or start them separately:
 bin/rails server                    # Rails on :3000
-cd .reactive_view && npm run dev    # SolidStart on :3001
+npx reactiveview dev                 # SolidStart on :3001
 
 # Run Playwright Ruby E2E smoke test in Docker
 docker compose build
@@ -338,7 +335,7 @@ docker compose run --rm app bin/e2e
 # Show all ReactiveView routes
 bin/rails reactive_view:routes
 
-# Sync TSX files to .reactive_view
+# Regenerate route wrappers and loader types
 bin/rails reactive_view:sync
 
 # Generate TypeScript types from loaders
@@ -357,10 +354,9 @@ bin/rails reactive_view:build
 
 ReactiveView ships with Tailwind CSS v4 support through the `@tailwindcss/vite` plugin. To add Tailwind to a new application:
 
-1. Install the dependencies inside your `.reactive_view` directory:
+1. Install the dependencies at your Rails project root:
 
 ```bash
-cd .reactive_view
 npm install --save-dev tailwindcss @tailwindcss/vite
 ```
 
@@ -385,15 +381,13 @@ export default defineConfig({
 }
 ```
 
-The `source("../")` directive makes Tailwind scan all synced components inside `.reactive_view/src/pages` after `reactive_view:sync` copies files over.
+The `source("../")` directive makes Tailwind scan your `app/pages` tree directly.
 
 4. Import the stylesheet once (for example in `app/pages/_components/MainLayout.tsx`):
 
 ```ts
 import "../_styles/tailwind.css";
 ```
-
-5. Whenever you edit files under `app/pages/`, run `bin/rails reactive_view:sync` so Tailwind sees the changes in `.reactive_view/src`.
 
 This setup keeps Tailwind fully managed by Vite, aligns with Tailwind v4’s CSS-first configuration, and avoids separate PostCSS steps.
 

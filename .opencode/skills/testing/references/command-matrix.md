@@ -17,9 +17,9 @@ Examples:
 
 ## 2) SolidStart template (`reactive_view/template/`)
 
-- **Primary:** `npm run build`
-- **Workdir:** `reactive_view/template`
-- **Use when:** editing TSX/runtime/build config in template.
+- **Primary:** `npx reactiveview build`
+- **Workdir:** `examples/reactive_view_example`
+- **Use when:** editing TSX/runtime/build config in template and validating generated app build wiring.
 
 Note: no JS test runner is configured in this repo yet, so build is the current validation gate.
 
@@ -70,7 +70,7 @@ Run one command per affected area, usually in this order:
 
 1. `bundle exec rspec <target>` in `reactive_view`
 2. `npm run build` in `reactive_view/npm` (if touched)
-3. `npm run build` in `reactive_view/template` (if touched)
+3. `npx reactiveview build` in `examples/reactive_view_example` (if template/runtime touched)
 4. Example checks in `examples/reactive_view_example` (if touched)
 
 Escalate to full `bundle exec rspec` when changes impact shared internals.

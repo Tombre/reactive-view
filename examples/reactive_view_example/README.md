@@ -189,9 +189,8 @@ bin/rails reactive_view:types:generate
 
 This example application uses Tailwind CSS v4 for styling. The configuration uses the Vite plugin approach (not PostCSS):
 
-- **`.reactive_view/tailwind.config.ts`**: Tailwind configuration for the build
-- **`.reactive_view/app.config.ts`**: Includes `@tailwindcss/vite` plugin
-- **`.reactive_view/src/styles/tailwind.css`**: Base stylesheet using `@import "tailwindcss"` syntax
+- **`reactive_view.config.ts`**: Includes `@tailwindcss/vite` plugin
+- **`app/pages/_styles/tailwind.css`**: Base stylesheet using `@import "tailwindcss"` syntax
 - **`@tailwindcss/forms`**: Plugin for better form styling
 
 ### Tailwind v4 Changes
@@ -216,16 +215,15 @@ Tailwind CSS v4 uses a new syntax:
 
 To add custom styles:
 
-1. Edit `.reactive_view/src/styles/tailwind.css` for global styles
+1. Edit `app/pages/_styles/tailwind.css` for global styles
 2. Use Tailwind utility classes in your TSX components with `class` attribute (not `className`)
-3. Import the stylesheet using: `import "~/styles/tailwind.css"`
-4. After editing `app/pages/styles/tailwind.css`, run `bin/rails reactive_view:sync` to update
+3. Import the stylesheet using: `import "../_styles/tailwind.css"`
 
 ### Important Notes
 
-- Tailwind CSS is configured in `.reactive_view/` directory (where Vinxi/Vite runs)
+- Tailwind CSS is configured from `reactive_view.config.ts` at Rails root
 - Use the `@tailwindcss/vite` plugin, not the PostCSS plugin
-- Styles are imported using the `~/styles/` alias which resolves to `.reactive_view/src/styles/`
+- Styles are imported from `app/pages/_styles/`
 
 ### Shared Layout Component
 
