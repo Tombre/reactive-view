@@ -10,7 +10,7 @@ namespace :reactive_view do
     puts 'Setup complete!'
   end
 
-  desc 'Sync TSX files from app/pages to the SolidStart directory'
+  desc 'Regenerate route wrappers and TypeScript types'
   task sync: :environment do
     puts 'Syncing files...'
 
@@ -80,20 +80,19 @@ namespace :reactive_view do
   task build: :environment do
     puts 'Building for production...'
 
-    working_dir = ReactiveView.configuration.working_directory_absolute_path
-
     # Ensure files are synced
     ReactiveView::FileSync.sync_all
 
-    # Run the build
-    Dir.chdir(working_dir) do
-      unless system('npm run build')
+    # Run the build from Rails root
+    Dir.chdir(Rails.root.to_s) do
+      unless system('npx reactiveview build')
         puts 'Build failed!'
         exit 1
       end
     end
 
     puts 'Build complete!'
+    working_dir = ReactiveView.configuration.working_directory_absolute_path
     puts "Output at: #{working_dir}/.output"
   end
 

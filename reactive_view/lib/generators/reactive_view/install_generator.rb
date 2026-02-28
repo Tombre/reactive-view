@@ -55,7 +55,6 @@ module ReactiveView
         gitignore_entries = [
           '',
           '# ReactiveView',
-          '.reactive_view/src/pages/',
           '.reactive_view/src/routes/',
           '.reactive_view/types/',
           '.reactive_view/.vinxi/',

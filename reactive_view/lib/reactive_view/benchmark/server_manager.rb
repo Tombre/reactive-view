@@ -117,7 +117,7 @@ module ReactiveView
 
         @daemon_pid = Process.spawn(
           *command,
-          chdir: @working_directory.to_s,
+          chdir: Rails.root.to_s,
           out: File::NULL,
           err: File::NULL
         )
@@ -136,18 +136,19 @@ module ReactiveView
 
       def daemon_command
         if @mode == :production
-          %w[npm run start]
+          %w[npx reactiveview start]
         else
-          ['npm', 'run', 'dev', '--', '--port', @daemon_port.to_s]
+          ['npx', 'reactiveview', 'dev', '--port', @daemon_port.to_s]
         end
       end
 
       def build_production!
         log 'Running production build...'
 
-        Dir.chdir(@working_directory.to_s) do
-          unless system('npm', 'run', 'build', out: File::NULL, err: File::NULL)
-            raise BenchmarkError, "Production build failed. Run 'npm run build' in #{@working_directory} to see errors."
+        Dir.chdir(Rails.root.to_s) do
+          unless system('npx', 'reactiveview', 'build', out: File::NULL, err: File::NULL)
+            raise BenchmarkError,
+                  "Production build failed. Run 'npx reactiveview build' from #{Rails.root} to see errors."
           end
         end
 

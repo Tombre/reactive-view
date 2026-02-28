@@ -1,5 +1,5 @@
 // Auto-generated layout wrapper - DO NOT EDIT
-// Actual layout: src/pages/%{component_path}.tsx
+// Actual layout: app/pages/%{component_path}.tsx
 // Edits here will be overwritten. Edit the source file instead.
 
 import Layout from "%{import_path}";

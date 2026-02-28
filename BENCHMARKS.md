@@ -329,8 +329,8 @@ Response Time Distribution:
 
 - All times are in milliseconds (ms)
 - Benchmarks run on a single machine; network latency is minimal (~0.1ms)
-- Production mode uses `npm run build` + `npm run start` (optimized Vinxi bundle)
-- Development mode uses `npm run dev` (Vite dev server with HMR)
+- Production mode uses `npx reactiveview build` + `npx reactiveview start` (optimized Vinxi bundle)
+- Development mode uses `npx reactiveview dev` (Vite dev server with HMR)
 - Database queries are included in loader scenarios
 - Results may vary based on hardware, system load, and database size
 - Warm-up iterations allow JIT compilation and cache warming before measurement

@@ -36,6 +36,12 @@ export interface ReactiveViewPluginOptions {
    * import user source files directly instead of requiring copies.
    */
   pagesPath?: string;
+
+  /**
+   * Absolute path to generated loader type files
+   * (e.g., Rails.root/.reactive_view/types/loaders).
+   */
+  loaderTypesPath?: string;
 }
 
 const DEFAULT_HMR_WEBSOCKET_PATH = "/@vite/ws";
@@ -112,10 +118,9 @@ export function reactiveViewPlugin(
           },
           server: {
             fs: {
-              // Allow Vite to read files from the Rails root (parent of .reactive_view)
+              // Allow Vite to read files from the Rails root
               allow: [
                 process.cwd(),
-                pathResolve(process.cwd(), ".."),
               ],
             },
           },
@@ -245,9 +250,11 @@ export function reactiveViewPlugin(
         // Extract the route path from the import
         const routePath = id.slice("#loaders/".length);
 
+        const loaderTypesPath = options.loaderTypesPath ||
+          pathResolve(process.cwd(), ".reactive_view", "types", "loaders");
+
         // Build the absolute path to the generated loader file
-        // The types/loaders directory is at the root of the .reactive_view project
-        const loaderPath = pathResolve(process.cwd(), `types/loaders/${routePath}.ts`);
+        const loaderPath = pathResolve(loaderTypesPath, `${routePath}.ts`);
 
         log(`Resolving ${id} from ${importer} -> ${loaderPath}`);
 

@@ -6,6 +6,7 @@ import {
   Suspense,
 } from "@reactive-view/core";
 import { useLoaderData, useForm, useStream } from "#loaders/ai/chat";
+import "../_styles/tailwind.css";
 
 interface ChatMessage {
   id: number;

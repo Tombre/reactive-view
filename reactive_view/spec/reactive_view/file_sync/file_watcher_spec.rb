@@ -110,9 +110,6 @@ RSpec.describe ReactiveView::FileSync::FileWatcher do
         pending[:removed] = []
       end
 
-      # Process changes directly (bypassing timer)
-      allow(ReactiveView::FileSync::ComponentSyncer).to receive(:sync_file)
-
       described_class.send(:process_pending_changes)
 
       # The pending changes should have been processed and cleared
@@ -132,9 +129,9 @@ RSpec.describe ReactiveView::FileSync::FileWatcher do
         pending[:modified] = []
       end
 
-      # Should not sync files that net to no-op
-      expect(ReactiveView::FileSync::ComponentSyncer).not_to receive(:sync_file)
-      expect(ReactiveView::FileSync::ComponentSyncer).not_to receive(:remove_file)
+      # Should not generate wrappers for files that net to no-op
+      expect(ReactiveView::FileSync::WrapperGenerator).not_to receive(:generate_wrapper)
+      expect(ReactiveView::FileSync::WrapperGenerator).not_to receive(:remove_wrapper)
 
       described_class.send(:process_pending_changes)
     end
@@ -160,8 +157,6 @@ RSpec.describe ReactiveView::FileSync::FileWatcher do
   describe '.handle_changes' do
     before do
       described_class.start
-      allow(ReactiveView::FileSync::ComponentSyncer).to receive(:sync_file)
-      allow(ReactiveView::FileSync::ComponentSyncer).to receive(:remove_file)
       allow(ReactiveView::FileSync::WrapperGenerator).to receive(:generate_wrapper)
       allow(ReactiveView::FileSync::WrapperGenerator).to receive(:remove_wrapper)
       allow(ReactiveView::FileSync::WrapperGenerator).to receive(:regenerate_parent_layout)
@@ -176,14 +171,13 @@ RSpec.describe ReactiveView::FileSync::FileWatcher do
 
     it 'syncs modified asset files' do
       modified = ["#{pages_path}/index.tsx"]
-      expect(ReactiveView::FileSync::ComponentSyncer).to receive(:sync_file).with(modified.first, pages_path)
+      expect { described_class.send(:handle_changes, modified, [], []) }.not_to raise_error
 
-      described_class.send(:handle_changes, modified, [], [])
+      expect(ReactiveView::FileSync::WrapperGenerator).not_to have_received(:generate_wrapper)
     end
 
     it 'syncs added asset files and generates wrappers for TSX' do
       added = ["#{pages_path}/new.tsx"]
-      expect(ReactiveView::FileSync::ComponentSyncer).to receive(:sync_file).with(added.first, pages_path)
       expect(ReactiveView::FileSync::WrapperGenerator).to receive(:generate_wrapper)
       expect(ReactiveView::FileSync::WrapperGenerator).to receive(:regenerate_parent_layout)
 
@@ -192,7 +186,6 @@ RSpec.describe ReactiveView::FileSync::FileWatcher do
 
     it 'handles removed files and cleans up wrappers for TSX' do
       removed = ["#{pages_path}/old.tsx"]
-      expect(ReactiveView::FileSync::ComponentSyncer).to receive(:remove_file)
       expect(ReactiveView::FileSync::WrapperGenerator).to receive(:remove_wrapper)
       expect(ReactiveView::FileSync::WrapperGenerator).to receive(:regenerate_parent_layout)
 
@@ -201,7 +194,6 @@ RSpec.describe ReactiveView::FileSync::FileWatcher do
 
     it 'does not generate wrappers for non-TSX files' do
       added = ["#{pages_path}/styles/main.css"]
-      expect(ReactiveView::FileSync::ComponentSyncer).to receive(:sync_file)
       expect(ReactiveView::FileSync::WrapperGenerator).not_to receive(:generate_wrapper)
 
       described_class.send(:handle_changes, [], added, [])
@@ -219,7 +211,6 @@ RSpec.describe ReactiveView::FileSync::FileWatcher do
 
     it 'does not generate wrappers for TSX files in private folders' do
       added = ["#{pages_path}/_components/Button.tsx"]
-      expect(ReactiveView::FileSync::ComponentSyncer).to receive(:sync_file)
       expect(ReactiveView::FileSync::WrapperGenerator).not_to receive(:generate_wrapper)
 
       described_class.send(:handle_changes, [], added, [])
@@ -227,15 +218,14 @@ RSpec.describe ReactiveView::FileSync::FileWatcher do
 
     it 'does not remove wrappers for TSX files in private folders' do
       removed = ["#{pages_path}/_components/Button.tsx"]
-      expect(ReactiveView::FileSync::ComponentSyncer).to receive(:remove_file)
       expect(ReactiveView::FileSync::WrapperGenerator).not_to receive(:remove_wrapper)
 
       described_class.send(:handle_changes, [], [], removed)
     end
 
-    it 'still syncs private files for imports to work' do
+    it 'ignores private non-route files for wrapper generation' do
       added = ["#{pages_path}/_utils/helpers.ts"]
-      expect(ReactiveView::FileSync::ComponentSyncer).to receive(:sync_file).with(added.first, pages_path)
+      expect(ReactiveView::FileSync::WrapperGenerator).not_to receive(:generate_wrapper)
 
       described_class.send(:handle_changes, [], added, [])
     end

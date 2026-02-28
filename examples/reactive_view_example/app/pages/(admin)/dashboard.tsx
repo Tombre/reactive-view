@@ -1,4 +1,5 @@
 import { A, useLocation, createSignal, Show, type ParentProps } from "@reactive-view/core";
+import "../_styles/tailwind.css";
 
 export default function DashboardLayout(props: ParentProps) {
   const [sidebarOpen, setSidebarOpen] = createSignal(true);

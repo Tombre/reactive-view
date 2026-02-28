@@ -15,13 +15,13 @@ RSpec.describe ReactiveView::Benchmark::ServerManager do
     it 'builds argv for development mode with explicit port' do
       manager = described_class.new(mode: :development, daemon_port: 4312, working_directory: working_directory)
 
-      expect(manager.send(:daemon_command)).to eq(['npm', 'run', 'dev', '--', '--port', '4312'])
+      expect(manager.send(:daemon_command)).to eq(['npx', 'reactiveview', 'dev', '--port', '4312'])
     end
 
     it 'builds argv for production mode' do
       manager = described_class.new(mode: :production, daemon_port: 4312, working_directory: working_directory)
 
-      expect(manager.send(:daemon_command)).to eq(%w[npm run start])
+      expect(manager.send(:daemon_command)).to eq(%w[npx reactiveview start])
     end
   end
 
@@ -34,8 +34,8 @@ RSpec.describe ReactiveView::Benchmark::ServerManager do
       allow(manager).to receive(:log)
 
       expect(Process).to receive(:spawn).with(
-        'npm', 'run', 'dev', '--', '--port', '4312',
-        chdir: working_directory.to_s,
+        'npx', 'reactiveview', 'dev', '--port', '4312',
+        chdir: Rails.root.to_s,
         out: File::NULL,
         err: File::NULL
       ).and_return(12_345)
@@ -50,7 +50,9 @@ RSpec.describe ReactiveView::Benchmark::ServerManager do
       manager = described_class.new(mode: :production, working_directory: working_directory)
 
       allow(manager).to receive(:log)
-      expect(manager).to receive(:system).with('npm', 'run', 'build', out: File::NULL, err: File::NULL).and_return(true)
+      expect(manager).to receive(:system)
+        .with('npx', 'reactiveview', 'build', out: File::NULL, err: File::NULL)
+        .and_return(true)
 
       manager.send(:build_production!)
     end

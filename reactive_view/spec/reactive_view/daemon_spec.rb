@@ -73,13 +73,13 @@ RSpec.describe ReactiveView::Daemon do
       it 'uses argv form for development mode' do
         allow(Rails).to receive(:env).and_return(Rails::Env.new('development'))
 
-        expect(daemon.send(:build_command)).to eq(%w[npm run dev])
+        expect(daemon.send(:build_command)).to eq(%w[npx reactiveview dev])
       end
 
       it 'uses argv form for production mode' do
         allow(Rails).to receive(:env).and_return(Rails::Env.new('production'))
 
-        expect(daemon.send(:build_command)).to eq(%w[npm run start])
+        expect(daemon.send(:build_command)).to eq(%w[npx reactiveview start])
       end
     end
 
@@ -87,11 +87,11 @@ RSpec.describe ReactiveView::Daemon do
       it 'spawns using argv without shell interpolation' do
         log_file = working_dir.join('daemon.log')
 
-        allow(daemon).to receive(:build_command).and_return(%w[npm run dev])
+        allow(daemon).to receive(:build_command).and_return(%w[npx reactiveview dev])
         expect(daemon).to receive(:spawn).with(
           { 'PORT' => '13001' },
-          'npm', 'run', 'dev',
-          chdir: working_dir.to_s,
+          'npx', 'reactiveview', 'dev',
+          chdir: Rails.root.to_s,
           out: [log_file.to_s, 'a'],
           err: [log_file.to_s, 'a'],
           pgroup: true
