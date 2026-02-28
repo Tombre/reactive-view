@@ -2,7 +2,9 @@
 
 ReactiveView is a Ruby on Rails view framework gem for building modern reactive frontends without splitting into separate frontend/backend services. It replaces the Rails view layer with TSX components (TypeScript + SolidJS) while keeping data, auth, and business logic in Rails.
 
-## What the Gem Does
+## About the Gem
+
+### What the Gem Does
 
 - SSR + hydration: pages are server-rendered and hydrate into interactive SolidJS apps.
 - Type safety: TypeScript types are generated from Ruby `shape` definitions.
@@ -11,7 +13,7 @@ ReactiveView is a Ruby on Rails view framework gem for building modern reactive 
 - Rails-first architecture: Rails owns auth/models/business rules; SolidJS owns UI rendering and interactivity.
 - Rails serves the request, talking to daemon (frontend server) that then returns the html for the page.
 
-## High-Level Architecture
+### High-Level Architecture
 
 ReactiveView coordinates a Rails Engine with a SolidStart daemon:
 
@@ -22,7 +24,7 @@ ReactiveView coordinates a Rails Engine with a SolidStart daemon:
 
 Read `README.md` when you need deeper context on architecture and motivation.
 
-## Project Structure
+### Project Structure
 
 - `reactive_view/` - Ruby gem (Rails Engine, routing, loaders)
 - `reactive_view/template/` - SolidStart frontend template
@@ -31,7 +33,25 @@ Read `README.md` when you need deeper context on architecture and motivation.
 
 Use relative paths in discussions so other agents can jump directly to files.
 
-## External File Loading
+## Agent Instructions
+
+### Development Behaviour
+
+- **Fact-based approach**: Do not hallucinate or assume. If you don't know something or need additional context about a framework or technology, search the web for up-to-date documentation. If clarification is needed, ask the user before making changes.
+- **Constructive disagreement**: Do not just accept user direction if a better alternative exists. After reviewing the request, explain your reasoning for why an alternative approach might be better, providing technical justification and let the the developer decide.
+- **Stop and ask**: Stop and ask user if:
+  - Uncertain how to proceed
+  - About to add type ignores, suppressions, or `any` types
+  - Requirements are unclear
+  - Better approach exists but needs confirmation
+
+### Code Organization
+
+- **Single responsibility**: Components and functions should have a single, clear purpose. Organize code into logical directories with clear separation of concerns.
+- **Consistent patterns**: Follow established patterns in the codebase. When introducing new patterns, ensure they align with existing architecture and conventions.
+- **Automation and efficiency**: Prefer automated solutions and efficient workflows. Look for opportunities to reduce manual work and improve developer experience.
+
+### External File Loading
 
 CRITICAL: When you encounter a file reference (for example `@docs/general.md`), load it on demand.
 
@@ -39,7 +59,7 @@ CRITICAL: When you encounter a file reference (for example `@docs/general.md`), 
 - When loaded, referenced docs are mandatory instructions that override defaults.
 - Follow references recursively when needed.
 
-## Non-Negotiables
+### Non-Negotiables
 
 - Stay surgical: edit only files needed for the task.
 - Prefer edits over rewrites; keep history meaningful.
@@ -47,9 +67,12 @@ CRITICAL: When you encounter a file reference (for example `@docs/general.md`), 
 - Keep generated artifacts (`.reactive_view`, `coverage`, `tmp`, `node_modules`) untracked.
 - Keep AGENTS and docs synchronized with reality when workflows change.
 
-## Core Coding Rules
+### Core Coding Rules
 
-### Ruby
+- **Performance awareness**: Consider performance implications of code changes, especially for web applications. Prefer static generation and minimal JavaScript when possible.
+- **Accessibility**: Ensure code is accessible by default. Use semantic HTML, proper ARIA attributes, and test keyboard navigation.
+
+#### Ruby
 
 - Two spaces, no tabs.
 - Prefer guard clauses and small methods.
@@ -57,7 +80,7 @@ CRITICAL: When you encounter a file reference (for example `@docs/general.md`), 
 - Raise domain-specific errors and log once at boundaries.
 - Use `Rails.logger` over `puts`.
 
-### TypeScript / SolidStart
+#### TypeScript / SolidStart
 
 CRITICAL: ReactiveView uses SolidJS TSX, not React JSX.
 
@@ -65,6 +88,12 @@ CRITICAL: ReactiveView uses SolidJS TSX, not React JSX.
 - Use Solid control flow (`<Show>`, `<For>`, `<Switch>/<Match>`), not JSX shortcuts.
 - Use Solid event and state conventions (`e.target`, `createSignal`, `createResource`).
 - Keep loader imports and typed route data aligned with project conventions.
+
+#### Writing Tests/Specs
+
+- Always add or modify tests (specs) when making code changes (unless superficial or asked not to)
+- Tests should focus validate the actual behaviour and output of code, not the code itself
+- Once you have written a test, run it to validate your working. Use the `testing` skill to do this
 
 ## Project-Scoped Skills
 

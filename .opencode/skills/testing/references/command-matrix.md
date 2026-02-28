@@ -21,11 +21,12 @@ Examples:
 - **Workdir:** `examples/reactive_view_example`
 - **Use when:** editing TSX/runtime/build config in template and validating generated app build wiring.
 
-Note: no JS test runner is configured in this repo yet, so build is the current validation gate.
+Note: this area does not currently have a dedicated JS test runner, so build is the validation gate.
 
 ## 3) NPM core package (`reactive_view/npm/`)
 
-- **Primary:** `npm run build`
+- **Primary:** `npm test`
+- **Secondary:** `npm run build`
 - **Workdir:** `reactive_view/npm`
 - **Use when:** editing `reactive_view/npm/src/**`, CLI, or package exports.
 
