@@ -87,6 +87,16 @@ RSpec.describe ReactiveView::DevProxy do
         expect(status).to eq(200)
         expect(body).to eq(['typescript'])
       end
+
+      it 'reuses a single Faraday connection across proxied requests' do
+        expect(Faraday).to receive(:new).once.and_call_original
+
+        first_env = Rack::MockRequest.env_for('/_build/@vite/client')
+        second_env = Rack::MockRequest.env_for('/@vite/client')
+
+        middleware.call(first_env)
+        middleware.call(second_env)
+      end
     end
 
     context 'when query strings are present' do

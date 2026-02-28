@@ -47,7 +47,7 @@ module ReactiveView
           ReactiveView.logger.info '[ReactiveView] Installing npm dependencies...'
 
           Dir.chdir(working_dir) do
-            system('npm install --silent') || raise(Error, 'Failed to install npm dependencies')
+            system('npm', 'install', '--silent') || raise(Error, 'Failed to install npm dependencies')
           end
         end
       end

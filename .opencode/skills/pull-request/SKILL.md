@@ -1,31 +1,39 @@
 ---
 name: pull-request
-description: Creates or updates GitHub pull requests with `gh`, including a thorough change description and explicit manual testing steps.
+description: Creates GitHub pull requests with `gh` and a reviewer-ready body with summary, testing, and risk notes.
 ---
 
 # Pull Request
 
-Create or refresh GitHub pull requests with complete, reviewer-friendly context.
+Create GitHub pull requests with `gh` using a complete, reviewer-friendly description.
 
 ## When To Use
 
-- User asks to create a PR.
-- User asks to update an existing PR title/body.
-- Branch content changed and PR description needs a refresh.
+- User asks to open/create a GitHub pull request.
+- User asks to "make a PR with gh".
+- A branch is ready to merge and needs a reviewer-ready PR description.
 
 ## Workflow
 
-1. Inspect branch state and PR scope:
+1. Determine the base branch:
+   - `gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'`
+2. Inspect what the PR will include (all commits since divergence):
    - `git status`
-   - `git diff` (staged + unstaged)
+   - `git diff`
    - `git log --oneline <base>..HEAD`
    - `git diff <base>...HEAD`
-2. Determine base branch and remote state:
-   - `gh repo view --json defaultBranchRef`
-   - Confirm current branch tracks/pushes to remote.
-3. Build PR content from all included commits (not only the latest commit).
-4. Create a PR if none exists, otherwise update the existing PR.
-5. Return the PR URL and note what was created/updated.
+3. Ensure branch is on remote:
+   - If needed: `git push -u origin <branch>`
+4. Draft PR title/body from all included commits (not only `HEAD`).
+5. Create the PR with `gh pr create`.
+6. Return PR number + URL and one-line intent recap.
+
+## Preflight Checks
+
+- Do not create a PR from a dirty branch unless user explicitly wants WIP changes included.
+- Do not claim tests/manual checks unless they were actually run.
+- If there is already an open PR for the branch, update it instead of creating a duplicate:
+  - `gh pr view --json number,url,title,body`
 
 ## Required PR Body Structure
 
@@ -43,7 +51,7 @@ Use this structure for both create and update operations:
 1. <setup step>
 2. <run command or UI flow>
 3. <expected result>
-4. <edge case checks>
+4. <edge case or regression checks>
 
 ## Risks / Follow-ups
 - <known limitations, rollout notes, or "None">
@@ -53,11 +61,9 @@ Manual testing is mandatory. Include concrete commands, routes, or click paths a
 
 ## `gh` Commands
 
-- Check for existing PR on current branch:
-  - `gh pr view --json number,url,title,body`
 - Create PR:
   - `gh pr create --base <base> --title "<title>" --body "$(cat <<'EOF' ... EOF)"`
-- Update existing PR:
+- Update existing PR when one already exists:
   - `gh pr edit <number> --title "<title>" --body "$(cat <<'EOF' ... EOF)"`
 
 Prefer HEREDOC bodies to preserve formatting.
@@ -65,7 +71,7 @@ Prefer HEREDOC bodies to preserve formatting.
 ## Quality Bar
 
 - Be specific about user-visible behavior and internal changes.
-- Mention all major commits/themes included in the PR.
+- Mention all major commits/themes included in the PR scope.
 - Do not claim tests/manual checks that were not actually run.
 - If validation is blocked, state the blocker and exact command/step needed.
 - Keep tone factual and reviewer-oriented.
@@ -76,4 +82,4 @@ Always report:
 
 - Whether the PR was created or updated.
 - PR number and URL.
-- One-line recap of the main change area.
+- One-line recap of why this change exists.

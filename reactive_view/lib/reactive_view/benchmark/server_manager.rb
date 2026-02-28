@@ -116,7 +116,7 @@ module ReactiveView
         command = daemon_command
 
         @daemon_pid = Process.spawn(
-          command,
+          *command,
           chdir: @working_directory.to_s,
           out: File::NULL,
           err: File::NULL
@@ -136,9 +136,9 @@ module ReactiveView
 
       def daemon_command
         if @mode == :production
-          'npm run start'
+          %w[npm run start]
         else
-          "npm run dev -- --port #{@daemon_port}"
+          ['npm', 'run', 'dev', '--', '--port', @daemon_port.to_s]
         end
       end
 
@@ -146,7 +146,7 @@ module ReactiveView
         log 'Running production build...'
 
         Dir.chdir(@working_directory.to_s) do
-          unless system('npm run build', out: File::NULL, err: File::NULL)
+          unless system('npm', 'run', 'build', out: File::NULL, err: File::NULL)
             raise BenchmarkError, "Production build failed. Run 'npm run build' in #{@working_directory} to see errors."
           end
         end

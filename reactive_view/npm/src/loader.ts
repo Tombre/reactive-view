@@ -2,11 +2,15 @@ import { createResource, createSignal, type Resource, type Accessor } from "soli
 import { isServer } from "solid-js/web";
 import { useLocation, useParams, query, createAsync } from "@solidjs/router";
 import type { LoaderDataMap } from "./types";
+import { getSSRRequestContext } from "./request-context.js";
 
 // Get the Rails base URL from environment or default
 const getRailsBaseUrl = (): string => {
   if (isServer) {
-    // Server-side: check globalThis first, then environment variable, then default
+    const { railsBaseUrl } = getSSRRequestContext();
+    if (railsBaseUrl) return railsBaseUrl;
+
+    // Backward-compat fallback
     const globalRailsUrl = (globalThis as any).__RAILS_BASE_URL__;
     if (globalRailsUrl) return globalRailsUrl;
 
@@ -31,6 +35,10 @@ const getRailsBaseUrl = (): string => {
 // Get cookies for SSR requests (forwarded from Rails)
 const getSSRCookies = (): string | undefined => {
   if (isServer) {
+    const { cookies } = getSSRRequestContext();
+    if (cookies) return cookies;
+
+    // Backward-compat fallback
     return (globalThis as any).__REACTIVE_VIEW_COOKIES__;
   }
   return undefined;

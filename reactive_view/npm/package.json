@@ -35,6 +35,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "bench:stream": "node scripts/benchmark-stream-processing.mjs",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
