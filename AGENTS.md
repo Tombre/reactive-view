@@ -62,7 +62,7 @@ CRITICAL: When you encounter a file reference (for example `@docs/general.md`), 
 ### Non-Negotiables
 
 - Stay surgical: edit only files needed for the task.
-- Prefer edits over rewrites; keep history meaningful.
+- Prefer edits over rewrites (unless asked); keep history meaningful.
 - Run targeted tests for touched areas before handing back work.
 - Keep generated artifacts (`.reactive_view`, `coverage`, `tmp`, `node_modules`) untracked.
 - Keep AGENTS and docs synchronized with reality when workflows change.
