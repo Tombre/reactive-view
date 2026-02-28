@@ -4,21 +4,16 @@
 import { defineConfig as solidStartDefineConfig } from "@solidjs/start/config";
 import { reactiveViewPlugin } from "@reactive-view/core/vite-plugin";
 import type { ReactiveViewConfig } from "@reactive-view/core/config";
-import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
 
-// Load user config from Rails root (dynamic import with fallback)
+// Load user config from Rails root.
+// This path resolves from .reactive_view/app.config.ts -> ../reactive_view.config.ts
 let userConfig: ReactiveViewConfig = {};
-const userConfigPath = resolve(process.cwd(), "reactive_view.config.ts");
-
 try {
-  if (existsSync(userConfigPath)) {
-    const module = await import(pathToFileURL(userConfigPath).href);
-    userConfig = module.default || {};
-  }
+  const module = await import("../reactive_view.config.ts");
+  userConfig = module.default || {};
 } catch {
-  // No user config found - use defaults
+  // Missing or invalid user config - use defaults
 }
 
 // Compute pages path — points to app/pages in the Rails root
