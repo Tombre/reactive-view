@@ -59,6 +59,22 @@ RSpec.describe ReactiveView::Renderer do
       end
     end
 
+    context 'when daemon returns malformed JSON with 200 status' do
+      before do
+        stub_request(:post, 'http://localhost:3001/api/render')
+          .to_return(
+            status: 200,
+            body: '{broken-json',
+            headers: { 'Content-Type' => 'application/json' }
+          )
+      end
+
+      it 'raises RenderError with parse-safe message' do
+        expect { renderer.render(**render_params) }
+          .to raise_error(ReactiveView::RenderError, 'Invalid JSON response from SolidStart daemon')
+      end
+    end
+
     context 'when daemon returns 404' do
       before do
         stub_request(:post, 'http://localhost:3001/api/render')
