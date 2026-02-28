@@ -1,6 +1,7 @@
 import { action, redirect } from "@solidjs/router";
 import { isServer } from "solid-js/web";
 import { getCSRFToken } from "./csrf.js";
+import { getSSRRequestContext } from "./request-context.js";
 
 // ============================================================================
 // Types
@@ -32,6 +33,9 @@ export interface MutationResult<T = unknown> {
  */
 function getRailsBaseUrl(): string {
   if (isServer) {
+    const { railsBaseUrl } = getSSRRequestContext();
+    if (railsBaseUrl) return railsBaseUrl;
+
     const globalRailsUrl = (globalThis as any).__RAILS_BASE_URL__;
     if (globalRailsUrl) return globalRailsUrl;
 
@@ -56,6 +60,9 @@ function getRailsBaseUrl(): string {
  */
 function getSSRCookies(): string | undefined {
   if (isServer) {
+    const { cookies } = getSSRRequestContext();
+    if (cookies) return cookies;
+
     return (globalThis as any).__REACTIVE_VIEW_COOKIES__;
   }
   return undefined;

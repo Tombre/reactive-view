@@ -110,7 +110,7 @@ module ReactiveView
 
             @debounce_thread = Thread.new do
               Thread.current.name = 'reactive_view_file_watcher_debounce'
-              sleep DEBOUNCE_DELAY
+              sleep debounce_delay
               process_pending_changes
             end
           end
@@ -261,6 +261,10 @@ module ReactiveView
           Types::TypescriptGenerator.generate
         rescue StandardError => e
           ReactiveView.logger.warn "[ReactiveView] Failed to generate types: #{e.message}"
+        end
+
+        def debounce_delay
+          DEBOUNCE_DELAY
         end
       end
     end

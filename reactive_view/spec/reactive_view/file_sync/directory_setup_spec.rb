@@ -3,6 +3,7 @@
 require 'spec_helper'
 require 'json'
 require 'tmpdir'
+require 'fileutils'
 
 RSpec.describe ReactiveView::FileSync::DirectorySetup do
   let(:tmp_dir) { Pathname.new(Dir.mktmpdir('reactive_view_directory_setup')) }
@@ -92,7 +93,7 @@ RSpec.describe ReactiveView::FileSync::DirectorySetup do
       )
 
       allow(Dir).to receive(:chdir).with(tmp_dir).and_yield
-      allow(described_class).to receive(:system).with('npm install --silent').and_return(true)
+      allow(described_class).to receive(:system).with('npm', 'install', '--silent').and_return(true)
 
       described_class.send(
         :install_dependencies,

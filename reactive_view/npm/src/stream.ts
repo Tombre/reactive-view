@@ -1,6 +1,7 @@
 import { createSignal, createEffect, onCleanup, batch } from "solid-js";
 import { isServer } from "solid-js/web";
 import { getCSRFToken } from "./csrf.js";
+import { getSSRRequestContext } from "./request-context.js";
 
 // ============================================================================
 // Types
@@ -279,32 +280,47 @@ export function useStreamData<TParams, TMessage = unknown>(
   options?: UseStreamDataOptions<TMessage>
 ): StreamDataState<TMessage> {
   const [messages, setMessages] = createSignal<TMessage[]>([]);
+  let processedChunkCount = 0;
 
   createEffect(() => {
-    const nextMessages = stream
-      .chunks()
-      .map((chunk) => {
-        if (options?.parseChunk) {
-          return options.parseChunk(chunk);
-        }
+    const nextChunks = stream.chunks();
+    if (nextChunks.length < processedChunkCount) {
+      processedChunkCount = 0;
+      setMessages([]);
+    }
 
-        if (chunk.type === "json") {
-          return chunk.data as TMessage;
-        }
-        if (chunk.type === "text") {
-          return chunk.chunk as TMessage;
-        }
+    if (nextChunks.length === processedChunkCount) return;
 
-        return undefined;
-      })
-      .filter((message): message is TMessage => message !== undefined);
+    const parseChunk = options?.parseChunk;
+    const nextMessages: TMessage[] = [];
 
-    setMessages(nextMessages);
+    for (let i = processedChunkCount; i < nextChunks.length; i += 1) {
+      const chunk = nextChunks[i];
+      const message = parseChunk
+        ? parseChunk(chunk)
+        : chunk.type === "json"
+          ? (chunk.data as TMessage)
+          : chunk.type === "text"
+            ? (chunk.chunk as TMessage)
+            : undefined;
+
+      if (message !== undefined) {
+        nextMessages.push(message);
+      }
+    }
+
+    processedChunkCount = nextChunks.length;
+    if (nextMessages.length > 0) {
+      setMessages((prev) => [...prev, ...nextMessages]);
+    }
   });
 
   return {
     messages,
-    reset: () => setMessages([]),
+    reset: () => {
+      processedChunkCount = 0;
+      setMessages([]);
+    },
   };
 }
 
@@ -350,6 +366,25 @@ function processSSEEventBlock(
   return "continue";
 }
 
+function drainBufferedSSEEvents(
+  buffer: string,
+  callbacks: SSECallbacks
+): { buffer: string; terminal: "done" | "error" | "continue" } {
+  let separatorIndex = buffer.indexOf("\n\n");
+
+  while (separatorIndex !== -1) {
+    const terminal = processSSEEventBlock(buffer.slice(0, separatorIndex), callbacks);
+    if (terminal !== "continue") {
+      return { buffer: "", terminal };
+    }
+
+    buffer = buffer.slice(separatorIndex + 2);
+    separatorIndex = buffer.indexOf("\n\n");
+  }
+
+  return { buffer, terminal: "continue" };
+}
+
 /**
  * @internal
  * Connect to the Rails streaming endpoint and parse SSE events.
@@ -383,7 +418,8 @@ async function connectSSE(
   // SSR cookie forwarding (shouldn't happen in practice since streams
   // are client-only, but included for completeness)
   if (isServer) {
-    const cookies = (globalThis as any).__REACTIVE_VIEW_COOKIES__;
+    const { cookies: contextCookies } = getSSRRequestContext();
+    const cookies = contextCookies || (globalThis as any).__REACTIVE_VIEW_COOKIES__;
     if (cookies) headers["Cookie"] = cookies;
   }
 
@@ -420,23 +456,18 @@ async function connectSSE(
       const { done, value } = await reader.read();
       if (done) {
         buffer += decoder.decode();
-        const terminal = processSSEEventBlock(buffer, callbacks);
-        if (terminal !== "continue") return;
+        const drained = drainBufferedSSEEvents(buffer, callbacks);
+        if (drained.terminal !== "continue") return;
+        const finalEvent = processSSEEventBlock(drained.buffer, callbacks);
+        if (finalEvent !== "continue") return;
         callbacks.onError(new StreamIncompleteError());
         return;
       }
 
       buffer += decoder.decode(value, { stream: true });
-
-      // SSE events are separated by double newlines
-      const events = buffer.split("\n\n");
-      // Last element might be incomplete -- keep it in the buffer
-      buffer = events.pop() || "";
-
-      for (const event of events) {
-        const terminal = processSSEEventBlock(event, callbacks);
-        if (terminal !== "continue") return;
-      }
+      const drained = drainBufferedSSEEvents(buffer, callbacks);
+      buffer = drained.buffer;
+      if (drained.terminal !== "continue") return;
     }
   } catch (err) {
     if (signal.aborted) return; // Expected abort -- don't report as error
@@ -449,6 +480,9 @@ async function connectSSE(
  */
 function getRailsBaseUrl(): string {
   if (isServer) {
+    const { railsBaseUrl } = getSSRRequestContext();
+    if (railsBaseUrl) return railsBaseUrl;
+
     const globalRailsUrl = (globalThis as any).__RAILS_BASE_URL__;
     if (globalRailsUrl) return globalRailsUrl;
     return "http://localhost:3000";

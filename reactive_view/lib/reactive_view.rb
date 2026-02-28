@@ -45,6 +45,7 @@ end
 require_relative 'reactive_view/templates'
 require_relative 'reactive_view/types'
 require_relative 'reactive_view/types/dsl'
+require_relative 'reactive_view/types/error_formatter'
 require_relative 'reactive_view/types/validator'
 require_relative 'reactive_view/types/typescript_generator'
 require_relative 'reactive_view/shape'

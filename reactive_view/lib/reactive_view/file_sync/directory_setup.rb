@@ -73,7 +73,7 @@ module ReactiveView
           ensure_package_json_dependencies(package_json, runtime_dependencies, missing_runtime, missing_dev)
 
           Dir.chdir(Rails.root) do
-            system('npm install --silent') ||
+            system('npm', 'install', '--silent') ||
               raise(Error, 'Failed to install npm dependencies')
           end
         end

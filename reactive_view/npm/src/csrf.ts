@@ -1,4 +1,5 @@
 import { isServer } from "solid-js/web";
+import { getSSRRequestContext } from "./request-context.js";
 
 /**
  * Get the CSRF token for mutation requests.
@@ -16,6 +17,9 @@ import { isServer } from "solid-js/web";
  */
 export function getCSRFToken(): string | null {
   if (isServer) {
+    const { csrfToken } = getSSRRequestContext();
+    if (csrfToken) return csrfToken;
+
     // During SSR, Rails passes the token via globalThis
     return (globalThis as any).__RAILS_CSRF_TOKEN__ || null;
   }

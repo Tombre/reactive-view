@@ -104,8 +104,7 @@ module ReactiveView
         if content_type.include?('text/html')
           response.body
         elsif content_type.include?('application/json')
-          # JSON response usually means an error
-          error_data = JSON.parse(response.body)
+          error_data = parse_json_body(response.body)
           raise RenderError, error_data['error'] || 'Unknown render error'
         else
           response.body
@@ -120,11 +119,7 @@ module ReactiveView
     end
 
     def handle_error_response(response)
-      error_info = begin
-        JSON.parse(response.body)
-      rescue JSON::ParserError
-        { 'error' => response.body }
-      end
+      error_info = parse_json_body(response.body, fallback: { 'error' => response.body })
 
       message = error_info['error'] || 'Internal server error'
       details = error_info['details'] || error_info['message']
@@ -132,6 +127,14 @@ module ReactiveView
       full_message = details ? "#{message}: #{details}" : message
 
       raise RenderError, full_message
+    end
+
+    def parse_json_body(body, fallback: nil)
+      JSON.parse(body)
+    rescue JSON::ParserError
+      return fallback if fallback
+
+      raise RenderError, 'Invalid JSON response from SolidStart daemon'
     end
   end
 end

@@ -23,6 +23,7 @@ module ReactiveView
 
     def initialize(app)
       @app = app
+      @connection = nil
     end
 
     def call(env)
@@ -56,7 +57,6 @@ module ReactiveView
       query_params = query_string && !query_string.empty? ? Rack::Utils.parse_query(query_string) : {}
 
       begin
-        connection = build_connection
         response = make_request(connection, env, target_url, query_params)
 
         build_response(response)
@@ -69,8 +69,8 @@ module ReactiveView
       end
     end
 
-    def build_connection
-      Faraday.new do |f|
+    def connection
+      @connection ||= Faraday.new do |f|
         f.options.timeout = 30
         f.options.open_timeout = 5
         f.adapter Faraday.default_adapter

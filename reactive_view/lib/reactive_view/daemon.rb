@@ -36,13 +36,6 @@ module ReactiveView
 
     HEALTH_CHECK_PATH = '/api/render'
 
-    # Daemon lifecycle states
-    # :stopped - Not running
-    # :starting - Spawned but not yet healthy
-    # :running - Running and healthy
-    # :failed - Failed to start or exceeded restart budget
-    VALID_STATUSES = %i[stopped starting running failed].freeze
-
     attr_reader :pid, :status
 
     def initialize
@@ -184,7 +177,7 @@ module ReactiveView
 
       spawn(
         { 'PORT' => ReactiveView.configuration.daemon_port.to_s },
-        command,
+        *command,
         chdir: Rails.root.to_s,
         out: [log_file.to_s, 'a'],
         err: [log_file.to_s, 'a'],
@@ -194,12 +187,12 @@ module ReactiveView
 
     # Build the command to start the daemon.
     #
-    # @return [String]
+    # @return [Array<String>]
     def build_command
       if Rails.env.production?
-        'npx reactiveview start'
+        %w[npx reactiveview start]
       else
-        'npx reactiveview dev'
+        %w[npx reactiveview dev]
       end
     end
 

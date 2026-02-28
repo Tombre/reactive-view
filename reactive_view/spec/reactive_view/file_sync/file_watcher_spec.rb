@@ -89,8 +89,7 @@ RSpec.describe ReactiveView::FileSync::FileWatcher do
 
       described_class.stop
 
-      # Give thread time to be killed
-      sleep 0.05
+      debounce_thread.join(0.2)
       expect(debounce_thread).not_to be_alive
     end
   end
@@ -135,6 +134,23 @@ RSpec.describe ReactiveView::FileSync::FileWatcher do
       expect(ReactiveView::FileSync::WrapperGenerator).not_to receive(:remove_wrapper)
 
       described_class.send(:process_pending_changes)
+    end
+
+    it 'batches rapid queue changes into one processing pass' do
+      allow(described_class).to receive(:debounce_delay).and_return(0.01)
+      allow(described_class).to receive(:handle_changes)
+
+      described_class.send(:queue_changes, ["#{pages_path}/a.tsx"], [], [])
+      described_class.send(:queue_changes, ["#{pages_path}/a.tsx", "#{pages_path}/b.tsx"], [], [])
+
+      sleep 0.05
+
+      expect(described_class).to have_received(:handle_changes).once
+      expect(described_class).to have_received(:handle_changes).with(
+        array_including("#{pages_path}/a.tsx", "#{pages_path}/b.tsx"),
+        [],
+        []
+      )
     end
   end
 

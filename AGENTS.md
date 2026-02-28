@@ -73,5 +73,5 @@ Load task-specific guidance from local skills under `.opencode/skills/`.
 - `testing`: test strategy, command matrix, and RSpec conventions.
 - `solidjs`: full SolidJS coding standards and anti-React guardrails.
 - `docker-config-sync`: keeps example app runtime Docker and repo devcontainer configs updated in tandem.
-- `pull-request`: create/update GitHub PRs with complete summaries and manual testing notes.
+- `pull-request`: create GitHub PRs with `gh` (or update existing branch PRs) using complete summaries and manual testing notes.
 - `planning`: write and store planning documents under `plans/`.

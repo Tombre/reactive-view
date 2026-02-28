@@ -1,12 +1,16 @@
 import type { APIEvent } from "@solidjs/start/server";
 
+const RAILS_BASE_URL_HEADER = "x-reactive-view-rails-base-url";
+const RAILS_COOKIES_HEADER = "x-reactive-view-cookies";
+const RAILS_CSRF_TOKEN_HEADER = "x-reactive-view-csrf-token";
+
 /**
  * API endpoint for Rails to request page renders.
  * Rails calls this endpoint with the path to render and cookies for authentication.
  * 
  * This endpoint:
  * 1. Receives the render request from Rails
- * 2. Stores cookies and CSRF token for authenticated requests and mutations
+ * 2. Forwards Rails context via internal request headers
  * 3. Internally renders the requested route
  * 4. Returns the HTML to Rails
  */
@@ -22,27 +26,32 @@ export async function POST(event: APIEvent): Promise<Response> {
       );
     }
 
-    // Store the cookies, Rails URL, and CSRF token for this request
-    // These will be accessed by useLoaderData and mutations during SSR
-    // Note: We don't clean these up in finally because SSR may access them
-    // after the fetch completes but before the response is sent back
-    (globalThis as any).__REACTIVE_VIEW_COOKIES__ = cookies;
-    (globalThis as any).__RAILS_BASE_URL__ = rails_base_url;
-    (globalThis as any).__RAILS_CSRF_TOKEN__ = csrf_token;
-
     // Build the internal URL to render using the request's own origin
     // This ensures we use the same host/port that successfully received this request
     const requestUrl = new URL(event.request.url);
     const renderUrl = new URL(path, requestUrl.origin);
 
+    const renderHeaders: Record<string, string> = {
+      "Accept": "text/html",
+      "User-Agent": event.request.headers.get("User-Agent") || "",
+    };
+
+    if (rails_base_url) {
+      renderHeaders[RAILS_BASE_URL_HEADER] = String(rails_base_url);
+    }
+
+    if (cookies) {
+      renderHeaders[RAILS_COOKIES_HEADER] = String(cookies);
+    }
+
+    if (csrf_token) {
+      renderHeaders[RAILS_CSRF_TOKEN_HEADER] = String(csrf_token);
+    }
+
     // Make an internal request to render the page
     const renderResponse = await fetch(renderUrl.toString(), {
       method: "GET",
-      headers: {
-        "Accept": "text/html",
-        // Pass through any relevant headers
-        "User-Agent": event.request.headers.get("User-Agent") || "",
-      },
+      headers: renderHeaders,
     });
 
     if (!renderResponse.ok) {

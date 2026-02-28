@@ -55,18 +55,6 @@ module ReactiveView
           raise e
         end
       end
-
-      # Write content to a file atomically, logging errors instead of raising.
-      #
-      # @param path [Pathname, String] Destination file path
-      # @param content [String] Content to write
-      # @return [Boolean] true if write succeeded, false otherwise
-      def write_silent(path, content)
-        write(path, content)
-      rescue SystemCallError => e
-        ReactiveView.logger.error "[ReactiveView] Atomic write failed for #{path}: #{e.message}"
-        false
-      end
     end
   end
 end

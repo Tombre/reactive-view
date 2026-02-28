@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'types/error_formatter'
+
 module ReactiveView
   # Base class for defining validated data shapes.
   #
@@ -56,9 +58,7 @@ module ReactiveView
       end
 
       # @return [Proc, nil] The block used to build this shape's schema
-      def _shape_builder_block
-        @_shape_builder_block
-      end
+      attr_reader :_shape_builder_block
 
       # Build and return the Dry::Types schema for this shape.
       # Used by the TypeScript generator and for introspection.
@@ -88,9 +88,7 @@ module ReactiveView
       # @raise [ReactiveView::ValidationError] If validation fails
       def call!(input = {})
         instance = new(input)
-        unless instance.valid?
-          raise ReactiveView::ValidationError, instance.errors.inspect
-        end
+        raise ReactiveView::ValidationError, instance.errors.inspect unless instance.valid?
 
         instance
       end
@@ -112,7 +110,7 @@ module ReactiveView
     end
 
     # @return [Boolean] Alias for valid?
-    alias_method :success?, :valid?
+    alias success? valid?
 
     # @return [Boolean] Whether the input failed validation
     def failure?
@@ -270,12 +268,12 @@ module ReactiveView
     # @return [String] The type name
     def extract_type_name(type)
       return extract_type_name(type.right) if type.optional? && type.respond_to?(:right)
-      return "Boolean" if type.respond_to?(:name) && type.name == "TrueClass | FalseClass"
-      return type.primitive.name.to_s.split("::").last if type.respond_to?(:primitive)
+      return 'Boolean' if type.respond_to?(:name) && type.name == 'TrueClass | FalseClass'
+      return type.primitive.name.to_s.split('::').last if type.respond_to?(:primitive)
 
-      type.class.name.to_s.split("::").last
+      type.class.name.to_s.split('::').last
     rescue StandardError
-      "Any"
+      'Any'
     end
 
     # Coerce a value to boolean.
@@ -286,9 +284,9 @@ module ReactiveView
       return value if value.is_a?(TrueClass) || value.is_a?(FalseClass)
 
       case value.to_s.downcase
-      when "true", "1", "yes", "on"
+      when 'true', '1', 'yes', 'on'
         true
-      when "false", "0", "no", "off", ""
+      when 'false', '0', 'no', 'off', ''
         false
       else
         !!value
@@ -307,79 +305,17 @@ module ReactiveView
         @errors = {}
       else
         @data = coerced
-        @errors = build_structured_errors(result.error)
+        @errors = Types::ErrorFormatter.build_structured_errors(result.error, include_array_indices: true)
       end
     rescue Dry::Types::CoercionError => e
       @data = coerced
-      @errors = {"base" => ["Type coercion failed: #{e.message}"]}
+      @errors = { 'base' => ["Type coercion failed: #{e.message}"] }
     rescue Dry::Types::ConstraintError => e
       @data = coerced
-      @errors = {"base" => ["Constraint violation: #{e.message}"]}
+      @errors = { 'base' => ["Constraint violation: #{e.message}"] }
     rescue Dry::Types::SchemaError => e
       @data = coerced
-      @errors = {"base" => ["Schema error: #{e.message}"]}
-    end
-
-    # Build structured field-level errors from a Dry::Types error.
-    #
-    # @param error [Object] The error from Dry::Types schema.try
-    # @param prefix [String] Current path prefix for nested errors
-    # @return [Hash<String, Array<String>>] Field paths to error messages
-    def build_structured_errors(error, prefix: "")
-      errors = {}
-
-      case error
-      when ::Hash
-        error.each do |key, value|
-          path = prefix.empty? ? key.to_s : "#{prefix}.#{key}"
-          nested = build_structured_errors(value, prefix: path)
-          errors.merge!(nested)
-        end
-      when ::Array
-        messages = error.filter_map { |e| extract_error_message(e) }
-        if messages.any?
-          path = prefix.empty? ? "base" : prefix
-          errors[path] = messages
-        end
-
-        # Also check for indexed errors (array element validation)
-        error.each_with_index do |e, i|
-          if e.is_a?(::Hash) || e.is_a?(::Array)
-            nested = build_structured_errors(e, prefix: "#{prefix}[#{i}]")
-            errors.merge!(nested)
-          end
-        end
-      when Dry::Types::Result::Failure
-        nested = build_structured_errors(error.error, prefix: prefix)
-        errors.merge!(nested)
-      else
-        message = extract_error_message(error)
-        if message
-          path = prefix.empty? ? "base" : prefix
-          errors[path] = [message]
-        end
-      end
-
-      errors
-    end
-
-    # Extract a human-readable error message from a Dry error object.
-    #
-    # @param error [Object] A Dry error or string
-    # @return [String, nil] The error message
-    def extract_error_message(error)
-      case error
-      when ::String
-        error
-      when Dry::Types::CoercionError, Dry::Types::ConstraintError, Dry::Types::SchemaError
-        error.message
-      when Dry::Types::Result::Failure
-        extract_error_message(error.error)
-      else
-        error.respond_to?(:message) ? error.message : error.to_s
-      end
-    rescue StandardError
-      nil
+      @errors = { 'base' => ["Schema error: #{e.message}"] }
     end
   end
 end
