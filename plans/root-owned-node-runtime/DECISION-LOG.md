@@ -1,29 +1,4 @@
-# Decision Log
-
-Use this log to track planning and implementation decisions that should inform future work.
-
-## How to read this file
-
-- `Status: Active` means the decision is currently in effect.
-- `Status: Deprecated` means the decision was replaced by a newer decision.
-- `Deprecated By` points to the replacement decision ID.
-- `Supersedes` lists decision IDs replaced by the current decision.
-
-## DEC-20260228-01 - Establish decision log workflow
-
-- Status: Active
-- Date: 2026-02-28
-- Deprecated By: N/A
-- Supersedes: None
-
-### Context
-Planning and implementation choices were not being recorded in one durable place, which made later decisions slower and less consistent.
-
-### Decision
-Adopt a repository-level decision log at `plans/decision-log/DECISIONS.md` and capture non-trivial planning and implementation choices with stable IDs.
-
-### Consequences
-Future planning can reference prior rationale quickly; when choices change, old decisions stay visible and are marked deprecated instead of deleted.
+# Decision Log - root-owned-node-runtime
 
 ## DEC-20260228-02 - Root-owned Node runtime, generated `.reactive_view`, keep SolidStart
 

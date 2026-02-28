@@ -9,6 +9,7 @@ ReactiveView is a Ruby on Rails view framework gem for building modern reactive 
 - File-based routing: routes come from `app/pages/` (SolidStart style).
 - Loader and mutation pattern: data loading and mutations are defined in Ruby loaders with typed params/results.
 - Rails-first architecture: Rails owns auth/models/business rules; SolidJS owns UI rendering and interactivity.
+- Rails serves the request, talking to daemon (frontend server) that then returns the html for the page.
 
 ## High-Level Architecture
 
@@ -74,4 +75,4 @@ Load task-specific guidance from local skills under `.opencode/skills/`.
 - `solidjs`: full SolidJS coding standards and anti-React guardrails.
 - `docker-config-sync`: keeps example app runtime Docker and repo devcontainer configs updated in tandem.
 - `pull-request`: create GitHub PRs with `gh` (or update existing branch PRs) using complete summaries and manual testing notes.
-- `planning`: write and store planning documents under `plans/`.
+- `feature-plan`: writes feature plans and required architecture decision logs under `plans/`; trigger for big architecture changes, major plans, and new features.
