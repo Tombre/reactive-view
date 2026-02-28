@@ -30,13 +30,13 @@ bin/rails reactive_view:setup
 
 ## Running the Application
 
-Start the app (installs dependencies, prepares the database, runs setup if needed, then launches both processes):
+Start the app (installs dependencies, prepares the database, runs setup if needed, then launches Rails):
 
 ```bash
 bin/start
 ```
 
-Already set up and just want to launch the processes?
+Already set up and just want to launch Rails?
 
 ```bash
 bin/dev
@@ -45,7 +45,11 @@ bin/dev
 This will start:
 
 - Rails server on http://localhost:3000
-- SolidStart daemon on http://localhost:3001
+- SolidStart daemon managed automatically by Rails in development
+
+If port `3001` is already in use, ReactiveView will try to reclaim stale daemon listeners and otherwise pick the next available port for this Rails process.
+
+For production, you can keep the daemon as a standalone service and point Rails to it with `config.external_daemon` and `config.daemon_host` / `config.daemon_port`.
 
 ## Running with Docker
 

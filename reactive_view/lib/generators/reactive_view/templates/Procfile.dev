@@ -1,5 +1,4 @@
 # Development processes for ReactiveView
 # Run with: bin/dev (or foreman start -f Procfile.dev)
 
-web: REACTIVE_VIEW_DAEMON_HOST=${REACTIVE_VIEW_DAEMON_HOST:-localhost} REACTIVE_VIEW_DAEMON_PORT=${REACTIVE_VIEW_DAEMON_PORT:-3001} bin/rails server -p 3000
-solidstart: npx reactiveview dev --port ${REACTIVE_VIEW_DAEMON_PORT:-3001}
+web: bin/rails server -p 3000
