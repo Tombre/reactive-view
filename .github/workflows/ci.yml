@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gem_specs:
+    name: Gem specs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4.3"
+
+      - name: Install gem dependencies
+        run: bundle install
+        working-directory: reactive_view
+
+      - name: Run gem specs
+        run: bundle exec rspec
+        working-directory: reactive_view
+
+  js_tests_and_typecheck:
+    name: JS tests and typecheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Run npm package tests
+        run: npm test
+        working-directory: reactive_view/npm
+
+      - name: Build npm package
+        run: npm run build
+        working-directory: reactive_view/npm
+
+      - name: Typecheck example frontend
+        run: npm run typecheck
+        working-directory: examples/reactive_view_example
+
+  example_project_tests:
+    name: Example project tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4.3"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Install example app gem dependencies
+        run: bundle install
+        working-directory: examples/reactive_view_example
+
+      - name: Prepare example app test database
+        run: bin/rails db:prepare
+        env:
+          RAILS_ENV: test
+        working-directory: examples/reactive_view_example
+
+      - name: Run example app specs
+        run: bundle exec rspec
+        working-directory: examples/reactive_view_example
+
+      - name: Validate ReactiveView sync
+        run: bin/rails reactive_view:sync
+        env:
+          RAILS_ENV: test
+        working-directory: examples/reactive_view_example
+
+      - name: Validate ReactiveView routes
+        run: bin/rails reactive_view:routes
+        env:
+          RAILS_ENV: test
+        working-directory: examples/reactive_view_example
+
+      - name: Validate ReactiveView type generation
+        run: bin/rails reactive_view:types:generate
+        env:
+          RAILS_ENV: test
+        working-directory: examples/reactive_view_example
+
+      - name: Build example frontend
+        run: npm run build
+        working-directory: examples/reactive_view_example
+
+      - name: Install Playwright browser dependencies
+        run: npx playwright install --with-deps chromium
+        working-directory: examples/reactive_view_example
+
+      - name: Run all Playwright e2e specs
+        run: bin/e2e spec/e2e
+        working-directory: examples/reactive_view_example
