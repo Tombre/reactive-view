@@ -21,9 +21,9 @@
  * ```
  */
 
-import { spawn, spawnSync } from "node:child_process";
-import { existsSync, cpSync, rmSync, mkdirSync, readdirSync, statSync } from "node:fs";
-import { resolve, relative, extname } from "node:path";
+import { spawn } from "node:child_process";
+import { existsSync, cpSync, rmSync, mkdirSync, readdirSync } from "node:fs";
+import { resolve } from "node:path";
 
 const WORKING_DIR = ".reactive_view";
 const DEFAULT_DEV_PORT = "3001";

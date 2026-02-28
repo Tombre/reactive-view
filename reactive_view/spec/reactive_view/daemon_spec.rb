@@ -68,6 +68,40 @@ RSpec.describe ReactiveView::Daemon do
     end
   end
 
+  describe 'daemon command execution' do
+    describe '#build_command' do
+      it 'uses argv form for development mode' do
+        allow(Rails).to receive(:env).and_return(Rails::Env.new('development'))
+
+        expect(daemon.send(:build_command)).to eq(%w[npm run dev])
+      end
+
+      it 'uses argv form for production mode' do
+        allow(Rails).to receive(:env).and_return(Rails::Env.new('production'))
+
+        expect(daemon.send(:build_command)).to eq(%w[npm run start])
+      end
+    end
+
+    describe '#spawn_daemon' do
+      it 'spawns using argv without shell interpolation' do
+        log_file = working_dir.join('daemon.log')
+
+        allow(daemon).to receive(:build_command).and_return(%w[npm run dev])
+        expect(daemon).to receive(:spawn).with(
+          { 'PORT' => '13001' },
+          'npm', 'run', 'dev',
+          chdir: working_dir.to_s,
+          out: [log_file.to_s, 'a'],
+          err: [log_file.to_s, 'a'],
+          pgroup: true
+        ).and_return(12_345)
+
+        expect(daemon.send(:spawn_daemon, working_dir)).to eq(12_345)
+      end
+    end
+  end
+
   describe '#health_check' do
     context 'when daemon is not running' do
       before do
