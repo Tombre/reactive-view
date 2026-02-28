@@ -32,13 +32,13 @@ module ReactiveView
           unless working_dir.exist?
             ReactiveView.logger.info "[ReactiveView] Setting up working directory at #{working_dir}"
             FileUtils.mkdir_p(working_dir)
-
-            # Copy template files
-            copy_template_files(template_dir, working_dir)
-
-            # Ensure generated routes directory exists
-            FileUtils.mkdir_p(working_dir.join('src', 'routes'))
           end
+
+          # Keep managed runtime/template files in sync with the gem
+          copy_template_files(template_dir, working_dir)
+
+          # Ensure generated routes directory exists
+          FileUtils.mkdir_p(working_dir.join('src', 'routes'))
 
           runtime_dependencies = required_runtime_dependencies
           missing_runtime = missing_packages(runtime_dependencies.keys)

@@ -66,6 +66,16 @@ RSpec.describe ReactiveView::FileSync::DirectorySetup do
 
       described_class.setup
     end
+
+    it 'refreshes managed template files when working directory already exists' do
+      allow(described_class).to receive(:missing_packages).and_return([], [])
+      FileUtils.mkdir_p(working_dir)
+      working_dir.join('app.config.ts').write('outdated-config')
+
+      described_class.setup
+
+      expect(working_dir.join('app.config.ts').read).to eq('export default {}')
+    end
   end
 
   describe '.install_dependencies' do
