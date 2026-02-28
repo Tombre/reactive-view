@@ -166,33 +166,27 @@ module ReactiveView
     # Check if the mutation method is valid and allowed to be called.
     #
     # A method is valid if:
-    # - The loader responds to it
     # - It's not the :load method (reserved for data loading)
-    # - It's defined on the loader class itself or a Loader subclass (not inherited from
-    #   ActionController::Base or other base classes)
+    # - It's a public instance method declared on the concrete loader class or a
+    #   custom superclass between it and ReactiveView::Loader
+    #
+    # This blocks inherited framework/base helper methods from being callable via
+    # the external mutation endpoint while preserving inherited user-defined
+    # mutation methods.
     #
     # @param loader [ReactiveView::Loader] The loader instance
     # @param method [Symbol] The method name to check
     # @return [Boolean]
     def valid_mutation_method?(loader, method)
-      # Must respond to the method
-      return false unless loader.respond_to?(method)
-
       # Cannot be the load method (reserved for data loading)
       return false if method == :load
 
-      # Check if the method is defined in the loader class hierarchy
-      # We walk up the class hierarchy and accept methods defined on:
-      # - The loader class itself
-      # - Any class between the loader and ReactiveView::Loader (inclusive)
-      # This excludes methods only defined on ActionController::Base or Object
-      klass = loader.class
-      while klass && klass != Object
-        # Accept if method is defined directly on this class
-        return true if klass.instance_methods(false).include?(method)
+      # Must be callable at all
+      return false unless loader.respond_to?(method)
 
-        # Stop checking once we reach ReactiveView::Loader
-        break if klass == ReactiveView::Loader
+      klass = loader.class
+      while klass && klass != ReactiveView::Loader && klass != Object
+        return true if klass.public_instance_methods(false).include?(method)
 
         klass = klass.superclass
       end
