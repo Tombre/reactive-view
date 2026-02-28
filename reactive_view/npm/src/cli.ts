@@ -171,11 +171,13 @@ export function run(argv: string[]): void {
   if (command === "dev") {
     const devPort = port || process.env.PORT || DEFAULT_DEV_PORT;
     env.PORT = devPort;
+    args.push("--port", devPort);
   }
 
   // For start command, allow port override too
   if (command === "start" && port) {
     env.PORT = port;
+    args.push("--port", port);
   }
 
   const child = spawn("npx", args, {

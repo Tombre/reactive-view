@@ -9,7 +9,7 @@ daemon_host="${REACTIVE_VIEW_DAEMON_HOST:-localhost}"
 daemon_port="${REACTIVE_VIEW_DAEMON_PORT:-3001}"
 
 port_available() {
-  ruby -rsocket -e 'begin; TCPServer.new("127.0.0.1", Integer(ARGV[0])).close; exit 0; rescue Errno::EADDRINUSE; exit 1; end' "$1"
+  ruby -rsocket -e 'port = Integer(ARGV[0]); hosts = ["localhost", "127.0.0.1", "::1"]; hosts.each do |host|; begin; server = TCPServer.new(host, port); server.close; rescue Errno::EADDRINUSE, Errno::EACCES; exit 1; rescue SocketError, Errno::EADDRNOTAVAIL; next; end; end; exit 0' "$1"
 }
 
 # Check if foreman is installed
