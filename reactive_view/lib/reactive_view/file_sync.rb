@@ -2,7 +2,6 @@
 
 require_relative 'file_sync/atomic_writer'
 require_relative 'file_sync/directory_setup'
-require_relative 'file_sync/component_syncer'
 require_relative 'file_sync/wrapper_generator'
 require_relative 'file_sync/vite_notifier'
 require_relative 'file_sync/file_watcher'
@@ -10,14 +9,12 @@ require_relative 'file_sync/file_watcher'
 module ReactiveView
   # Facade for file synchronization between Rails app/pages and SolidStart working directory.
   #
-  # In development, Vite reads source files directly from app/pages via the ~pages alias,
-  # so only route wrappers and TypeScript types are generated (no file copying).
-  # In production builds, files are also copied to .reactive_view/src/pages for a
-  # self-contained build.
+  # Vite reads source files directly from app/pages via the ~pages alias in both
+  # development and production builds, so only route wrappers and TypeScript
+  # types are generated.
   #
   # Delegates to specialized classes:
   # - DirectorySetup: Initial working directory setup and npm install
-  # - ComponentSyncer: Copies TSX/TS files from app/pages to .reactive_view/src/pages (production only)
   # - WrapperGenerator: Generates route wrappers in .reactive_view/src/routes
   # - FileWatcher: Watches for file changes in development
   # - ViteNotifier: Notifies Vite of loader changes for HMR
@@ -56,13 +53,11 @@ module ReactiveView
 
       # Sets up the SolidStart working directory and generates route wrappers and types.
       #
-      # In development:
-      # 1. Sets up the .reactive_view directory (copies template, runs npm install)
-      # 2. Generates route wrappers in .reactive_view/src/routes (with ~pages alias imports)
-      # 3. Generates TypeScript types from loader signatures
-      #
-      # In production:
-      # Additionally copies TSX/TS components to .reactive_view/src/pages for a self-contained build.
+      # Sync behavior:
+      # 1. Sets up the .reactive_view directory (copies template files)
+      # 2. Ensures required root npm dependencies are installed
+      # 3. Generates route wrappers in .reactive_view/src/routes (with ~pages alias imports)
+      # 4. Generates TypeScript types from loader signatures
       #
       # @return [void]
       #
@@ -74,9 +69,6 @@ module ReactiveView
       #   ReactiveView::FileSync.sync_all
       def sync_all
         DirectorySetup.setup
-        # In development, Vite reads directly from app/pages via the ~pages alias.
-        # File copying is only needed for production builds.
-        ComponentSyncer.sync_all unless Rails.env.development?
         WrapperGenerator.generate_all
         sync_loader_types
       end
@@ -84,7 +76,6 @@ module ReactiveView
       # Starts watching for file changes in app/pages (development only).
       #
       # When files change:
-      # - TSX/TS files are synced to .reactive_view/src/pages
       # - Route wrappers are regenerated as needed
       # - Loader changes trigger TypeScript type regeneration and Vite HMR
       #

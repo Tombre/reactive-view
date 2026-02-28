@@ -185,7 +185,7 @@ module ReactiveView
       spawn(
         { 'PORT' => ReactiveView.configuration.daemon_port.to_s },
         command,
-        chdir: working_dir.to_s,
+        chdir: Rails.root.to_s,
         out: [log_file.to_s, 'a'],
         err: [log_file.to_s, 'a'],
         pgroup: true # Create new process group for clean shutdown
@@ -197,9 +197,9 @@ module ReactiveView
     # @return [String]
     def build_command
       if Rails.env.production?
-        'npm run start'
+        'npx reactiveview start'
       else
-        'npm run dev'
+        'npx reactiveview dev'
       end
     end
 

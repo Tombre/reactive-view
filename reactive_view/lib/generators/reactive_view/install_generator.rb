@@ -55,7 +55,6 @@ module ReactiveView
         gitignore_entries = [
           '',
           '# ReactiveView',
-          '.reactive_view/src/pages/',
           '.reactive_view/src/routes/',
           '.reactive_view/types/',
           '.reactive_view/.vinxi/',
@@ -114,21 +113,6 @@ module ReactiveView
 
       def gem_template_path
         File.expand_path('../../../../template', __dir__)
-      end
-
-      # Path to @reactive-view/core npm package relative to the gem
-      # This uses a file: link for local development
-      def reactive_view_core_path
-        # Calculate relative path from Rails.root to the npm package
-        gem_root = File.expand_path('../../../../..', __dir__)
-        npm_package_path = File.join(gem_root, 'npm')
-
-        # Return relative path from Rails.root
-        Pathname.new(npm_package_path).relative_path_from(Rails.root).to_s
-      end
-
-      def app_name
-        Rails.application.class.module_parent_name.underscore
       end
     end
   end

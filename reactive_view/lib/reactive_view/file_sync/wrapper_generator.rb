@@ -97,25 +97,13 @@ module ReactiveView
 
         # Calculate the import path from a route to its page component
         #
-        # In development, uses the ~pages/ Vite alias to import directly from
-        # app/pages/ (no file copying needed). In production, uses relative paths
-        # to the copied files in .reactive_view/src/pages/.
+        # Uses the ~pages/ Vite alias to import directly from app/pages.
         #
         # @param relative_path [Pathname] Relative path to the TSX file
         # @return [String] Import path for the component
         def calculate_import_path(relative_path)
-          if Rails.env.development?
-            # Use Vite alias to resolve directly from app/pages
-            path = relative_path.to_s.sub(/\.tsx$/, '')
-            "~pages/#{path.tr('\\', '/')}"
-          else
-            # Production: use relative path to copied files in src/pages
-            route_dir = routes_path.join(relative_path).dirname
-            page_file = ComponentSyncer.destination_path.join(relative_path)
-            path = page_file.relative_path_from(route_dir).to_s
-            path = path.sub(/\.tsx$/, '')
-            path.tr('\\', '/')
-          end
+          path = relative_path.to_s.sub(/\.tsx$/, '')
+          "~pages/#{path.tr('\\', '/')}"
         end
 
         # Check if a file is a layout (has a folder with the same name)
