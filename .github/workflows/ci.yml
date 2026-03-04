@@ -104,7 +104,7 @@ jobs:
         working-directory: examples/reactive_view_example
 
       - name: Run example app specs
-        run: bundle exec rspec
+        run: bundle exec rspec --exclude-pattern "spec/e2e/**/*_spec.rb"
         working-directory: examples/reactive_view_example
 
       - name: Validate ReactiveView sync

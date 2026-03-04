@@ -245,6 +245,15 @@ module ReactiveView
     def stop_internal
       return unless @pid
 
+      if @pid == Process.pid
+        ReactiveView.logger.warn '[ReactiveView] Skipping daemon shutdown for current process PID'
+        @pid = nil
+        @status = :stopped
+        remove_pid_file
+        invalidate_health_cache
+        return
+      end
+
       ReactiveView.logger.info "[ReactiveView] Stopping daemon (PID: #{@pid})..."
 
       begin

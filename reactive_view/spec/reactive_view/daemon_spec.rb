@@ -423,6 +423,22 @@ RSpec.describe ReactiveView::Daemon do
         daemon.stop
       end
     end
+
+    context 'when daemon pid is the current process' do
+      before do
+        daemon.instance_variable_set(:@pid, Process.pid)
+        daemon.instance_variable_set(:@status, :running)
+      end
+
+      it 'does not signal the current process' do
+        expect(Process).not_to receive(:kill).with(anything, Process.pid)
+
+        daemon.stop
+
+        expect(daemon.pid).to be_nil
+        expect(daemon.status).to eq(:stopped)
+      end
+    end
   end
 
   describe 'PID file cleanup' do
