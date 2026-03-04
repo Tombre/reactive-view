@@ -135,4 +135,8 @@ RSpec.configure do |config|
   config.before(:each) do
     ReactiveView.reset_configuration!
   end
+
+  config.after(:suite) do
+    ReactiveView::FileSync::FileWatcher.stop
+  end
 end

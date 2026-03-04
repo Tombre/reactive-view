@@ -37,6 +37,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4.3"
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -53,6 +58,10 @@ jobs:
       - name: Build npm package
         run: npm run build
         working-directory: reactive_view/npm
+
+      - name: Install example app gem dependencies
+        run: bundle install
+        working-directory: examples/reactive_view_example
 
       - name: Typecheck example frontend
         run: npm run typecheck
