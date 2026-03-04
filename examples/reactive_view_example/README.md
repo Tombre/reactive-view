@@ -30,30 +30,29 @@ bin/rails reactive_view:setup
 
 ## Running the Application
 
-Start the app (installs dependencies, prepares the database, runs setup if needed, then launches Rails):
+Start the app (installs dependencies, prepares the database, runs setup if needed, then launches Rails + daemon):
 
 ```bash
 bin/start
 ```
 
-Already set up and just want to launch Rails?
+Already set up and want to run processes manually?
 
 ```bash
+# Terminal 1: Rails
 bin/dev
+
+# Terminal 2: ReactiveView daemon orchestrator
+bin/reactive-view-dev
 ```
 
-ReactiveView-specific startup logic now lives in `bin/reactive-view-dev`.
-If your app has a custom `bin/dev`, call that script to reuse the same stale
-daemon cleanup, sync, and bootstrap behavior without duplicating shell logic.
+`bin/reactive-view-dev` runs `bundle exec reactiveview dev`, which performs
+startup checks, syncs generated files, and starts the SolidStart daemon.
 
 This will start:
 
 - Rails server on http://localhost:3000
-- SolidStart daemon managed automatically by Rails in development
-
-If port `3001` is already in use, ReactiveView will try to reclaim stale daemon listeners and otherwise pick the next available port for this Rails process.
-
-For production, you can keep the daemon as a standalone service and point Rails to it with `config.external_daemon` and `config.daemon_host` / `config.daemon_port`.
+- SolidStart daemon on http://localhost:3001
 
 ## Running with Docker
 
@@ -297,8 +296,8 @@ bin/rails reactive_view:sync
 # Generate TypeScript types
 bin/rails reactive_view:types:generate
 
-# Check daemon status
-bin/rails reactive_view:daemon:status
+# Start daemon orchestrator
+bundle exec reactiveview dev
 
 # Run E2E browser tests
 bin/e2e

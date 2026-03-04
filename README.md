@@ -146,8 +146,11 @@ bin/rails db:create db:migrate db:seed
 # Setup ReactiveView (creates .reactive_view directory, installs required root npm packages)
 bin/rails reactive_view:setup
 
-# Start development servers
+# Start Rails
 bin/dev
+
+# Start ReactiveView daemon (separate terminal)
+bundle exec reactiveview dev
 ```
 
 Visit http://localhost:3000 to see the example application.
@@ -288,7 +291,8 @@ bundle exec rspec spec/reactive_view/types/
 | `lib/reactive_view/shapes_accessor.rb` | Typed param extraction         |
 | `lib/reactive_view/router.rb`          | File-based route generation    |
 | `lib/reactive_view/renderer.rb`        | HTTP client to SolidStart      |
-| `lib/reactive_view/daemon.rb`          | SolidStart process manager     |
+| `lib/reactive_view/dev_orchestrator.rb` | Dev daemon orchestrator        |
+| `lib/reactive_view/cli.rb`             | `bundle exec reactiveview` CLI |
 | `lib/reactive_view/request_context.rb` | Token-based auth for callbacks |
 | `lib/reactive_view/types/`             | Type system (Dry::Types)       |
 
@@ -320,11 +324,10 @@ When you edit a page, the wrapper file stays stable. Vinxi's router sees no rout
 ```bash
 cd examples/reactive_view_example
 
-# Start both Rails and SolidStart
+# Start Rails
 bin/dev
 
-# ReactiveView startup internals are centralized here (safe to call from
-# custom bin/dev scripts in host apps)
+# Start ReactiveView daemon (separate terminal)
 bin/reactive-view-dev
 
 # Run Playwright Ruby E2E smoke test in Docker
@@ -332,7 +335,7 @@ docker compose build
 docker compose run --rm app bin/e2e
 ```
 
-`bin/reactive-view-dev` defaults to daemon port `3001` and proactively removes stale ReactiveView/Vinxi listeners on both app and daemon ports before Rails boots. Keeping this logic in one script prevents recurring HTML-vs-JSON loader regressions and lets apps reuse the behavior from custom wrappers.
+`bin/reactive-view-dev` shells out to `bundle exec reactiveview dev`, which runs preflight checks, syncs generated files, and keeps the Node daemon tied to the orchestrator lifecycle.
 
 ### Useful Rake Tasks
 
@@ -346,10 +349,8 @@ bin/rails reactive_view:sync
 # Generate TypeScript types from loaders
 bin/rails reactive_view:types:generate
 
-# Daemon management
-bin/rails reactive_view:daemon:start
-bin/rails reactive_view:daemon:stop
-bin/rails reactive_view:daemon:status
+# Start daemon orchestrator
+bundle exec reactiveview dev
 
 # Production build
 bin/rails reactive_view:build
@@ -454,12 +455,6 @@ ReactiveView.configure do |config|
   config.daemon_port = 3001
   config.daemon_timeout = 30
 
-  # Auto-start daemon with Rails (development only)
-  config.auto_start_daemon = Rails.env.development?
-
-  # External daemon (production - managed separately)
-  config.external_daemon = Rails.env.production?
-
   # Paths
   config.pages_path = "app/pages"
   config.working_directory = ".reactive_view"
@@ -467,6 +462,10 @@ ReactiveView.configure do |config|
   # Validate loader responses in dev/test
   config.validate_responses = true
 end
+
+# Run in separate terminals during development:
+#   bin/dev
+#   bundle exec reactiveview dev
 ```
 
 ## Routing Conventions
