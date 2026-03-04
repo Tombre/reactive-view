@@ -1,37 +1,49 @@
 # ReactiveView
 
-ReactiveView is a Ruby on Rails "view framework" gem for creating modern reactive frontends for your Rails application. ReactiveView essentially replaces the view layer of your Rails application - think of it as a rendering engine, a router, and a data loader all in one.
+ReactiveView is a Ruby on Rails "view framework" gem for creating modern reactive and typesafe frontends for your Rails application. ReactiveView essentially replaces the view layer of your Rails application. You can think of it as a rendering engine, a router, and a data loader all in one.
 
-Build your frontend with TSX components (TypeScript + SolidJS), with all data, auth, and business logic still handled by Rails!
+Build your highly reactive frontend with TSX components (TypeScript + SolidJS), with all data, auth, and business logic still handled by Rails!
+
+> **This is big old experiment and should not be used for production apps. Much of it is vibe coded (though yes the code is always reviewed). If you want to help make it something real - please raise an issue and help out!**
 
 ## Features
 
-- **SSR with Reactive Interactivity** - Server-side rendered pages that hydrate into fully interactive SolidJS applications
-- **Type Safety** - Automatic TypeScript type generation from your Ruby shape definitions
-- **Directory-Based Routing** - SolidStart-style file-based routing from `app/pages/`
-- **Mutations** - Define data mutations alongside loaders with auto-generated forms, CSRF protection, and typed params
-- **Rails Integration** - Use Rails for auth, models, business logic - SolidJS for the UI
+- **SSR with Reactive Interactivity** - Server-side rendered pages that hydrate into fully interactive SolidJS applications.
+- **Type Safety** - Automatic TypeScript type generation. Your frontend accesses a fully typesafe API
+- **Directory-Based Routing** - Work in the rails `app` directory like you usually do but take advantage SolidStart-style file-based routing by definting routes with `app/pages/`
+- **Mutations, Forms, and Data Loading** - Define data mutations alongside loaders with auto-generated forms, CSRF protection, and typed params
+- **Deeply integrated with Rails** - Use Rails for auth, models, business logic - SolidJS for the UI
 
 ## Documentation
 
-- Docs home: [docs/README.md](docs/README.md)
-- Guides index: [docs/guides/index.md](docs/guides/index.md)
-- Reference index: [docs/reference/index.md](docs/reference/index.md)
+Still being written!
 
 ## Motivation
 
 There has been an explosion of "frontend-first" JS frameworks (Next.js, Remix, SolidStart, etc.) that have made it easier than ever to build highly reactive frontends. These frameworks do incredible things: loading minimal JavaScript, building in reusable components, and enabling reactive stateful UIs.
 
-Rails has historically opted for simpler frontend tooling to reduce complexity - at the expense of not having modern frontend capabilities. But Rails excels at backend stuff: data models, business logic, and application architecture.
+Rails has historically opted for simpler frontend tooling to reduce complexity - at the expense of not having some of the more complex frontend capabilities. This certainly isn't bad, but many teams do often find themselves reaching a point where they consider if they should continue keeping to the Rails "low js" path, or if they should bite the bullet and split out their frontend into a seperate service using one of those frontend first frameworks. If they do decide to split it out, you are often faced with a long messy road of finding ways to make the two frameworks (and languages) play nicelly together.
 
-**ReactiveView bridges this gap** - use Rails for what it's great at (backend) and SolidJS for what it's great at (frontend), without the maintenance overhead of two separate services.
+> This is not just a problem Rails developers have - other backend frameworks such a Django or Laravel have this issue also!
+
+**ReactiveView helps to solve this problem by bridging the gap between frontend framework and Rails.**
+
+We take a unique approach of integrating one of those cool frontend-first js frameworks - SolidJs - directly into rails and doing all the hard stuff connecting the two together.
+
+Rails excels at backend stuff: data models, business logic, and application architecture, while frameworks like SolidJs are paving the way for great frontend development experiences. Why not let each keep doing great things and take advantage of both? Use Rails for what it's great at (backend) and SolidJS for what it's great at (frontend), without the maintenance overhead of two separate services.
 
 ## How It Works
 
 ReactiveView coordinates between two components:
 
 1. **Rails Engine** - Handles routing and requests, coordinates with SolidStart
-2. **SolidStart Daemon** - Server-side renders TSX components
+2. **ReactiveView SolidStart Daemon** - Server-side renders TSX components
+
+Thats right - Rails still handles the request. The ReactiveView SolidStart (SolidJs) daemon is setup as a tiny server that runs privately alongside Rails. When a request comes in, Rails will reach out to the server to render the html content. If data needs to be loaded, Reactive view calls back out to Rails, and so forth until the page is delivered back to the client.
+
+This is actually quite a fast process and don't usually take as much memory as Rails applications. JS apps also tend to render very quickly.
+
+> Benchmarks to come
 
 ```
 Client Request
@@ -63,6 +75,8 @@ Client Request
       ▼
    HTML Response (SSR + hydration scripts)
 ```
+
+The upside of having
 
 ## Project Structure
 
@@ -245,17 +259,6 @@ The container forwards:
 
 - `3000` for Rails
 - `3001` for the SolidStart daemon
-- `9223` for optional `agent-browser` stream preview
-
-`agent-browser` is preinstalled in the dev container for agent-driven visual testing.
-
-```bash
-# Example: run a quick visual smoke check against the app
-agent-browser open http://127.0.0.1:3000
-agent-browser wait --load networkidle
-agent-browser snapshot -i
-agent-browser screenshot --annotate /tmp/reactive-view-home.png
-```
 
 Dev container files live in `.devcontainer/`.
 
@@ -293,11 +296,11 @@ bundle exec rspec spec/reactive_view/types/
 
 The `reactive_view/template/` directory contains the SolidStart project template:
 
-| File                       | Purpose                               |
-| -------------------------- | ------------------------------------- |
-| `app.config.ts`            | SolidStart/Vinxi configuration        |
-| `src/routes/`              | Generated route wrappers              |
-| `src/routes/api/render.ts` | Endpoint Rails calls for SSR          |
+| File                       | Purpose                        |
+| -------------------------- | ------------------------------ |
+| `app.config.ts`            | SolidStart/Vinxi configuration |
+| `src/routes/`              | Generated route wrappers       |
+| `src/routes/api/render.ts` | Endpoint Rails calls for SSR   |
 
 ### HMR Architecture
 
@@ -322,12 +325,15 @@ bin/dev
 
 # Or start them separately:
 bin/rails server                    # Rails on :3000
-npx reactiveview dev                 # SolidStart on :3001
+source bin/reactive_view_daemon_env && reactive_view_resolve_daemon_env
+bin/reactive_view_daemon            # SolidStart on selected daemon port
 
 # Run Playwright Ruby E2E smoke test in Docker
 docker compose build
 docker compose run --rm app bin/e2e
 ```
+
+`bin/dev` defaults to daemon port `3001`, but it now handles conflicts automatically in development: it stops stale ReactiveView/Vinxi listeners when possible, otherwise selects the next open port and exports it for both Rails and SolidStart. This logic lives in `bin/reactive_view_daemon_env` so existing apps can reuse it without adopting the full `bin/dev` script.
 
 ### Useful Rake Tasks
 

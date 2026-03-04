@@ -212,6 +212,10 @@ RSpec.describe ReactiveView::Daemon do
   end
 
   describe '#start' do
+    before do
+      allow(daemon).to receive(:resolve_development_daemon_port!).and_return(true)
+    end
+
     context 'when working directory does not exist' do
       before do
         allow(ReactiveView.configuration).to receive(:working_directory_absolute_path)
@@ -296,6 +300,71 @@ RSpec.describe ReactiveView::Daemon do
         daemon.start
       end
     end
+
+    context 'when daemon port cannot be resolved in development' do
+      before do
+        allow(daemon).to receive(:resolve_development_daemon_port!).and_return(false)
+      end
+
+      it 'returns false and does not spawn the daemon' do
+        expect(daemon).not_to receive(:spawn_daemon)
+        expect(daemon.start).to be false
+      end
+    end
+  end
+
+  describe '#resolve_development_daemon_port!' do
+    before do
+      allow(Rails).to receive(:env).and_return(Rails::Env.new('development'))
+      allow(daemon).to receive(:local_daemon_host?).and_return(true)
+      ReactiveView.configuration.daemon_port = 13_001
+    end
+
+    it 'returns true when configured port is available' do
+      allow(daemon).to receive(:port_available?).with(13_001).and_return(true)
+
+      expect(daemon.send(:resolve_development_daemon_port!)).to be true
+      expect(ReactiveView.configuration.daemon_port).to eq(13_001)
+    end
+
+    it 'reclaims configured port by terminating stale ReactiveView process' do
+      allow(daemon).to receive(:port_available?).with(13_001).and_return(false)
+      allow(daemon).to receive(:reactive_view_listener_pid).with(13_001).and_return(44_444)
+      allow(daemon).to receive(:terminate_process).with(44_444)
+      allow(daemon).to receive(:wait_for_port_release).with(13_001).and_return(true)
+
+      expect(daemon.send(:resolve_development_daemon_port!)).to be true
+      expect(ReactiveView.configuration.daemon_port).to eq(13_001)
+    end
+
+    it 'switches to a fallback port when current port is occupied' do
+      allow(daemon).to receive(:port_available?).with(13_001).and_return(false)
+      allow(daemon).to receive(:reactive_view_listener_pid).with(13_001).and_return(nil)
+      allow(daemon).to receive(:find_available_port).with(13_002).and_return(13_021)
+
+      expect(daemon.send(:resolve_development_daemon_port!)).to be true
+      expect(ReactiveView.configuration.daemon_port).to eq(13_021)
+    end
+
+    it 'returns false when no fallback port can be found' do
+      allow(daemon).to receive(:port_available?).with(13_001).and_return(false)
+      allow(daemon).to receive(:reactive_view_listener_pid).with(13_001).and_return(nil)
+      allow(daemon).to receive(:find_available_port).with(13_002).and_return(nil)
+
+      expect(daemon.send(:resolve_development_daemon_port!)).to be false
+    end
+
+    it 'skips resolution outside development' do
+      allow(Rails).to receive(:env).and_return(Rails::Env.new('production'))
+
+      expect(daemon.send(:resolve_development_daemon_port!)).to be true
+    end
+
+    it 'skips resolution for non-local daemon hosts' do
+      allow(daemon).to receive(:local_daemon_host?).and_return(false)
+
+      expect(daemon.send(:resolve_development_daemon_port!)).to be true
+    end
   end
 
   describe '#stop' do
@@ -352,6 +421,22 @@ RSpec.describe ReactiveView::Daemon do
         expect(Process).to receive(:kill).with('TERM', 12_345)
         expect(Process).to receive(:kill).with('KILL', 12_345)
         daemon.stop
+      end
+    end
+
+    context 'when daemon pid is the current process' do
+      before do
+        daemon.instance_variable_set(:@pid, Process.pid)
+        daemon.instance_variable_set(:@status, :running)
+      end
+
+      it 'does not signal the current process' do
+        expect(Process).not_to receive(:kill).with(anything, Process.pid)
+
+        daemon.stop
+
+        expect(daemon.pid).to be_nil
+        expect(daemon.status).to eq(:stopped)
       end
     end
   end

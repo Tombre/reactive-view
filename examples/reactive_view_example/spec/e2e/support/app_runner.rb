@@ -26,14 +26,17 @@ module E2E
       end
 
       FileUtils.mkdir_p(log_dir)
+      daemon_log = log_dir.join('daemon.log')
+
+      @daemon_port = pick_port(default_port: 3001, host: DAEMON_HOST)
 
       @daemon_pid = spawn_process(
-        {},
+        { 'PORT' => daemon_port.to_s },
         'npx reactiveview dev',
-        log_dir.join('daemon.log')
+        daemon_log
       )
 
-      @daemon_port = wait_for_daemon_port(log_dir.join('daemon.log'))
+      wait_for_port_open(DAEMON_HOST, daemon_port, daemon_log)
 
       @rails_pid = spawn_process(
         {
@@ -95,13 +98,17 @@ module E2E
       end
     end
 
-    def wait_for_daemon_port(log_file, timeout: 120)
+    def wait_for_port_open(host, port, log_file, timeout: 120)
       Timeout.timeout(timeout) do
         loop do
-          if File.exist?(log_file)
-            content = File.read(log_file)
-            match = content.match(%r{localhost:(\d+)/})
-            return match[1].to_i if match
+          raise daemon_startup_error(log_file) if daemon_process_exited?
+
+          begin
+            socket = TCPSocket.new(host, port)
+            socket.close
+            return
+          rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH, SocketError
+            nil
           end
 
           sleep 0.5
@@ -109,17 +116,38 @@ module E2E
       end
     end
 
-    def pick_port(default_port = nil)
-      return default_port if default_port && port_available?(default_port)
+    def daemon_process_exited?
+      return false unless @daemon_pid
 
-      server = TCPServer.new(APP_HOST, 0)
+      _pid, status = Process.wait2(@daemon_pid, Process::WNOHANG)
+      return false unless status
+
+      @daemon_pid = nil
+      true
+    rescue Errno::ECHILD
+      @daemon_pid = nil
+      true
+    end
+
+    def daemon_startup_error(log_file)
+      output = File.exist?(log_file) ? File.read(log_file).strip : ''
+      message = 'ReactiveView daemon exited before reporting its port'
+      return message if output.empty?
+
+      "#{message}. Output:\n#{output}"
+    end
+
+    def pick_port(default_port: nil, host: APP_HOST)
+      return default_port if default_port && port_available?(default_port, host)
+
+      server = TCPServer.new(host, 0)
       server.addr[1]
     ensure
       server&.close
     end
 
-    def port_available?(port)
-      server = TCPServer.new(APP_HOST, port)
+    def port_available?(port, host)
+      server = TCPServer.new(host, port)
       true
     rescue Errno::EADDRINUSE
       false
