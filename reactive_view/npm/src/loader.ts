@@ -310,17 +310,42 @@ async function requestLoaderData<T>(
   headers: Record<string, string>
 ): Promise<T> {
   let lastError: Error | null = null;
+  let requestUrl = new URL(url.toString());
 
   for (let attempt = 1; attempt <= LOADER_REQUEST_MAX_ATTEMPTS; attempt += 1) {
-    const response = await fetch(url.toString(), {
-      method: "GET",
-      headers,
-      // Include credentials for cookie-based auth on client-side navigation
-      credentials: "include",
-    });
+    let response: Response;
+
+    try {
+      response = await fetch(requestUrl.toString(), {
+        method: "GET",
+        headers,
+        // Include credentials for cookie-based auth on client-side navigation
+        credentials: "include",
+      });
+    } catch (error) {
+      const fallbackUrl = resolveClientOriginFallbackUrlForFailure(requestUrl);
+
+      if (fallbackUrl) {
+        requestUrl = fallbackUrl;
+        continue;
+      }
+
+      throw error;
+    }
 
     const contentType = response.headers.get("content-type") || "";
     const bodyText = await response.text();
+
+    const fallbackUrl = resolveClientOriginFallbackUrl(
+      requestUrl,
+      contentType,
+      bodyText
+    );
+
+    if (fallbackUrl) {
+      requestUrl = fallbackUrl;
+      continue;
+    }
 
     const retryableHtmlResponse =
       !contentType.includes("application/json") &&
@@ -363,8 +388,46 @@ async function requestLoaderData<T>(
   }
 
   throw (
-    lastError || new Error(`Loader request failed for ${url.toString()} after retries`)
+    lastError ||
+      new Error(`Loader request failed for ${requestUrl.toString()} after retries`)
   );
+}
+
+function resolveClientOriginFallbackUrl(
+  requestUrl: URL,
+  contentType: string,
+  bodyText: string
+): URL | null {
+  if (isServer) {
+    return null;
+  }
+
+  const isHtmlDocumentResponse =
+    contentType.includes("text/html") && bodyText.startsWith("<!DOCTYPE html>");
+
+  if (!isHtmlDocumentResponse) {
+    return null;
+  }
+
+  const currentOrigin = window.location.origin;
+  if (requestUrl.origin === currentOrigin) {
+    return null;
+  }
+
+  return new URL(`${requestUrl.pathname}${requestUrl.search}`, currentOrigin);
+}
+
+function resolveClientOriginFallbackUrlForFailure(requestUrl: URL): URL | null {
+  if (isServer) {
+    return null;
+  }
+
+  const currentOrigin = window.location.origin;
+  if (requestUrl.origin === currentOrigin) {
+    return null;
+  }
+
+  return new URL(`${requestUrl.pathname}${requestUrl.search}`, currentOrigin);
 }
 
 function parseResponseJson(

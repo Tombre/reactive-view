@@ -228,6 +228,77 @@ describe("loader utilities", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("falls back to current origin when injected base URL responds with HTML", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response("<!DOCTYPE html><html><body>wrong origin</body></html>", {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), {
+          headers: { "content-type": "application/json" },
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    (globalThis as Record<string, unknown>).window = {
+      location: { origin: "https://rails.test" },
+      __RAILS_BASE_URL__: "https://daemon.test",
+    };
+
+    const { module } = await importLoaderModule({ isServer: false });
+    const getData = module.createLoaderQuery<{ ok: boolean }>("users/index");
+
+    await expect(getData({})).resolves.toEqual({ ok: true });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "https://daemon.test/_reactive_view/loaders/users/index/load",
+      expect.any(Object)
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "https://rails.test/_reactive_view/loaders/users/index/load",
+      expect.any(Object)
+    );
+  });
+
+  it("falls back to current origin when injected base URL request fails", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), {
+          headers: { "content-type": "application/json" },
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    (globalThis as Record<string, unknown>).window = {
+      location: { origin: "https://rails.test" },
+      __RAILS_BASE_URL__: "https://daemon.test",
+    };
+
+    const { module } = await importLoaderModule({ isServer: false });
+    const getData = module.createLoaderQuery<{ ok: boolean }>("users/index");
+
+    await expect(getData({})).resolves.toEqual({ ok: true });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "https://daemon.test/_reactive_view/loaders/users/index/load",
+      expect.any(Object)
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "https://rails.test/_reactive_view/loaders/users/index/load",
+      expect.any(Object)
+    );
+  });
+
   it("throws a helpful error when JSON is invalid", async () => {
     const fetchMock = vi.fn(async () => {
       return new Response("not-json", {
