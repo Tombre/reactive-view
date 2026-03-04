@@ -34,6 +34,7 @@ Create GitHub pull requests with `gh` using a complete, reviewer-friendly descri
 - Do not claim tests/manual checks unless they were actually run.
 - If there is already an open PR for the branch, update it instead of creating a duplicate:
   - `gh pr view --json number,url,title,body`
+- If the PR includes `reactive_view/npm/src/*` changes, run `npm run build --prefix reactive_view/npm` and include the resulting `reactive_view/npm/dist/*` updates in the PR.
 
 ## Required PR Body Structure
 

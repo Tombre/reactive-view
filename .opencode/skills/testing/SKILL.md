@@ -52,6 +52,15 @@ Default order:
 - Do not claim tests were run if a required dependency/setup step blocked execution.
 - If a command cannot run locally, state the blocker and give the exact follow-up command.
 
+## NPM Dist Sync Rule
+
+When changes include files under `reactive_view/npm/src/*`:
+
+1. Run `npm run build --prefix reactive_view/npm`.
+2. Ensure generated updates under `reactive_view/npm/dist/*` are included with the change.
+
+Do not hand back or open a PR with `reactive_view/npm/src/*` changes that skip the build output update.
+
 ## Docker Validation Rule
 
 When changes include `Dockerfile`, `docker-compose.yml`, or container startup scripts for the example app, validation must include:
