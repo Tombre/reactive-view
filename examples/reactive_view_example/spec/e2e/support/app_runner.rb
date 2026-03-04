@@ -26,14 +26,17 @@ module E2E
       end
 
       FileUtils.mkdir_p(log_dir)
+      daemon_log = log_dir.join('daemon.log')
+
+      @daemon_port = pick_port(default_port: 3001, host: DAEMON_HOST)
 
       @daemon_pid = spawn_process(
-        {},
+        { 'PORT' => daemon_port.to_s },
         'npx reactiveview dev',
-        log_dir.join('daemon.log')
+        daemon_log
       )
 
-      @daemon_port = wait_for_daemon_port(log_dir.join('daemon.log'))
+      wait_for_port_open(DAEMON_HOST, daemon_port, daemon_log)
 
       @rails_pid = spawn_process(
         {
@@ -95,15 +98,17 @@ module E2E
       end
     end
 
-    def wait_for_daemon_port(log_file, timeout: 120)
+    def wait_for_port_open(host, port, log_file, timeout: 120)
       Timeout.timeout(timeout) do
         loop do
           raise daemon_startup_error(log_file) if daemon_process_exited?
 
-          if File.exist?(log_file)
-            content = File.read(log_file)
-            match = content.match(%r{https?://[^\s:]+:(\d+)/?})
-            return match[1].to_i if match
+          begin
+            socket = TCPSocket.new(host, port)
+            socket.close
+            return
+          rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH, SocketError
+            nil
           end
 
           sleep 0.5
@@ -132,17 +137,17 @@ module E2E
       "#{message}. Output:\n#{output}"
     end
 
-    def pick_port(default_port = nil)
-      return default_port if default_port && port_available?(default_port)
+    def pick_port(default_port: nil, host: APP_HOST)
+      return default_port if default_port && port_available?(default_port, host)
 
-      server = TCPServer.new(APP_HOST, 0)
+      server = TCPServer.new(host, 0)
       server.addr[1]
     ensure
       server&.close
     end
 
-    def port_available?(port)
-      server = TCPServer.new(APP_HOST, port)
+    def port_available?(port, host)
+      server = TCPServer.new(host, port)
       true
     rescue Errno::EADDRINUSE
       false
