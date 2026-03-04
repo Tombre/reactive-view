@@ -17,11 +17,13 @@ Compact element references that reduce context usage dramatically for AI agents.
 ## How Refs Work
 
 Traditional approach:
+
 ```
 Full DOM/HTML → AI parses → CSS selector → Action (~3000-5000 tokens)
 ```
 
 agent-browser approach:
+
 ```
 Compact snapshot → @refs assigned → Direct interaction (~200-400 tokens)
 ```
@@ -30,10 +32,10 @@ Compact snapshot → @refs assigned → Direct interaction (~200-400 tokens)
 
 ```bash
 # Basic snapshot (shows page structure)
-agent-browser snapshot
+npx agent-browser snapshot
 
 # Interactive snapshot (-i flag) - RECOMMENDED
-agent-browser snapshot -i
+npx agent-browser snapshot -i
 ```
 
 ### Snapshot Output Format
@@ -66,16 +68,16 @@ Once you have refs, interact directly:
 
 ```bash
 # Click the "Sign In" button
-agent-browser click @e6
+npx agent-browser click @e6
 
 # Fill email input
-agent-browser fill @e10 "user@example.com"
+npx agent-browser fill @e10 "user@example.com"
 
 # Fill password
-agent-browser fill @e11 "password123"
+npx agent-browser fill @e11 "password123"
 
 # Submit the form
-agent-browser click @e12
+npx agent-browser click @e12
 ```
 
 ## Ref Lifecycle
@@ -84,14 +86,14 @@ agent-browser click @e12
 
 ```bash
 # Get initial snapshot
-agent-browser snapshot -i
+npx agent-browser snapshot -i
 # @e1 [button] "Next"
 
 # Click triggers page change
-agent-browser click @e1
+npx agent-browser click @e1
 
 # MUST re-snapshot to get new refs!
-agent-browser snapshot -i
+npx agent-browser snapshot -i
 # @e1 [h1] "Page 2"  ← Different element now!
 ```
 
@@ -101,29 +103,29 @@ agent-browser snapshot -i
 
 ```bash
 # CORRECT
-agent-browser open https://example.com
-agent-browser snapshot -i          # Get refs first
-agent-browser click @e1            # Use ref
+npx agent-browser open https://example.com
+npx agent-browser snapshot -i          # Get refs first
+npx agent-browser click @e1            # Use ref
 
 # WRONG
-agent-browser open https://example.com
-agent-browser click @e1            # Ref doesn't exist yet!
+npx agent-browser open https://example.com
+npx agent-browser click @e1            # Ref doesn't exist yet!
 ```
 
 ### 2. Re-Snapshot After Navigation
 
 ```bash
-agent-browser click @e5            # Navigates to new page
-agent-browser snapshot -i          # Get new refs
-agent-browser click @e1            # Use new refs
+npx agent-browser click @e5            # Navigates to new page
+npx agent-browser snapshot -i          # Get new refs
+npx agent-browser click @e1            # Use new refs
 ```
 
 ### 3. Re-Snapshot After Dynamic Changes
 
 ```bash
-agent-browser click @e1            # Opens dropdown
-agent-browser snapshot -i          # See dropdown items
-agent-browser click @e7            # Select item
+npx agent-browser click @e1            # Opens dropdown
+npx agent-browser snapshot -i          # See dropdown items
+npx agent-browser click @e7            # Select item
 ```
 
 ### 4. Snapshot Specific Regions
@@ -132,7 +134,7 @@ For complex pages, snapshot specific areas:
 
 ```bash
 # Snapshot just the form
-agent-browser snapshot @e9
+npx agent-browser snapshot @e9
 ```
 
 ## Ref Notation Details
@@ -168,27 +170,27 @@ agent-browser snapshot @e9
 
 ```bash
 # Ref may have changed - re-snapshot
-agent-browser snapshot -i
+npx agent-browser snapshot -i
 ```
 
 ### Element Not Visible in Snapshot
 
 ```bash
 # Scroll down to reveal element
-agent-browser scroll down 1000
-agent-browser snapshot -i
+npx agent-browser scroll down 1000
+npx agent-browser snapshot -i
 
 # Or wait for dynamic content
-agent-browser wait 1000
-agent-browser snapshot -i
+npx agent-browser wait 1000
+npx agent-browser snapshot -i
 ```
 
 ### Too Many Elements
 
 ```bash
 # Snapshot specific container
-agent-browser snapshot @e5
+npx agent-browser snapshot @e5
 
 # Or use get text for content-only extraction
-agent-browser get text @e5
+npx agent-browser get text @e5
 ```

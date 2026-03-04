@@ -1,5 +1,6 @@
 # Root workspace node_modules
 /node_modules
+/tmp/**/*
 
 reactive_view/template/.output
 reactive_view/template/.vinxi

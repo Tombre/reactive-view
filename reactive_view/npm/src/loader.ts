@@ -4,6 +4,9 @@ import { useLocation, useParams, query, createAsync } from "@solidjs/router";
 import type { LoaderDataMap } from "./types";
 import { getSSRRequestContext } from "./request-context.js";
 
+const LOADER_REQUEST_MAX_ATTEMPTS = 2;
+const LOADER_RETRY_DELAY_MS = 150;
+
 // Get the Rails base URL from environment or default
 const getRailsBaseUrl = (): string => {
   if (isServer) {
@@ -140,22 +143,7 @@ async function fetchLoaderData<T>(
     headers["Cookie"] = ssrCookies;
   }
 
-  const response = await fetch(url.toString(), {
-    method: "GET",
-    headers,
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    const errorData = await parseResponseJson(response);
-    throw new Error(
-      (errorData as Record<string, unknown>).error as string ||
-        `Loader request failed: ${response.statusText}`
-    );
-  }
-
-  const data = await parseResponseJson(response);
-  return data as T;
+  return requestLoaderData<T>(url, headers);
 }
 
 /**
@@ -310,36 +298,146 @@ export function useLoaderData<T>(
         headers["Cookie"] = ssrCookies;
       }
 
-      const response = await fetch(url.toString(), {
-        method: "GET",
-        headers,
-        // Include credentials for cookie-based auth on client-side navigation
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        const errorData = await parseResponseJson(response);
-        throw new Error(
-          (errorData as Record<string, unknown>).error as string ||
-            `Loader request failed: ${response.statusText}`
-        );
-      }
-
-      const data = await parseResponseJson(response);
-      return data as T;
+      return requestLoaderData<T>(url, headers);
     }
   );
 
   return data as Resource<T>;
 }
 
-async function parseResponseJson(response: Response): Promise<unknown> {
-  const contentType = response.headers.get("content-type") || "";
-  const bodyText = await response.text();
+async function requestLoaderData<T>(
+  url: URL,
+  headers: Record<string, string>
+): Promise<T> {
+  let lastError: Error | null = null;
+  let requestUrl = new URL(url.toString());
 
+  for (let attempt = 1; attempt <= LOADER_REQUEST_MAX_ATTEMPTS; attempt += 1) {
+    let response: Response;
+
+    try {
+      response = await fetch(requestUrl.toString(), {
+        method: "GET",
+        headers,
+        // Include credentials for cookie-based auth on client-side navigation
+        credentials: "include",
+      });
+    } catch (error) {
+      const fallbackUrl = resolveClientOriginFallbackUrlForFailure(requestUrl);
+
+      if (fallbackUrl) {
+        requestUrl = fallbackUrl;
+        continue;
+      }
+
+      throw error;
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    const bodyText = await response.text();
+
+    const fallbackUrl = resolveClientOriginFallbackUrl(
+      requestUrl,
+      contentType,
+      bodyText
+    );
+
+    if (fallbackUrl) {
+      requestUrl = fallbackUrl;
+      continue;
+    }
+
+    const retryableHtmlResponse =
+      !contentType.includes("application/json") &&
+      contentType.includes("text/html") &&
+      bodyText.startsWith("<!DOCTYPE html>") &&
+      attempt < LOADER_REQUEST_MAX_ATTEMPTS;
+
+    if (retryableHtmlResponse) {
+      await sleep(LOADER_RETRY_DELAY_MS * attempt);
+      continue;
+    }
+
+    try {
+      const data = parseResponseJson(response, contentType, bodyText);
+
+      if (!response.ok) {
+        throw new Error(
+          (data as Record<string, unknown>).error as string ||
+            `Loader request failed: ${response.status} ${response.statusText}`
+        );
+      }
+
+      return data as T;
+    } catch (error) {
+      if (error instanceof Error) {
+        lastError = error;
+      }
+
+      const canRetry =
+        attempt < LOADER_REQUEST_MAX_ATTEMPTS &&
+        contentType.includes("text/html") &&
+        bodyText.startsWith("<!DOCTYPE html>");
+
+      if (!canRetry) {
+        throw error;
+      }
+
+      await sleep(LOADER_RETRY_DELAY_MS * attempt);
+    }
+  }
+
+  throw (
+    lastError ||
+      new Error(`Loader request failed for ${requestUrl.toString()} after retries`)
+  );
+}
+
+function resolveClientOriginFallbackUrl(
+  requestUrl: URL,
+  contentType: string,
+  bodyText: string
+): URL | null {
+  if (isServer) {
+    return null;
+  }
+
+  const isHtmlDocumentResponse =
+    contentType.includes("text/html") && bodyText.startsWith("<!DOCTYPE html>");
+
+  if (!isHtmlDocumentResponse) {
+    return null;
+  }
+
+  const currentOrigin = window.location.origin;
+  if (requestUrl.origin === currentOrigin) {
+    return null;
+  }
+
+  return new URL(`${requestUrl.pathname}${requestUrl.search}`, currentOrigin);
+}
+
+function resolveClientOriginFallbackUrlForFailure(requestUrl: URL): URL | null {
+  if (isServer) {
+    return null;
+  }
+
+  const currentOrigin = window.location.origin;
+  if (requestUrl.origin === currentOrigin) {
+    return null;
+  }
+
+  return new URL(`${requestUrl.pathname}${requestUrl.search}`, currentOrigin);
+}
+
+function parseResponseJson(
+  response: Response,
+  contentType: string,
+  bodyText: string
+): unknown {
   if (!contentType.includes("application/json")) {
     throw new Error(
-      `Expected JSON response from ${response.url}, received ${contentType || "unknown content-type"}. Body starts with: ${bodyText.slice(
+      `Expected JSON response from ${response.url}, received ${contentType || "unknown content-type"} (status ${response.status}). Body starts with: ${bodyText.slice(
         0,
         120
       )}`
@@ -356,6 +454,10 @@ async function parseResponseJson(response: Response): Promise<unknown> {
       )}`
     );
   }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**

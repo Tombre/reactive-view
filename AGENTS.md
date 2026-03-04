@@ -62,7 +62,7 @@ CRITICAL: When you encounter a file reference (for example `@docs/general.md`), 
 ### Non-Negotiables
 
 - Stay surgical: edit only files needed for the task.
-- Prefer edits over rewrites; keep history meaningful.
+- Prefer edits over rewrites (unless asked); keep history meaningful.
 - Run targeted tests for touched areas before handing back work.
 - Keep generated artifacts (`.reactive_view`, `coverage`, `tmp`, `node_modules`) untracked.
 - Keep AGENTS and docs synchronized with reality when workflows change.
@@ -94,6 +94,23 @@ CRITICAL: ReactiveView uses SolidJS TSX, not React JSX.
 - Always add or modify tests (specs) when making code changes (unless superficial or asked not to)
 - Tests should focus validate the actual behaviour and output of code, not the code itself
 - Once you have written a test, run it to validate your working. Use the `testing` skill to do this
+
+### Testing and validating your work (Dogfooding) behaviour
+
+- **Confirm your code works:** ALWAYS test that your code works unless explicitly asked not to. use your `testing` skill for this.
+- **Test the right things:** Don't run all specs, but ensure you run all relevant ones that interact with code changes
+- **Dogfood your changes:** When building new features or fixing bugs - dogfood (manually test) your changes by starting the example application dev server and using your `dogfood` skill to interact with the relevant pages.
+
+#### Running the Example Dev Server
+
+Use the example server when testing changes to confirm they work.
+
+- You should always start the example server using the `bin/dev` command via `docker`
+- Refer to the `testing` skill for more information
+
+### Other Behaviour
+
+- If needing to interact with tmp files (writing all reading) do not access the root of the filesystem, write and read files from a project local ./tmp file
 
 ## Project-Scoped Skills
 

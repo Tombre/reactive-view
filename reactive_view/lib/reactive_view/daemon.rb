@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'singleton'
+require 'socket'
+require 'open3'
 
 module ReactiveView
   # Manages the SolidStart daemon process.
@@ -35,6 +37,8 @@ module ReactiveView
     STARTUP_DELAYS = [0.1, 0.2, 0.3, 0.5, 0.5, 1, 1, 2, 2, 4, 4].freeze
 
     HEALTH_CHECK_PATH = '/api/render'
+    PORT_RESOLUTION_ATTEMPTS = 100
+    PORT_RELEASE_TIMEOUT = 5
 
     attr_reader :pid, :status
 
@@ -68,6 +72,11 @@ module ReactiveView
         unless working_dir.exist?
           ReactiveView.logger.error "[ReactiveView] Working directory does not exist: #{working_dir}"
           ReactiveView.logger.error "[ReactiveView] Run 'rails reactive_view:setup' first"
+          return false
+        end
+
+        unless resolve_development_daemon_port!
+          ReactiveView.logger.error '[ReactiveView] Unable to resolve daemon port for development startup'
           return false
         end
 
@@ -235,6 +244,15 @@ module ReactiveView
     # @return [void]
     def stop_internal
       return unless @pid
+
+      if @pid == Process.pid
+        ReactiveView.logger.warn '[ReactiveView] Skipping daemon shutdown for current process PID'
+        @pid = nil
+        @status = :stopped
+        remove_pid_file
+        invalidate_health_cache
+        return
+      end
 
       ReactiveView.logger.info "[ReactiveView] Stopping daemon (PID: #{@pid})..."
 
@@ -449,6 +467,133 @@ module ReactiveView
     # @return [String]
     def health_check_url
       "#{ReactiveView.configuration.daemon_url}#{HEALTH_CHECK_PATH}"
+    end
+
+    # Resolve daemon port conflicts for managed development mode.
+    #
+    # If the configured port is occupied by a stale ReactiveView/Vinxi process,
+    # we terminate it and reuse the configured port. If the port is occupied by
+    # another process, we choose the next available port.
+    #
+    # @return [Boolean] true when a usable port is available
+    def resolve_development_daemon_port!
+      return true unless Rails.env.development?
+      return true unless local_daemon_host?
+
+      configured_port = ReactiveView.configuration.daemon_port
+      return true if port_available?(configured_port)
+
+      stale_pid = reactive_view_listener_pid(configured_port)
+
+      if stale_pid
+        ReactiveView.logger.warn "[ReactiveView] Port #{configured_port} is occupied by stale ReactiveView process #{stale_pid}; stopping it"
+        terminate_process(stale_pid)
+
+        if wait_for_port_release(configured_port)
+          ReactiveView.logger.info "[ReactiveView] Reclaimed daemon port #{configured_port}"
+          return true
+        end
+      end
+
+      fallback_port = find_available_port(configured_port + 1)
+      return false unless fallback_port
+
+      ReactiveView.configuration.daemon_port = fallback_port
+      ReactiveView.logger.warn "[ReactiveView] Port #{configured_port} unavailable; switching daemon to port #{fallback_port}"
+      true
+    end
+
+    def local_daemon_host?
+      host = ReactiveView.configuration.daemon_host.to_s
+      %w[localhost 127.0.0.1 ::1].include?(host)
+    end
+
+    def port_available?(port)
+      hosts = %w[localhost 127.0.0.1 ::1]
+
+      hosts.each do |host|
+        server = TCPServer.new(host, port)
+        server.close
+      rescue Errno::EADDRINUSE, Errno::EACCES
+        return false
+      rescue SocketError, Errno::EADDRNOTAVAIL
+        next
+      end
+
+      true
+    end
+
+    def reactive_view_listener_pid(port)
+      listening_pids_for_port(port).find do |pid|
+        command_line = command_for_pid(pid)
+        next false if command_line.empty?
+
+        command_line.include?('reactiveview dev') ||
+          command_line.include?('reactiveview start') ||
+          command_line.include?('vinxi dev') ||
+          command_line.include?('vinxi start') ||
+          command_line.include?('.reactive_view')
+      end
+    end
+
+    def listening_pids_for_port(port)
+      output = capture_command_output('lsof', '-nP', "-iTCP:#{port}", '-sTCP:LISTEN', '-t')
+      return [] if output.empty?
+
+      output.lines.map(&:strip).reject(&:empty?).map(&:to_i).select(&:positive?).uniq
+    end
+
+    def command_for_pid(pid)
+      capture_command_output('ps', '-o', 'command=', '-p', pid.to_s).strip
+    end
+
+    def capture_command_output(*command)
+      stdout, status = Open3.capture2(*command)
+      status.success? ? stdout : ''
+    rescue Errno::ENOENT
+      ''
+    end
+
+    def terminate_process(pid)
+      Process.kill('TERM', pid)
+      return unless process_alive?(pid)
+
+      wait_for_process_exit(pid)
+      Process.kill('KILL', pid) if process_alive?(pid)
+    rescue Errno::ESRCH, Errno::EPERM
+      nil
+    end
+
+    def wait_for_process_exit(pid)
+      10.times do
+        return unless process_alive?(pid)
+
+        sleep 0.2
+      end
+    end
+
+    def wait_for_port_release(port)
+      attempts = (PORT_RELEASE_TIMEOUT / 0.2).to_i
+
+      attempts.times do
+        return true if port_available?(port)
+
+        sleep 0.2
+      end
+
+      false
+    end
+
+    def find_available_port(start_port)
+      port = start_port
+
+      PORT_RESOLUTION_ATTEMPTS.times do
+        return port if port_available?(port)
+
+        port += 1
+      end
+
+      nil
     end
   end
 end
