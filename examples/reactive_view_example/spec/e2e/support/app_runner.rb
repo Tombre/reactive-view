@@ -98,15 +98,38 @@ module E2E
     def wait_for_daemon_port(log_file, timeout: 120)
       Timeout.timeout(timeout) do
         loop do
+          raise daemon_startup_error(log_file) if daemon_process_exited?
+
           if File.exist?(log_file)
             content = File.read(log_file)
-            match = content.match(%r{localhost:(\d+)/})
+            match = content.match(%r{https?://[^\s:]+:(\d+)/?})
             return match[1].to_i if match
           end
 
           sleep 0.5
         end
       end
+    end
+
+    def daemon_process_exited?
+      return false unless @daemon_pid
+
+      _pid, status = Process.wait2(@daemon_pid, Process::WNOHANG)
+      return false unless status
+
+      @daemon_pid = nil
+      true
+    rescue Errno::ECHILD
+      @daemon_pid = nil
+      true
+    end
+
+    def daemon_startup_error(log_file)
+      output = File.exist?(log_file) ? File.read(log_file).strip : ''
+      message = 'ReactiveView daemon exited before reporting its port'
+      return message if output.empty?
+
+      "#{message}. Output:\n#{output}"
     end
 
     def pick_port(default_port = nil)

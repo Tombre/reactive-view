@@ -138,5 +138,12 @@ RSpec.configure do |config|
 
   config.after(:suite) do
     ReactiveView::FileSync::FileWatcher.stop
+
+    Thread.list.each do |thread|
+      next if thread == Thread.main || !thread.alive?
+
+      thread.kill
+      thread.join(0.1)
+    end
   end
 end
