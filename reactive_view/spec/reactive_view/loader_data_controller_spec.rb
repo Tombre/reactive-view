@@ -57,4 +57,22 @@ RSpec.describe ReactiveView::LoaderDataController do
       expect(controller.send(:valid_mutation_method?, loader, :hidden_mutation)).to be(false)
     end
   end
+
+  describe '#handle_stream_error' do
+    let(:controller) { described_class.new }
+    let(:logger) { instance_double(Logger, debug: nil, error: nil) }
+
+    before do
+      allow(ReactiveView).to receive(:logger).and_return(logger)
+    end
+
+    it 'treats client disconnect as non-error noise' do
+      error = IOError.new('client disconnected')
+
+      controller.send(:handle_stream_error, error)
+
+      expect(logger).to have_received(:debug).with('[ReactiveView] Stream closed by client during setup')
+      expect(logger).not_to have_received(:error)
+    end
+  end
 end

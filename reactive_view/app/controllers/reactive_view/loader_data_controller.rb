@@ -137,9 +137,13 @@ module ReactiveView
       begin
         result.block.call(writer)
       rescue StandardError => e
-        ReactiveView.logger.error "[ReactiveView] Stream error: #{e.message}"
-        ReactiveView.logger.error e.backtrace&.first(5)&.join("\n") if e.backtrace
-        writer.event('error', message: e.message) unless writer.closed?
+        if client_disconnected_error?(e)
+          ReactiveView.logger.debug '[ReactiveView] Stream closed by client'
+        else
+          ReactiveView.logger.error "[ReactiveView] Stream error: #{e.message}"
+          ReactiveView.logger.error e.backtrace&.first(5)&.join("\n") if e.backtrace
+          writer.event('error', message: e.message) unless writer.closed?
+        end
       ensure
         writer.close unless writer.closed?
       end
@@ -328,14 +332,31 @@ module ReactiveView
     #
     # @param error [StandardError] The error that occurred
     def handle_stream_error(error)
+      if client_disconnected_error?(error)
+        ReactiveView.logger.debug '[ReactiveView] Stream closed by client during setup'
+        return
+      end
+
       ReactiveView.logger.error "[ReactiveView] Stream error: #{error.message}"
       ReactiveView.logger.error error.backtrace&.join("\n") if error.backtrace
       begin
         response.stream.write("data: #{{ type: 'error', message: error.message }.to_json}\n\n")
         response.stream.close
       rescue StandardError => e
+        return if client_disconnected_error?(e)
+
         ReactiveView.logger.error "[ReactiveView] Failed to write stream error: #{e.message}"
       end
+    end
+
+    def client_disconnected_error?(error)
+      return true if defined?(ActionController::Live::ClientDisconnected) &&
+                     error.is_a?(ActionController::Live::ClientDisconnected)
+      return true if error.is_a?(Errno::EPIPE)
+
+      return false unless error.is_a?(IOError)
+
+      error.message.to_s.downcase.match?(/client disconnected|closed stream|stream closed|broken pipe/)
     end
   end
 end
