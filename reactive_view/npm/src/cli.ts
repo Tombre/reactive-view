@@ -21,7 +21,7 @@
  * ```
  */
 
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { relative, resolve } from "node:path";
 
@@ -29,6 +29,7 @@ const WORKING_DIR = ".reactive_view";
 const CONFIG_FILE = "app.config.ts";
 const DEFAULT_DEV_PORT = "3001";
 const VERSION = "0.1.0";
+const SETUP_COMMAND = ["bundle", "exec", "rails", "reactive_view:setup"] as const;
 
 const COMMANDS: Record<string, { description: string; script: string }> = {
   dev: {
@@ -138,25 +139,13 @@ export function run(argv: string[]): void {
   }
 
   const workingDir = resolve(process.cwd(), WORKING_DIR);
-
-  if (!existsSync(workingDir)) {
-    console.error(`Error: Working directory not found at ${workingDir}`);
-    console.error(``);
-    console.error(`The .reactive_view directory has not been set up yet.`);
-    console.error(`Run "rails reactive_view:setup" to create it.`);
-    process.exit(1);
-  }
-
   const configPath = resolve(workingDir, CONFIG_FILE);
-  const configPathArg = relative(process.cwd(), configPath);
 
-  if (!existsSync(configPath)) {
-    console.error(`Error: SolidStart config not found at ${configPath}`);
-    console.error("");
-    console.error(`The .reactive_view directory is incomplete.`);
-    console.error(`Run "rails reactive_view:setup" to repair it.`);
+  if (!ensureWorkingDirectoryReady(workingDir, configPath)) {
     process.exit(1);
   }
+
+  const configPathArg = relative(process.cwd(), configPath);
 
   // Build the vinxi command (executed from Rails root)
   const args = ["vinxi", commandConfig.script, "--config", configPathArg, ...passthrough];
@@ -207,4 +196,58 @@ export function run(argv: string[]): void {
     console.error(`Failed to start: ${err.message}`);
     process.exit(1);
   });
+}
+
+function ensureWorkingDirectoryReady(workingDir: string, configPath: string): boolean {
+  if (existsSync(workingDir) && existsSync(configPath)) {
+    return true;
+  }
+
+  const missingDir = !existsSync(workingDir);
+  const missingConfig = existsSync(workingDir) && !existsSync(configPath);
+
+  if (missingDir) {
+    console.error(`Error: Working directory not found at ${workingDir}`);
+    console.error(``);
+    console.error(`The .reactive_view directory has not been set up yet.`);
+    console.error(`Running setup automatically...`);
+  }
+
+  if (missingConfig) {
+    console.error(`Error: SolidStart config not found at ${configPath}`);
+    console.error("");
+    console.error(`The .reactive_view directory is incomplete.`);
+    console.error(`Running setup automatically to repair it...`);
+  }
+
+  const [command, ...args] = SETUP_COMMAND;
+  const setup = spawnSync(command, args, {
+    cwd: process.cwd(),
+    stdio: "inherit",
+    env: process.env,
+  });
+
+  if (setup.error) {
+    console.error(`Automatic setup failed: ${setup.error.message}`);
+  }
+
+  if (setup.status !== 0 || setup.error) {
+    console.error(`Run "${SETUP_COMMAND.join(" ")}" manually to fix setup errors.`);
+    return false;
+  }
+
+  if (!existsSync(workingDir)) {
+    console.error(`Setup completed, but ${workingDir} is still missing.`);
+    console.error(`Run "${SETUP_COMMAND.join(" ")}" manually and inspect the output.`);
+    return false;
+  }
+
+  if (!existsSync(configPath)) {
+    console.error(`Setup completed, but ${configPath} is still missing.`);
+    console.error(`Run "${SETUP_COMMAND.join(" ")}" manually and inspect the output.`);
+    return false;
+  }
+
+  console.log(`ReactiveView setup completed at ${workingDir}.`);
+  return true;
 }

@@ -10,6 +10,7 @@ class ExitSignal extends Error {
 
 type CliImportOptions = {
   existsSync?: (path: string) => boolean;
+  spawnSync?: () => { status: number | null; error?: Error };
 };
 
 async function importCliModule(options: CliImportOptions = {}) {
@@ -26,9 +27,13 @@ async function importCliModule(options: CliImportOptions = {}) {
   });
 
   const existsSyncMock = vi.fn((path: string) => options.existsSync?.(path) ?? true);
+  const spawnSyncMock = vi.fn(
+    () => options.spawnSync?.() ?? { status: 0 as number | null }
+  );
 
   vi.doMock("node:child_process", () => ({
     spawn: spawnMock,
+    spawnSync: spawnSyncMock,
   }));
 
   vi.doMock("node:fs", () => ({
@@ -36,7 +41,7 @@ async function importCliModule(options: CliImportOptions = {}) {
   }));
 
   const module = await import("../src/cli");
-  return { module, spawnMock, existsSyncMock };
+  return { module, spawnMock, spawnSyncMock, existsSyncMock };
 }
 
 describe("reactiveview cli", () => {
@@ -75,17 +80,52 @@ describe("reactiveview cli", () => {
     expect(console.error).toHaveBeenCalledWith("Unknown command: shipit\n");
   });
 
-  it("errors when .reactive_view is missing", async () => {
+  it("runs setup automatically when .reactive_view is missing", async () => {
+    const cwd = process.cwd();
+    const workingDir = resolve(cwd, ".reactive_view");
+    const configPath = resolve(workingDir, "app.config.ts");
+
+    let setupCompleted = false;
+
+    const { module, spawnMock, spawnSyncMock } = await importCliModule({
+      existsSync: (path) => {
+        if (path === workingDir || path === configPath) {
+          return setupCompleted;
+        }
+
+        return true;
+      },
+      spawnSync: () => {
+        setupCompleted = true;
+        return { status: 0 };
+      },
+    });
+
+    module.run(["dev"]);
+
+    expect(spawnSyncMock).toHaveBeenCalledWith(
+      "bundle",
+      ["exec", "rails", "reactive_view:setup"],
+      expect.objectContaining({ cwd: process.cwd() })
+    );
+    expect(spawnMock).toHaveBeenCalled();
+    expect(console.log).toHaveBeenCalledWith(
+      `ReactiveView setup completed at ${workingDir}.`
+    );
+  });
+
+  it("errors when setup command fails", async () => {
     const cwd = process.cwd();
     const workingDir = resolve(cwd, ".reactive_view");
 
     const { module } = await importCliModule({
       existsSync: (path) => path !== workingDir,
+      spawnSync: () => ({ status: 1 }),
     });
 
     expect(() => module.run(["dev"])).toThrowError(new ExitSignal(1));
     expect(console.error).toHaveBeenCalledWith(
-      `Error: Working directory not found at ${workingDir}`
+      'Run "bundle exec rails reactive_view:setup" manually to fix setup errors.'
     );
   });
 

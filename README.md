@@ -132,6 +132,8 @@ bin/rails db:create db:migrate db:seed
 # Setup ReactiveView (creates .reactive_view directory, installs required root npm packages)
 bin/rails reactive_view:setup
 
+# Optional: `reactiveview dev` can now run setup automatically if this directory is missing
+
 # Start development servers
 bin/dev
 ```
