@@ -58,7 +58,7 @@ require_relative 'reactive_view/loader'
 require_relative 'reactive_view/router'
 require_relative 'reactive_view/renderer'
 require_relative 'reactive_view/file_sync'
-require_relative 'reactive_view/daemon'
+require_relative 'reactive_view/dev_orchestrator'
 require_relative 'reactive_view/dev_proxy'
 require_relative 'reactive_view/engine'
 

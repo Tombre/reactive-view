@@ -37,45 +37,6 @@ namespace :reactive_view do
     end
   end
 
-  namespace :daemon do
-    desc 'Start the SolidStart daemon'
-    task start: :environment do
-      puts 'Starting SolidStart daemon...'
-
-      if ReactiveView::Daemon.instance.start
-        puts 'Daemon started successfully!'
-        puts "Running at: #{ReactiveView.configuration.daemon_url}"
-      else
-        puts 'Failed to start daemon. Check .reactive_view/daemon.log for details.'
-        exit 1
-      end
-    end
-
-    desc 'Stop the SolidStart daemon'
-    task stop: :environment do
-      puts 'Stopping SolidStart daemon...'
-      ReactiveView::Daemon.instance.stop
-      puts 'Daemon stopped.'
-    end
-
-    desc 'Restart the SolidStart daemon'
-    task restart: :environment do
-      puts 'Restarting SolidStart daemon...'
-      ReactiveView::Daemon.instance.restart
-      puts 'Daemon restarted.'
-    end
-
-    desc 'Check daemon status'
-    task status: :environment do
-      if ReactiveView::Daemon.instance.running?
-        puts "Daemon is running (PID: #{ReactiveView::Daemon.instance.pid})"
-        puts "URL: #{ReactiveView.configuration.daemon_url}"
-      else
-        puts 'Daemon is not running'
-      end
-    end
-  end
-
   desc 'Build for production'
   task build: :environment do
     puts 'Building for production...'
