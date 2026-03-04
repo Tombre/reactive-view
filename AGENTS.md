@@ -95,6 +95,23 @@ CRITICAL: ReactiveView uses SolidJS TSX, not React JSX.
 - Tests should focus validate the actual behaviour and output of code, not the code itself
 - Once you have written a test, run it to validate your working. Use the `testing` skill to do this
 
+### Testing and validating your work (Dogfooding) behaviour
+
+- **Confirm your code works:** ALWAYS test that your code works unless explicitly asked not to. use your `testing` skill for this.
+- **Test the right things:** Don't run all specs, but ensure you run all relevant ones that interact with code changes
+- **Dogfood your changes:** When building new features or fixing bugs - dogfood (manually test) your changes by starting the example application dev server and using your `dogfood` skill to interact with the relevant pages.
+
+#### Running the Example Dev Server
+
+Use the example server when testing changes to confirm they work.
+
+- You should always start the example server using the `bin/dev` command via `docker`
+- Refer to the `testing` skill for more information
+
+### Other Behaviour
+
+- If needing to interact with tmp files (writing all reading) do not access the root of the filesystem, write and read files from a project local ./tmp file
+
 ## Project-Scoped Skills
 
 Load task-specific guidance from local skills under `.opencode/skills/`.
