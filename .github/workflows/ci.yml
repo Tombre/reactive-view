@@ -89,6 +89,10 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
+      - name: Build ReactiveView npm package
+        run: npm run build
+        working-directory: reactive_view/npm
+
       - name: Install example app gem dependencies
         run: bundle install
         working-directory: examples/reactive_view_example
