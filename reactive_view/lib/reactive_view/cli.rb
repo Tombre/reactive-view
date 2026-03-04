@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'cli/dev_command'
+require_relative 'cli/doctor_command'
 
 module ReactiveView
   module CLI
@@ -11,6 +12,8 @@ module ReactiveView
         case command
         when 'dev'
           ReactiveView::CLI::DevCommand.new(argv, stdout: stdout, stderr: stderr).run
+        when 'doctor'
+          ReactiveView::CLI::DoctorCommand.new(argv, stdout: stdout, stderr: stderr).run
         when nil, 'help', '--help', '-h'
           stdout.puts(help_text)
           0
@@ -29,6 +32,7 @@ module ReactiveView
 
           Commands:
             dev      Start the ReactiveView development orchestrator
+            doctor   Diagnose/fix local daemon startup conflicts
             help     Show this help message
         TEXT
       end

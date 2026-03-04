@@ -120,6 +120,28 @@ reactive-view/
 
 ## Quick Start
 
+### Getting Started (Recommended Runtime Model)
+
+ReactiveView development is a two-process setup:
+
+1. Run Rails as your web process.
+2. Run the ReactiveView daemon via the gem CLI.
+
+```bash
+# Terminal 1 (Rails)
+bin/dev
+
+# Terminal 2 (ReactiveView daemon)
+bundle exec reactiveview dev
+```
+
+If startup fails due to stale locks, pid files, or occupied daemon ports, run:
+
+```bash
+bundle exec reactiveview doctor
+bundle exec reactiveview doctor --fix
+```
+
 ### Using the Example App
 
 The fastest way to explore ReactiveView is via the included example:
@@ -336,6 +358,19 @@ docker compose run --rm app bin/e2e
 ```
 
 `bin/reactive-view-dev` shells out to `bundle exec reactiveview dev`, which runs preflight checks, syncs generated files, and keeps the Node daemon tied to the orchestrator lifecycle.
+
+### ReactiveView CLI
+
+```bash
+# Start and supervise the development daemon
+bundle exec reactiveview dev
+
+# Diagnose local startup conflicts (ports, stale pids, locks)
+bundle exec reactiveview doctor
+
+# Attempt safe automatic cleanup for ReactiveView-managed conflicts
+bundle exec reactiveview doctor --fix
+```
 
 ### Useful Rake Tasks
 

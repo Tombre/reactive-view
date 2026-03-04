@@ -1,5 +1,5 @@
 # Development processes for ReactiveView
 # Run with: foreman start -f Procfile.dev
 
-web: bin/dev
-reactive_view: bin/reactive-view-dev
+web: PORT=3000 bin/dev
+reactive_view: REACTIVE_VIEW_DAEMON_PORT=3001 bin/reactive-view-dev
