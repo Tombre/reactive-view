@@ -1,4 +1,4 @@
 # Development processes for ReactiveView
 # Run with: bin/dev (or foreman start -f Procfile.dev)
 
-web: bin/rails server -p 3000
+web: bin/reactive-view-dev

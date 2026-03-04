@@ -59,6 +59,8 @@ jobs:
         run: npm run build
         working-directory: reactive_view/npm
 
+      - name: Verify committed npm dist artifacts
+        run: git diff --exit-code -- reactive_view/npm/dist
       - name: Install example app gem dependencies
         run: bundle install
         working-directory: examples/reactive_view_example

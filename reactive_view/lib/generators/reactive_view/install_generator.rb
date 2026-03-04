@@ -73,9 +73,13 @@ module ReactiveView
       end
 
       def create_bin_dev
+        template 'bin_reactive_view_dev', 'bin/reactive-view-dev'
+        chmod 'bin/reactive-view-dev', 0o755
+        say 'Created bin/reactive-view-dev script', :green
+
         template 'bin_dev', 'bin/dev'
         chmod 'bin/dev', 0o755
-        say 'Created bin/dev script', :green
+        say 'Created bin/dev wrapper script', :green
       end
 
       def show_next_steps
@@ -88,6 +92,7 @@ module ReactiveView
         say ''
         say '1. Start your development server:'
         say '   bin/dev'
+        say '   (ReactiveView startup internals live in bin/reactive-view-dev)'
         say ''
         say '2. Create pages in app/pages/:'
         say '   - app/pages/index.tsx         -> /'

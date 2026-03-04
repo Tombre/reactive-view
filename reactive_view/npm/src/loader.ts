@@ -409,6 +409,11 @@ function resolveClientOriginFallbackUrl(
     return null;
   }
 
+  // WHY: In split-origin dev setups we may temporarily fetch from the daemon
+  // origin. When that origin responds with an HTML document shell instead of
+  // loader JSON (common during boot/reload races), retrying the same origin
+  // keeps failing. Falling back to the browser origin recovers to Rails' JSON
+  // loader endpoint and prevents repeated "Expected JSON response" regressions.
   const currentOrigin = window.location.origin;
   if (requestUrl.origin === currentOrigin) {
     return null;
@@ -422,6 +427,9 @@ function resolveClientOriginFallbackUrlForFailure(requestUrl: URL): URL | null {
     return null;
   }
 
+  // WHY: Network failures on the injected daemon base URL are often transient
+  // startup/disconnect issues. Retrying against the browser origin lets client
+  // navigation continue without forcing a full page refresh.
   const currentOrigin = window.location.origin;
   if (requestUrl.origin === currentOrigin) {
     return null;

@@ -71,6 +71,7 @@ CRITICAL: When you encounter a file reference (for example `@docs/general.md`), 
 
 - **Performance awareness**: Consider performance implications of code changes, especially for web applications. Prefer static generation and minimal JavaScript when possible.
 - **Accessibility**: Ensure code is accessible by default. Use semantic HTML, proper ARIA attributes, and test keyboard navigation.
+- **Documentation**: Where relevant, document your decisions in code comments that describe why code is implemented in such a way. This is useful for people to understand why your code was written the way it was written and why certain decision were made.
 
 #### Ruby
 
