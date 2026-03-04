@@ -341,6 +341,9 @@ bin/rails reactive_view:sync
 # Generate TypeScript types from loaders
 bin/rails reactive_view:types:generate
 
+# Diagnose local ReactiveView setup and dependencies
+bin/rails reactive_view:doctor
+
 # Daemon management
 bin/rails reactive_view:daemon:start
 bin/rails reactive_view:daemon:stop

@@ -76,6 +76,12 @@ namespace :reactive_view do
     end
   end
 
+  desc 'Run environment diagnostics for ReactiveView'
+  task doctor: :environment do
+    result = ReactiveView::Doctor.new.report
+    exit 1 unless result[:ok]
+  end
+
   desc 'Build for production'
   task build: :environment do
     puts 'Building for production...'
