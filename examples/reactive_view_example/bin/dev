@@ -1,65 +1,8 @@
 #!/usr/bin/env bash
 
-# Development startup script for ReactiveView
+# Wrapper script. Keep project-specific orchestration here and delegate
+# ReactiveView-managed startup behavior to bin/reactive-view-dev.
 
 set -euo pipefail
 
-pid_file="${PIDFILE:-tmp/pids/server.pid}"
-
-wait_for_process_exit() {
-  local pid="$1"
-  local attempts=25
-
-  while [ "$attempts" -gt 0 ]; do
-    if ! kill -0 "$pid" 2> /dev/null; then
-      return 0
-    fi
-
-    sleep 0.2
-    attempts=$((attempts - 1))
-  done
-
-  return 1
-}
-
-# Setup working directory if it doesn't exist
-if [ ! -d ".reactive_view" ]; then
-  echo "Setting up ReactiveView..."
-  bin/rails reactive_view:setup
-fi
-
-if [ -f "$pid_file" ]; then
-  existing_pid="$(cat "$pid_file" 2>/dev/null || true)"
-
-  if [[ "$existing_pid" =~ ^[0-9]+$ ]] && kill -0 "$existing_pid" 2>/dev/null; then
-    existing_command="$(ps -o command= -p "$existing_pid" 2> /dev/null || true)"
-
-    if [[ "$existing_command" == *"rails server"* ]] || [[ "$existing_command" == *"puma "* ]]; then
-      echo "Stopping existing Rails server (PID: ${existing_pid}) from ${pid_file}..."
-      kill "$existing_pid" 2> /dev/null || true
-
-      if ! wait_for_process_exit "$existing_pid"; then
-        echo "Rails server PID ${existing_pid} did not stop gracefully, forcing shutdown..."
-        kill -KILL "$existing_pid" 2> /dev/null || true
-      fi
-    else
-      echo "A process is already running with PID ${existing_pid} from ${pid_file}."
-      echo "Refusing to stop it automatically because it does not look like a Rails server."
-      exit 1
-    fi
-  fi
-
-  echo "Removing stale server PID file: ${pid_file}"
-  rm -f "$pid_file"
-fi
-
-# Sync files before starting
-echo "Syncing ReactiveView files..."
-bin/rails reactive_view:sync 2>/dev/null || true
-
-echo "Preparing database..."
-bin/rails db:prepare
-
-echo "Starting Rails server (ReactiveView daemon auto-starts in development)..."
-
-exec bin/rails server -b 0.0.0.0 -p "${PORT:-3000}" "$@"
+exec bin/reactive-view-dev "$@"

@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+type LoaderModule = typeof import("../src/loader");
+
 type LoaderTestOptions = {
   isServer: boolean;
   pathname?: string;
   routeParams?: Record<string, string>;
   headers?: Headers;
+  modulePath?: "../src/loader" | "../dist/loader.js";
 };
 
 async function importLoaderModule(options: LoaderTestOptions) {
@@ -50,7 +53,9 @@ async function importLoaderModule(options: LoaderTestOptions) {
     };
   });
 
-  const module = await import("../src/loader");
+  const module = (await import(
+    options.modulePath ?? "../src/loader"
+  )) as LoaderModule;
   return { module, resourcePromises, queryInnerMock };
 }
 
@@ -283,6 +288,50 @@ describe("loader utilities", () => {
     };
 
     const { module } = await importLoaderModule({ isServer: false });
+    const getData = module.createLoaderQuery<{ ok: boolean }>("users/index");
+
+    await expect(getData({})).resolves.toEqual({ ok: true });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "https://daemon.test/_reactive_view/loaders/users/index/load",
+      expect.any(Object)
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "https://rails.test/_reactive_view/loaders/users/index/load",
+      expect.any(Object)
+    );
+  });
+
+  it("keeps dist loader fallback behavior in sync with source", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response("<!DOCTYPE html><html><body>wrong origin</body></html>", {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), {
+          headers: { "content-type": "application/json" },
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    (globalThis as Record<string, unknown>).window = {
+      location: { origin: "https://rails.test" },
+      __RAILS_BASE_URL__: "https://daemon.test",
+    };
+
+    // WHY: Runtime consumers import from package exports, which point at dist.
+    // Testing source-only behavior is insufficient because stale dist artifacts
+    // can regress client navigation even when src tests pass.
+    const { module } = await importLoaderModule({
+      isServer: false,
+      modulePath: "../dist/loader.js",
+    });
     const getData = module.createLoaderQuery<{ ok: boolean }>("users/index");
 
     await expect(getData({})).resolves.toEqual({ ok: true });

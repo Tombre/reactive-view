@@ -42,6 +42,10 @@ Already set up and just want to launch Rails?
 bin/dev
 ```
 
+ReactiveView-specific startup logic now lives in `bin/reactive-view-dev`.
+If your app has a custom `bin/dev`, call that script to reuse the same stale
+daemon cleanup, sync, and bootstrap behavior without duplicating shell logic.
+
 This will start:
 
 - Rails server on http://localhost:3000

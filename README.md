@@ -323,17 +323,16 @@ cd examples/reactive_view_example
 # Start both Rails and SolidStart
 bin/dev
 
-# Or start them separately:
-bin/rails server                    # Rails on :3000
-source bin/reactive_view_daemon_env && reactive_view_resolve_daemon_env
-bin/reactive_view_daemon            # SolidStart on selected daemon port
+# ReactiveView startup internals are centralized here (safe to call from
+# custom bin/dev scripts in host apps)
+bin/reactive-view-dev
 
 # Run Playwright Ruby E2E smoke test in Docker
 docker compose build
 docker compose run --rm app bin/e2e
 ```
 
-`bin/dev` defaults to daemon port `3001`, but it now handles conflicts automatically in development: it stops stale ReactiveView/Vinxi listeners when possible, otherwise selects the next open port and exports it for both Rails and SolidStart. This logic lives in `bin/reactive_view_daemon_env` so existing apps can reuse it without adopting the full `bin/dev` script.
+`bin/reactive-view-dev` defaults to daemon port `3001` and proactively removes stale ReactiveView/Vinxi listeners on both app and daemon ports before Rails boots. Keeping this logic in one script prevents recurring HTML-vs-JSON loader regressions and lets apps reuse the behavior from custom wrappers.
 
 ### Useful Rake Tasks
 

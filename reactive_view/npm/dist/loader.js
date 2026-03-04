@@ -2,6 +2,8 @@ import { createResource, createSignal } from "solid-js";
 import { isServer } from "solid-js/web";
 import { useLocation, useParams, query } from "@solidjs/router";
 import { getSSRRequestContext } from "./request-context.js";
+const LOADER_REQUEST_MAX_ATTEMPTS = 2;
+const LOADER_RETRY_DELAY_MS = 150;
 // Get the Rails base URL from environment or default
 const getRailsBaseUrl = () => {
     if (isServer) {
@@ -114,18 +116,7 @@ async function fetchLoaderData(loaderPath, params) {
     if (ssrCookies) {
         headers["Cookie"] = ssrCookies;
     }
-    const response = await fetch(url.toString(), {
-        method: "GET",
-        headers,
-        credentials: "include",
-    });
-    if (!response.ok) {
-        const errorData = await parseResponseJson(response);
-        throw new Error(errorData.error ||
-            `Loader request failed: ${response.statusText}`);
-    }
-    const data = await parseResponseJson(response);
-    return data;
+    return requestLoaderData(url, headers);
 }
 /**
  * Create a cached query function for a loader.
@@ -197,27 +188,105 @@ export function useLoaderData(route, explicitParams) {
         if (ssrCookies) {
             headers["Cookie"] = ssrCookies;
         }
-        const response = await fetch(url.toString(), {
-            method: "GET",
-            headers,
-            // Include credentials for cookie-based auth on client-side navigation
-            credentials: "include",
-        });
-        if (!response.ok) {
-            const errorData = await parseResponseJson(response);
-            throw new Error(errorData.error ||
-                `Loader request failed: ${response.statusText}`);
-        }
-        const data = await parseResponseJson(response);
-        return data;
+        return requestLoaderData(url, headers);
     });
     return data;
 }
-async function parseResponseJson(response) {
-    const contentType = response.headers.get("content-type") || "";
-    const bodyText = await response.text();
+async function requestLoaderData(url, headers) {
+    let lastError = null;
+    let requestUrl = new URL(url.toString());
+    for (let attempt = 1; attempt <= LOADER_REQUEST_MAX_ATTEMPTS; attempt += 1) {
+        let response;
+        try {
+            response = await fetch(requestUrl.toString(), {
+                method: "GET",
+                headers,
+                // Include credentials for cookie-based auth on client-side navigation
+                credentials: "include",
+            });
+        }
+        catch (error) {
+            const fallbackUrl = resolveClientOriginFallbackUrlForFailure(requestUrl);
+            if (fallbackUrl) {
+                requestUrl = fallbackUrl;
+                continue;
+            }
+            throw error;
+        }
+        const contentType = response.headers.get("content-type") || "";
+        const bodyText = await response.text();
+        const fallbackUrl = resolveClientOriginFallbackUrl(requestUrl, contentType, bodyText);
+        if (fallbackUrl) {
+            requestUrl = fallbackUrl;
+            continue;
+        }
+        const retryableHtmlResponse = !contentType.includes("application/json") &&
+            contentType.includes("text/html") &&
+            bodyText.startsWith("<!DOCTYPE html>") &&
+            attempt < LOADER_REQUEST_MAX_ATTEMPTS;
+        if (retryableHtmlResponse) {
+            await sleep(LOADER_RETRY_DELAY_MS * attempt);
+            continue;
+        }
+        try {
+            const data = parseResponseJson(response, contentType, bodyText);
+            if (!response.ok) {
+                throw new Error(data.error ||
+                    `Loader request failed: ${response.status} ${response.statusText}`);
+            }
+            return data;
+        }
+        catch (error) {
+            if (error instanceof Error) {
+                lastError = error;
+            }
+            const canRetry = attempt < LOADER_REQUEST_MAX_ATTEMPTS &&
+                contentType.includes("text/html") &&
+                bodyText.startsWith("<!DOCTYPE html>");
+            if (!canRetry) {
+                throw error;
+            }
+            await sleep(LOADER_RETRY_DELAY_MS * attempt);
+        }
+    }
+    throw (lastError ||
+        new Error(`Loader request failed for ${requestUrl.toString()} after retries`));
+}
+function resolveClientOriginFallbackUrl(requestUrl, contentType, bodyText) {
+    if (isServer) {
+        return null;
+    }
+    const isHtmlDocumentResponse = contentType.includes("text/html") && bodyText.startsWith("<!DOCTYPE html>");
+    if (!isHtmlDocumentResponse) {
+        return null;
+    }
+    // WHY: In split-origin dev setups we may temporarily fetch from the daemon
+    // origin. When that origin responds with an HTML document shell instead of
+    // loader JSON (common during boot/reload races), retrying the same origin
+    // keeps failing. Falling back to the browser origin recovers to Rails' JSON
+    // loader endpoint and prevents repeated "Expected JSON response" regressions.
+    const currentOrigin = window.location.origin;
+    if (requestUrl.origin === currentOrigin) {
+        return null;
+    }
+    return new URL(`${requestUrl.pathname}${requestUrl.search}`, currentOrigin);
+}
+function resolveClientOriginFallbackUrlForFailure(requestUrl) {
+    if (isServer) {
+        return null;
+    }
+    // WHY: Network failures on the injected daemon base URL are often transient
+    // startup/disconnect issues. Retrying against the browser origin lets client
+    // navigation continue without forcing a full page refresh.
+    const currentOrigin = window.location.origin;
+    if (requestUrl.origin === currentOrigin) {
+        return null;
+    }
+    return new URL(`${requestUrl.pathname}${requestUrl.search}`, currentOrigin);
+}
+function parseResponseJson(response, contentType, bodyText) {
     if (!contentType.includes("application/json")) {
-        throw new Error(`Expected JSON response from ${response.url}, received ${contentType || "unknown content-type"}. Body starts with: ${bodyText.slice(0, 120)}`);
+        throw new Error(`Expected JSON response from ${response.url}, received ${contentType || "unknown content-type"} (status ${response.status}). Body starts with: ${bodyText.slice(0, 120)}`);
     }
     try {
         return JSON.parse(bodyText);
@@ -225,6 +294,9 @@ async function parseResponseJson(response) {
     catch {
         throw new Error(`Invalid JSON response from ${response.url}. Body starts with: ${bodyText.slice(0, 120)}`);
     }
+}
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 /**
  * Build the loader path from the current URL path and params.
