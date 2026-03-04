@@ -129,4 +129,25 @@ RSpec.describe ReactiveView::FileSync::DirectorySetup do
       expect(described_class.send(:package_installed?, 'vinxi')).to be true
     end
   end
+
+  describe '.reactive_view_core_version' do
+    it 'uses the local file package when dist CLI is present' do
+      local_package = tmp_dir.join('reactive_view/npm')
+      FileUtils.mkdir_p(local_package.join('dist'))
+      local_package.join('dist', 'cli.js').write('// built cli')
+
+      allow(described_class).to receive(:local_core_package_path).and_return(local_package)
+
+      expect(described_class.send(:reactive_view_core_version)).to eq("file:#{local_package}")
+    end
+
+    it 'falls back to the published package version when local dist is missing' do
+      local_package = tmp_dir.join('reactive_view/npm')
+      FileUtils.mkdir_p(local_package)
+
+      allow(described_class).to receive(:local_core_package_path).and_return(local_package)
+
+      expect(described_class.send(:reactive_view_core_version)).to eq("^#{ReactiveView::VERSION}")
+    end
+  end
 end

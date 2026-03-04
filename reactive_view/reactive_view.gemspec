@@ -21,7 +21,13 @@ Gem::Specification.new do |spec|
   spec.metadata['changelog_uri'] = "#{spec.homepage}/blob/main/CHANGELOG.md"
 
   spec.files = Dir.chdir(__dir__) do
-    Dir['{app,config,lib,template}/**/*', 'MIT-LICENSE', 'Rakefile', 'README.md']
+    Dir[
+      '{app,config,lib,template,npm/bin,npm/dist}/**/*',
+      'MIT-LICENSE',
+      'Rakefile',
+      'README.md',
+      'npm/package.json'
+    ]
   end
 
   spec.require_paths = ['lib']

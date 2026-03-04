@@ -111,13 +111,18 @@ module ReactiveView
         end
 
         def reactive_view_core_version
-          local_package = Pathname.new(__dir__).parent.parent.parent.join('npm')
+          local_package = local_core_package_path
+          local_cli = local_package.join('dist', 'cli.js')
 
-          if local_package.exist?
+          if local_package.exist? && local_cli.exist?
             "file:#{local_package}"
           else
             "^#{ReactiveView::VERSION}"
           end
+        end
+
+        def local_core_package_path
+          Pathname.new(__dir__).parent.parent.parent.join('npm')
         end
 
         def ensure_package_json_dependencies(package_json_path, runtime_dependencies, missing_runtime, missing_dev)

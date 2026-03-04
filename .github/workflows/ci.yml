@@ -54,6 +54,9 @@ jobs:
         run: npm run build
         working-directory: reactive_view/npm
 
+      - name: Verify committed npm dist artifacts
+        run: git diff --exit-code -- reactive_view/npm/dist
+
       - name: Typecheck example frontend
         run: npm run typecheck
         working-directory: examples/reactive_view_example

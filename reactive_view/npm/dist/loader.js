@@ -1,0 +1,270 @@
+import { createResource, createSignal } from "solid-js";
+import { isServer } from "solid-js/web";
+import { useLocation, useParams, query } from "@solidjs/router";
+import { getSSRRequestContext } from "./request-context.js";
+// Get the Rails base URL from environment or default
+const getRailsBaseUrl = () => {
+    if (isServer) {
+        const { railsBaseUrl } = getSSRRequestContext();
+        if (railsBaseUrl)
+            return railsBaseUrl;
+        // Backward-compat fallback
+        const globalRailsUrl = globalThis.__RAILS_BASE_URL__;
+        if (globalRailsUrl)
+            return globalRailsUrl;
+        // Try to access process.env safely (may not exist in all environments)
+        try {
+            const envUrl = globalThis.process?.env?.RAILS_BASE_URL;
+            if (envUrl)
+                return envUrl;
+        }
+        catch {
+            // Ignore - process.env not available
+        }
+        return "http://localhost:3000";
+    }
+    // On client, prefer the injected Rails base URL (for split-origin dev setups)
+    const clientRailsUrl = window.__RAILS_BASE_URL__;
+    if (clientRailsUrl)
+        return clientRailsUrl;
+    // Fallback to same-origin requests
+    return window.location.origin;
+};
+// Get cookies for SSR requests (forwarded from Rails)
+const getSSRCookies = () => {
+    if (isServer) {
+        const { cookies } = getSSRRequestContext();
+        if (cookies)
+            return cookies;
+        // Backward-compat fallback
+        return globalThis.__REACTIVE_VIEW_COOKIES__;
+    }
+    return undefined;
+};
+// ============================================================================
+// HMR Support for Loader Invalidation
+// ============================================================================
+/**
+ * Track invalidated routes for HMR-triggered refetching.
+ * When a loader file changes, Rails notifies Vite which broadcasts to clients.
+ * This signal triggers refetching of affected loaders.
+ */
+const [loaderInvalidationCount, setLoaderInvalidationCount] = createSignal(0);
+/**
+ * Set of routes that have been invalidated by HMR.
+ * Used to determine if a specific loader should refetch.
+ */
+let invalidatedRoutes = new Set();
+/**
+ * Setup HMR event listener for loader invalidation.
+ * This runs once on the client when the module loads.
+ */
+function setupLoaderHMR() {
+    if (isServer)
+        return;
+    // Check if HMR is available (Vite dev mode)
+    if (typeof import.meta.hot !== "undefined" && import.meta.hot) {
+        import.meta.hot.on("reactive-view:loader-update", (data) => {
+            console.log("[ReactiveView] Loader update received:", data);
+            // Add routes to invalidation set
+            for (const route of data.routes) {
+                invalidatedRoutes.add(route);
+            }
+            // Trigger refetch for all active loaders
+            // The signal change will cause createResource to re-run its fetcher
+            setLoaderInvalidationCount((c) => c + 1);
+            // Clear invalidation set after a tick to allow loaders to check it
+            setTimeout(() => {
+                invalidatedRoutes.clear();
+            }, 100);
+        });
+        console.log("[ReactiveView] HMR loader invalidation listener registered");
+    }
+}
+// Initialize HMR on module load (client-side only)
+if (!isServer) {
+    setupLoaderHMR();
+}
+// ============================================================================
+// Loader Query Functions (for preloading)
+// ============================================================================
+/**
+ * Fetch loader data from Rails.
+ * This is the core fetch function used by both query-based and resource-based loaders.
+ *
+ * @param loaderPath - The route path (e.g., "users/index", "users/[id]")
+ * @param params - Route parameters to pass to the loader
+ */
+async function fetchLoaderData(loaderPath, params) {
+    const railsBaseUrl = getRailsBaseUrl();
+    const url = new URL(`/_reactive_view/loaders/${loaderPath}/load`, railsBaseUrl);
+    // Add route params as query parameters
+    Object.entries(params).forEach(([key, value]) => {
+        if (value) {
+            url.searchParams.set(key, value);
+        }
+    });
+    // Build headers
+    const headers = {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+    };
+    // For SSR, forward the cookies from Rails
+    const ssrCookies = getSSRCookies();
+    if (ssrCookies) {
+        headers["Cookie"] = ssrCookies;
+    }
+    const response = await fetch(url.toString(), {
+        method: "GET",
+        headers,
+        credentials: "include",
+    });
+    if (!response.ok) {
+        const errorData = await parseResponseJson(response);
+        throw new Error(errorData.error ||
+            `Loader request failed: ${response.statusText}`);
+    }
+    const data = await parseResponseJson(response);
+    return data;
+}
+/**
+ * Create a cached query function for a loader.
+ * This query is cached by the router and can be preloaded before navigation.
+ *
+ * @param loaderPath - The route path (e.g., "users/index", "users/[id]")
+ * @returns A query function that can be called to fetch/cache data
+ *
+ * @example
+ * // In a generated loader file:
+ * const getUsersQuery = createLoaderQuery<LoaderData>("users/index");
+ *
+ * export function preloadData() {
+ *   getUsersQuery({});
+ * }
+ *
+ * export function useLoaderData() {
+ *   return createAsync(() => getUsersQuery({}));
+ * }
+ */
+export function createLoaderQuery(loaderPath) {
+    const queryFn = query(async (params) => fetchLoaderData(loaderPath, params), `loader:${loaderPath}`);
+    // Cast to the expected return type - the router's NarrowResponse is compatible
+    // with our data type since we're not using Response objects
+    return queryFn;
+}
+// Implementation
+export function useLoaderData(route, explicitParams) {
+    const location = useLocation();
+    const routeParams = useParams();
+    const [data] = createResource(
+    // Track location, params, and invalidation count for reactivity
+    () => ({
+        path: location.pathname,
+        routeParams: { ...routeParams },
+        explicitRoute: route,
+        explicitParams,
+        // Include invalidation count to trigger refetch on HMR
+        invalidationCount: loaderInvalidationCount(),
+    }), async (source) => {
+        let loaderPath;
+        let params;
+        if (source.explicitRoute) {
+            // Cross-route loading: use the explicit route and params
+            loaderPath = source.explicitRoute;
+            params = source.explicitParams || {};
+        }
+        else {
+            // Current route loading: derive from location
+            loaderPath = buildLoaderPath(source.path, source.routeParams);
+            params = source.routeParams;
+        }
+        const railsBaseUrl = getRailsBaseUrl();
+        const url = new URL(`/_reactive_view/loaders/${loaderPath}/load`, railsBaseUrl);
+        // Add route params as query parameters
+        // Rails will use these to populate the loader's params
+        Object.entries(params).forEach(([key, value]) => {
+            if (value) {
+                url.searchParams.set(key, value);
+            }
+        });
+        // Build headers
+        const headers = {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+        };
+        // For SSR, forward the cookies from Rails
+        const ssrCookies = getSSRCookies();
+        if (ssrCookies) {
+            headers["Cookie"] = ssrCookies;
+        }
+        const response = await fetch(url.toString(), {
+            method: "GET",
+            headers,
+            // Include credentials for cookie-based auth on client-side navigation
+            credentials: "include",
+        });
+        if (!response.ok) {
+            const errorData = await parseResponseJson(response);
+            throw new Error(errorData.error ||
+                `Loader request failed: ${response.statusText}`);
+        }
+        const data = await parseResponseJson(response);
+        return data;
+    });
+    return data;
+}
+async function parseResponseJson(response) {
+    const contentType = response.headers.get("content-type") || "";
+    const bodyText = await response.text();
+    if (!contentType.includes("application/json")) {
+        throw new Error(`Expected JSON response from ${response.url}, received ${contentType || "unknown content-type"}. Body starts with: ${bodyText.slice(0, 120)}`);
+    }
+    try {
+        return JSON.parse(bodyText);
+    }
+    catch {
+        throw new Error(`Invalid JSON response from ${response.url}. Body starts with: ${bodyText.slice(0, 120)}`);
+    }
+}
+/**
+ * Build the loader path from the current URL path and params.
+ * Converts actual values back to parameter placeholders.
+ *
+ * For directory routes (like /users), this appends /index to match
+ * the file-based routing convention (users/index.tsx -> users/index loader).
+ *
+ * @example
+ * buildLoaderPath("/users/123", { id: "123" }) -> "users/[id]"
+ * buildLoaderPath("/users", {}) -> "users/index"
+ * buildLoaderPath("/", {}) -> "index"
+ */
+function buildLoaderPath(pathname, params) {
+    // Remove leading slash
+    let path = pathname.replace(/^\//, "");
+    // Handle root path
+    if (!path) {
+        return "index";
+    }
+    // Replace param values with their parameter names in brackets
+    // Sort by value length descending to avoid partial replacements
+    const sortedParams = Object.entries(params).sort(([, a], [, b]) => b.length - a.length);
+    for (const [key, value] of sortedParams) {
+        if (value) {
+            // Replace the value with [key]
+            // Handle both segment replacement and partial path replacement
+            path = path
+                .split("/")
+                .map((segment) => (segment === value ? `[${key}]` : segment))
+                .join("/");
+        }
+    }
+    // If the path doesn't end with a param placeholder (like [id]),
+    // it's a directory route and needs /index appended
+    // Examples: /users -> users/index, /users/123 -> users/[id] (no index needed)
+    const lastSegment = path.split("/").pop() || "";
+    const hasParamAtEnd = lastSegment.startsWith("[") && lastSegment.endsWith("]");
+    if (!hasParamAtEnd) {
+        path = `${path}/index`;
+    }
+    return path;
+}

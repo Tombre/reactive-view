@@ -350,6 +350,15 @@ bin/rails reactive_view:daemon:status
 bin/rails reactive_view:build
 ```
 
+### Maintaining the npm Package in the Gem
+
+ReactiveView ships prebuilt `@reactive-view/core` CLI artifacts from `reactive_view/npm/dist`.
+When changing files under `reactive_view/npm/src`, rebuild and commit the updated dist files:
+
+```bash
+npm run build --prefix reactive_view/npm
+```
+
 ## Tailwind CSS Setup
 
 ReactiveView ships with Tailwind CSS v4 support through the `@tailwindcss/vite` plugin. To add Tailwind to a new application:

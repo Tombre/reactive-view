@@ -6,7 +6,6 @@ reactive_view/template/.vinxi
 reactive_view/template/node_modules
 
 reactive_view/npm/node_modules
-reactive_view/npm/dist
 
 examples/reactive_view_example/.reactive_view
 examples/reactive_view_example/.reactive_view/**/*
