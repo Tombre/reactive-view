@@ -6,30 +6,20 @@ module ReactiveView
 
     config.reactive_view = ActiveSupport::OrderedOptions.new
 
-    # Configure Zeitwerk to ignore grouped route directories before autoloading starts
-    # Grouped routes like (admin)/ are SolidStart conventions that don't represent Ruby modules
+    # Configure Zeitwerk ignores before autoloading starts.
+    # Grouped route directories and *.loader.rb files are framework conventions,
+    # not Ruby constant paths.
     initializer 'reactive_view.configure_autoloaders', before: :setup_main_autoloader do |app|
       pages_path = app.root.join('app/pages')
 
-      if pages_path.exist?
-        # Find all directories with parentheses (grouped routes)
-        # This will find both top-level and nested grouped directories like (admin)/ and (admin)/(auth)/
-        grouped_dirs = Dir.glob(pages_path.join('**/*')).select do |path|
-          File.directory?(path) && File.basename(path).match?(/^\(.*\)$/)
-        end
-
-        grouped_dirs.each do |dir|
-          Rails.autoloaders.main.ignore(dir)
-          ReactiveView.logger.debug "[ReactiveView] Ignoring grouped route directory for autoloading: #{dir}"
-        end
-
-        if grouped_dirs.any?
-          ReactiveView.logger.info "[ReactiveView] Configured autoloader to ignore #{grouped_dirs.size} grouped route #{grouped_dirs.size == 1 ? 'directory' : 'directories'}"
-        end
-      end
+      ReactiveView::AutoloadIgnorer.ignore_pages_paths!(
+        pages_path: pages_path,
+        autoloader: Rails.autoloaders.main,
+        logger: ReactiveView.logger
+      )
     rescue StandardError => e
       # Raise error if scanning or configuration fails
-      raise ReactiveView::ConfigurationError, "Failed to configure autoloaders for grouped routes: #{e.message}"
+      raise ReactiveView::ConfigurationError, "Failed to configure ReactiveView autoloader ignores: #{e.message}"
     end
 
     # Insert the dev proxy middleware in development to forward asset requests to Vinxi

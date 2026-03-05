@@ -60,6 +60,7 @@ require_relative 'reactive_view/renderer'
 require_relative 'reactive_view/file_sync'
 require_relative 'reactive_view/dev_orchestrator'
 require_relative 'reactive_view/dev_proxy'
+require_relative 'reactive_view/autoload_ignorer'
 require_relative 'reactive_view/engine'
 
 # Benchmark module (loaded on demand via rake tasks)
