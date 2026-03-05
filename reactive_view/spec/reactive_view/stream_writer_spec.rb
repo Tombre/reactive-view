@@ -96,6 +96,17 @@ RSpec.describe ReactiveView::StreamWriter do
       writer.close
       expect(writer.closed?).to be true
     end
+
+    it 'swallows client disconnect errors while closing' do
+      disconnecting_stream = instance_double(StringIO)
+      writer = described_class.new(disconnecting_stream)
+
+      allow(disconnecting_stream).to receive(:write).and_raise(IOError, 'client disconnected')
+      allow(disconnecting_stream).to receive(:close).and_raise(IOError, 'closed stream')
+
+      expect { writer.close }.not_to raise_error
+      expect(writer.closed?).to be(true)
+    end
   end
 
   describe '#closed?' do

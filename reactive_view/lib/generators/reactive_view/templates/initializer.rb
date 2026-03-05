@@ -9,14 +9,6 @@ ReactiveView.configure do |config|
   # How long to wait for the daemon to respond (seconds)
   config.daemon_timeout = 30
 
-  # Automatically start the SolidStart daemon when Rails boots
-  # Set to false if you want to manage the daemon separately
-  config.auto_start_daemon = Rails.env.development?
-
-  # Set to true if the daemon is running on a different server
-  # (e.g., in production with separate frontend/backend servers)
-  config.external_daemon = Rails.env.production?
-
   # Path to your pages directory (relative to Rails.root)
   config.pages_path = 'app/pages'
 
@@ -31,6 +23,11 @@ ReactiveView.configure do |config|
   # Leave nil to auto-detect from the request
   # config.rails_base_url = "http://localhost:3000"
 end
+
+# In development run Rails and the daemon in separate terminals:
+#
+#   bin/rails server
+#   bundle exec reactiveview dev
 
 # Enable caching in development for ReactiveView request tokens
 # This is required for the token-based communication between Rails and SolidStart

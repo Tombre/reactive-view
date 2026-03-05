@@ -59,7 +59,10 @@ module ReactiveView
           '.reactive_view/types/',
           '.reactive_view/.vinxi/',
           '.reactive_view/.output/',
+          '.reactive_view/daemon.pid',
           '.reactive_view/daemon.log',
+          '.reactive_view/orchestrator.pid',
+          '.reactive_view/orchestrator.lock',
           ''
         ]
 
@@ -79,7 +82,7 @@ module ReactiveView
 
         template 'bin_dev', 'bin/dev'
         chmod 'bin/dev', 0o755
-        say 'Created bin/dev wrapper script', :green
+        say 'Created bin/dev Rails startup script', :green
       end
 
       def show_next_steps
@@ -90,9 +93,11 @@ module ReactiveView
         say ''
         say 'Next steps:', :yellow
         say ''
-        say '1. Start your development server:'
+        say '1. Start Rails and the ReactiveView daemon in separate terminals:'
         say '   bin/dev'
-        say '   (ReactiveView startup internals live in bin/reactive-view-dev)'
+        say '   bin/reactive-view-dev'
+        say ''
+        say '   (or run both with: foreman start -f Procfile.dev)'
         say ''
         say '2. Create pages in app/pages/:'
         say '   - app/pages/index.tsx         -> /'

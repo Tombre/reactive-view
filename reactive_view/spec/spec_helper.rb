@@ -95,7 +95,8 @@ require 'reactive_view/mutation_result'
 require 'reactive_view/stream_response'
 require 'reactive_view/stream_writer'
 require 'reactive_view/dev_proxy'
-require 'reactive_view/daemon'
+require 'reactive_view/dev_orchestrator'
+require 'reactive_view/autoload_ignorer'
 require 'reactive_view/renderer'
 require 'reactive_view/loader_registry'
 require 'reactive_view/router'
@@ -138,6 +139,5 @@ RSpec.configure do |config|
 
   config.after(:suite) do
     ReactiveView::FileSync::FileWatcher.stop
-    ReactiveView::Daemon.instance.stop
   end
 end

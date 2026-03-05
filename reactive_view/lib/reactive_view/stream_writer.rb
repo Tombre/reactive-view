@@ -85,8 +85,18 @@ module ReactiveView
     def close
       return if @closed
 
-      write_event(type: 'done')
-      @stream.close
+      begin
+        write_event(type: 'done')
+      rescue StandardError => e
+        raise unless client_disconnected_error?(e)
+      end
+
+      begin
+        @stream.close
+      rescue StandardError => e
+        raise unless client_disconnected_error?(e)
+      end
+
       @closed = true
     end
 
@@ -105,6 +115,11 @@ module ReactiveView
       raise 'Stream already closed' if @closed
 
       @stream.write("data: #{payload.to_json}\n\n")
+    rescue StandardError => e
+      raise unless client_disconnected_error?(e)
+
+      @closed = true
+      raise
     end
 
     def write_stream_chunk(chunk_type)
@@ -119,6 +134,16 @@ module ReactiveView
       end
 
       @chunk_type ||= chunk_type
+    end
+
+    def client_disconnected_error?(error)
+      return true if defined?(ActionController::Live::ClientDisconnected) &&
+                     error.is_a?(ActionController::Live::ClientDisconnected)
+      return true if error.is_a?(Errno::EPIPE)
+
+      return false unless error.is_a?(IOError)
+
+      error.message.to_s.downcase.match?(/client disconnected|closed stream|stream closed|broken pipe/)
     end
   end
 end

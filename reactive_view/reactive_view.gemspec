@@ -22,7 +22,7 @@ Gem::Specification.new do |spec|
 
   spec.files = Dir.chdir(__dir__) do
     Dir[
-      '{app,config,lib,template,npm/bin,npm/dist}/**/*',
+      '{app,config,lib,template,npm/bin,npm/dist,exe}/**/*',
       'MIT-LICENSE',
       'Rakefile',
       'README.md',
@@ -30,6 +30,8 @@ Gem::Specification.new do |spec|
     ]
   end
 
+  spec.bindir = 'exe'
+  spec.executables = ['reactiveview']
   spec.require_paths = ['lib']
 
   # Rails dependency

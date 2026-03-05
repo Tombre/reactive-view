@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "reactiveview dev",
+    "dev": "bundle exec reactiveview dev",
     "build": "reactiveview build",
     "start": "reactiveview start",
     "typecheck": "bundle exec rails reactive_view:types:generate && tsc --noEmit",

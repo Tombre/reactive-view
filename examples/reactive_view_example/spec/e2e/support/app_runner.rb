@@ -31,8 +31,12 @@ module E2E
       @daemon_port = pick_port(default_port: 3001, host: DAEMON_HOST)
 
       @daemon_pid = spawn_process(
-        { 'PORT' => daemon_port.to_s },
-        'npx reactiveview dev',
+        {
+          'PORT' => daemon_port.to_s,
+          'REACTIVE_VIEW_DAEMON_PORT' => daemon_port.to_s,
+          'RAILS_ENV' => 'test'
+        },
+        "bundle exec reactiveview dev --port #{daemon_port}",
         daemon_log
       )
 

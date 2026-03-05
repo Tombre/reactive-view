@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
-# Wrapper script. Keep project-specific orchestration in bin/dev and delegate
-# ReactiveView-managed startup behavior to bin/reactive-view-dev.
+# Starts the Rails web server only.
+#
+# Run `bin/reactive-view-dev` in a separate terminal for the ReactiveView daemon.
 
 set -euo pipefail
 
-exec bin/reactive-view-dev "$@"
+exec bin/rails server -b 0.0.0.0 -p "${PORT:-3000}" "$@"

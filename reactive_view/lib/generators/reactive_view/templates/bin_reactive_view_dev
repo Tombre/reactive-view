@@ -1,122 +1,16 @@
 #!/usr/bin/env bash
 
-# ReactiveView-managed development startup.
+# Starts the ReactiveView daemon orchestrator.
 #
-# Keep ReactiveView-specific boot behavior in this script so applications can
-# call it from custom bin/dev scripts without copying framework internals.
+# Keep daemon startup in a dedicated script so host apps can invoke it from
+# custom process managers (Procfile, Overmind, Foreman, etc.).
 
 set -euo pipefail
 
-pid_file="${PIDFILE:-tmp/pids/server.pid}"
-app_port="${PORT:-3000}"
-daemon_port="${REACTIVE_VIEW_DAEMON_PORT:-3001}"
-daemon_pid_file=".reactive_view/daemon.pid"
-
-wait_for_process_exit() {
-  local pid="$1"
-  local attempts=25
-
-  while [ "$attempts" -gt 0 ]; do
-    if ! kill -0 "$pid" 2> /dev/null; then
-      return 0
-    fi
-
-    sleep 0.2
-    attempts=$((attempts - 1))
-  done
-
-  return 1
-}
-
-is_reactive_view_daemon_command() {
-  local command="$1"
-
-  [[ "$command" == *"reactiveview dev"* ]] ||
-    [[ "$command" == *"reactiveview start"* ]] ||
-    [[ "$command" == *"vinxi dev"* ]] ||
-    [[ "$command" == *"vinxi start"* ]] ||
-    [[ "$command" == *".reactive_view/app.config.ts"* ]]
-}
-
-terminate_process_if_running() {
-  local pid="$1"
-
-  if kill -0 "$pid" 2> /dev/null; then
-    kill "$pid" 2> /dev/null || true
-
-    if ! wait_for_process_exit "$pid"; then
-      kill -KILL "$pid" 2> /dev/null || true
-    fi
-  fi
-}
-
-cleanup_stale_reactive_view_daemon_listeners() {
-  # WHY: A stale Vinxi/ReactiveView daemon can survive previous runs and keep
-  # listening on the Rails app port. That makes loader endpoints return daemon
-  # HTML instead of Rails JSON and causes `Expected JSON response` failures.
-  local ports=("$app_port" "$daemon_port")
-
-  for port in "${ports[@]}"; do
-    local listening_pids
-    listening_pids="$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2> /dev/null || true)"
-    [ -z "$listening_pids" ] && continue
-
-    for pid in $listening_pids; do
-      local command
-      command="$(ps -o command= -p "$pid" 2> /dev/null || true)"
-
-      if is_reactive_view_daemon_command "$command"; then
-        echo "Stopping stale ReactiveView daemon listener (PID: ${pid}) on port ${port}..."
-        terminate_process_if_running "$pid"
-      fi
-    done
-  done
-
-  if [ -f "$daemon_pid_file" ]; then
-    echo "Removing stale daemon PID file: ${daemon_pid_file}"
-    rm -f "$daemon_pid_file"
-  fi
-}
-
-# Setup working directory if it doesn't exist
 if [ ! -d ".reactive_view" ]; then
   echo "Setting up ReactiveView..."
   bin/rails reactive_view:setup
 fi
 
-if [ -f "$pid_file" ]; then
-  existing_pid="$(cat "$pid_file" 2>/dev/null || true)"
-
-  if [[ "$existing_pid" =~ ^[0-9]+$ ]] && kill -0 "$existing_pid" 2>/dev/null; then
-    existing_command="$(ps -o command= -p "$existing_pid" 2> /dev/null || true)"
-
-    if [[ "$existing_command" == *"rails server"* ]] || [[ "$existing_command" == *"puma "* ]]; then
-      echo "Stopping existing Rails server (PID: ${existing_pid}) from ${pid_file}..."
-      kill "$existing_pid" 2> /dev/null || true
-
-      if ! wait_for_process_exit "$existing_pid"; then
-        echo "Rails server PID ${existing_pid} did not stop gracefully, forcing shutdown..."
-        kill -KILL "$existing_pid" 2> /dev/null || true
-      fi
-    else
-      echo "A process is already running with PID ${existing_pid} from ${pid_file}."
-      echo "Refusing to stop it automatically because it does not look like a Rails server."
-      exit 1
-    fi
-  fi
-
-  echo "Removing stale server PID file: ${pid_file}"
-  rm -f "$pid_file"
-fi
-
-cleanup_stale_reactive_view_daemon_listeners
-
-echo "Syncing ReactiveView files..."
-bin/rails reactive_view:sync
-
-echo "Preparing database..."
-bin/rails db:prepare
-
-echo "Starting Rails server (ReactiveView daemon is managed automatically)..."
-
-exec bin/rails server "$@"
+echo "Starting ReactiveView dev orchestrator..."
+exec bundle exec reactiveview dev "$@"
