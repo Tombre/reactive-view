@@ -14,7 +14,7 @@ module ReactiveView
 
       ReactiveView::AutoloadIgnorer.ignore_pages_paths!(
         pages_path: pages_path,
-        autoloader: Rails.autoloaders.main,
+        autoloaders: [Rails.autoloaders.main, Rails.autoloaders.once],
         logger: ReactiveView.logger
       )
     rescue StandardError => e

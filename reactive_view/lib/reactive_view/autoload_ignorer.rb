@@ -3,8 +3,10 @@
 module ReactiveView
   module AutoloadIgnorer
     class << self
-      def ignore_pages_paths!(pages_path:, autoloader:, logger: ReactiveView.logger)
+      def ignore_pages_paths!(pages_path:, autoloaders:, logger: ReactiveView.logger)
         return { grouped_dirs: [], loader_files: [] } unless pages_path.exist?
+
+        autoloaders = Array(autoloaders).compact
 
         grouped_dirs = Dir.glob(pages_path.join('**/*')).select do |path|
           File.directory?(path) && File.basename(path).match?(/^\(.*\)$/)
@@ -15,14 +17,13 @@ module ReactiveView
         end
 
         grouped_dirs.each do |dir|
-          autoloader.ignore(dir)
+          autoloaders.each { |autoloader| autoloader.ignore(dir) }
           logger.debug "[ReactiveView] Ignoring grouped route directory for autoloading: #{dir}"
         end
 
-        loader_files.each do |file|
-          autoloader.ignore(file)
-          logger.debug "[ReactiveView] Ignoring loader file for autoloading: #{file}"
-        end
+        loader_glob = pages_path.join('**/*.loader.rb').to_s
+        autoloaders.each { |autoloader| autoloader.ignore(loader_glob) }
+        logger.debug "[ReactiveView] Ignoring loader file glob for autoloading: #{loader_glob}"
 
         if grouped_dirs.any? || loader_files.any?
           logger.info(
