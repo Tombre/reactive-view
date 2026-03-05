@@ -1,40 +1,56 @@
 # frozen_string_literal: true
 
+require 'thor'
+
 require_relative 'cli/dev_command'
 require_relative 'cli/doctor_command'
 
 module ReactiveView
   module CLI
-    class << self
-      def start(argv, stdout: $stdout, stderr: $stderr)
-        command = argv.shift
+    class Shell < Thor::Shell::Basic
+      def initialize(stdout:, stderr:)
+        super()
+        @stdout_override = stdout
+        @stderr_override = stderr
+      end
 
-        case command
-        when 'dev'
-          ReactiveView::CLI::DevCommand.new(argv, stdout: stdout, stderr: stderr).run
-        when 'doctor'
-          ReactiveView::CLI::DoctorCommand.new(argv, stdout: stdout, stderr: stderr).run
-        when nil, 'help', '--help', '-h'
-          stdout.puts(help_text)
-          0
-        else
-          stderr.puts("Unknown command: #{command}")
-          stderr.puts(help_text)
-          1
+      def stdout
+        @stdout_override || super
+      end
+
+      def stderr
+        @stderr_override || super
+      end
+    end
+
+    class App < Thor
+      stop_on_unknown_option! :dev, :doctor
+      default_task :help
+
+      class << self
+        def exit_on_failure?
+          true
         end
       end
 
-      private
+      desc 'dev', 'Start the ReactiveView development orchestrator'
+      def dev(*argv)
+        ReactiveView::CLI::DevCommand.new(argv, stdout: shell.stdout, stderr: shell.stderr).run
+      end
 
-      def help_text
-        <<~TEXT
-          Usage: reactiveview <command> [options]
+      desc 'doctor', 'Diagnose/fix local daemon startup conflicts'
+      def doctor(*argv)
+        ReactiveView::CLI::DoctorCommand.new(argv, stdout: shell.stdout, stderr: shell.stderr).run
+      end
+    end
 
-          Commands:
-            dev      Start the ReactiveView development orchestrator
-            doctor   Diagnose/fix local daemon startup conflicts
-            help     Show this help message
-        TEXT
+    class << self
+      def start(argv = ARGV, stdout: $stdout, stderr: $stderr, **config)
+        shell = Shell.new(stdout: stdout, stderr: stderr)
+        result = App.start(argv, config.merge(shell: shell))
+        result.is_a?(Integer) ? result : 0
+      rescue SystemExit => e
+        e.status
       end
     end
   end

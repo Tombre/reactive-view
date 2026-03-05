@@ -7,6 +7,7 @@ PATH
       faraday (~> 2.0)
       listen (~> 3.8)
       rails (>= 7.0.0)
+      thor (~> 1.4)
 
 GEM
   remote: https://rubygems.org/

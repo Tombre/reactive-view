@@ -47,6 +47,9 @@ Gem::Specification.new do |spec|
   # File watching in development
   spec.add_dependency 'listen', '~> 3.8'
 
+  # CLI framework
+  spec.add_dependency 'thor', '~> 1.4'
+
   # Development dependencies
   spec.add_development_dependency 'rake', '~> 13.0'
   spec.add_development_dependency 'rspec-rails', '~> 6.0'
