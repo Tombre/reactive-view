@@ -13,10 +13,13 @@ RSpec.describe 'ReactiveView routing', type: :e2e do
       page.wait_for_selector('text=Reactive Counter Demo')
 
       page.goto("#{e2e_base_url}/dashboard")
-      page.wait_for_selector('text=Dashboard Overview')
+      page.wait_for_selector('text=Sign in with passkey')
 
       page.goto("#{e2e_base_url}/login")
-      page.wait_for_selector('text=Admin Login')
+      page.wait_for_selector('text=Sign in with passkey')
+
+      page.goto("#{e2e_base_url}/register")
+      page.wait_for_selector('text=Create account')
 
       page.goto("#{e2e_base_url}/ai/chat")
       page.wait_for_selector('text=AI Chat')

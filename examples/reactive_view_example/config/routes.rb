@@ -14,4 +14,9 @@ Rails.application.routes.draw do
   #   GET /counter       -> app/pages/counter.tsx
   #   GET /users         -> app/pages/users/index.tsx
   #   GET /users/:id     -> app/pages/users/[id].tsx
+
+  if Rails.env.test?
+    get '/__e2e__/auth/sign_in', to: 'e2e_auth#sign_in'
+    get '/__e2e__/auth/sign_out', to: 'e2e_auth#sign_out'
+  end
 end

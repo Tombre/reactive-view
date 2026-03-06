@@ -3,6 +3,44 @@ require 'json'
 require 'net/http'
 
 RSpec.describe 'ReactiveView loaders', type: :e2e do
+  it 'shows auth entry links in the top navigation when signed out' do
+    with_page do |page|
+      page.goto("#{e2e_base_url}/")
+      page.wait_for_selector("a:has-text('Sign In')")
+      page.wait_for_selector("a:has-text('Create Account')")
+      expect(page.content).not_to include('Signed in as')
+    end
+  end
+
+  it 'shows signed-in controls in top navigation after test auth bootstrap' do
+    with_page do |page|
+      page.goto("#{e2e_base_url}/")
+      result = page.evaluate(
+        <<~JS
+          async () => {
+            const response = await fetch('/__e2e__/auth/sign_in?email=alice@example.com');
+            return response.json();
+          }
+        JS
+      )
+      expect(result['success']).to eq(true)
+
+      page.goto("#{e2e_base_url}/")
+      page.wait_for_selector('text=Signed in as Alice Johnson')
+      page.wait_for_selector("button:has-text('Sign out')")
+
+      sign_out_result = page.evaluate(
+        <<~JS
+          async () => {
+            const response = await fetch('/__e2e__/auth/sign_out');
+            return response.json();
+          }
+        JS
+      )
+      expect(sign_out_result['success']).to eq(true)
+    end
+  end
+
   it 'renders users data from the index loader' do
     with_page do |page|
       page.goto("#{e2e_base_url}/users")
@@ -15,25 +53,46 @@ RSpec.describe 'ReactiveView loaders', type: :e2e do
     end
   end
 
-  it 'renders grouped route loader data on login page' do
+  it 'does not redirect from users to login due to dashboard preloading' do
     with_page do |page|
-      page.goto("#{e2e_base_url}/login")
-      page.wait_for_selector('text=Admin Login')
-      page.wait_for_selector('text=Two-factor authentication is required')
-      page.wait_for_selector('text=Session timeout: 30 minutes')
+      page.goto("#{e2e_base_url}/users")
+      page.wait_for_selector('text=All Users')
+      page.wait_for_timeout(1000)
+      expect(URI(page.url).path).to eq('/users')
     end
   end
 
-  it 'renders analytics loader data on the dashboard route' do
+  it 'renders passkey login page from grouped route' do
     with_page do |page|
-      page.goto("#{e2e_base_url}/dashboard/analytics")
-      page.wait_for_selector('text=Viewing analytics for: week')
-      page.wait_for_selector('text=Page Views - Week')
-      page.wait_for_selector('text=Mon')
-      page.wait_for_selector('text=Top Pages')
-      page.wait_for_selector('text=/dashboard')
-      page.wait_for_selector('text=Traffic Sources')
-      page.wait_for_selector('text=Direct')
+      page.goto("#{e2e_base_url}/login")
+      page.wait_for_selector('text=Sign in with passkey')
+      page.wait_for_selector('text=Continue with passkey')
+    end
+  end
+
+  it 'redirects unauthenticated dashboard access to login' do
+    with_page do |page|
+      page.goto("#{e2e_base_url}/dashboard")
+      page.wait_for_selector('text=Sign in with passkey')
+      expect(URI(page.url).path).to eq('/login')
+    end
+  end
+
+  it 'redirects client-side dashboard navigation to login when signed out' do
+    with_page do |page|
+      page.goto("#{e2e_base_url}/")
+      page.wait_for_selector("a:has-text('Dashboard')")
+      page.click("a:has-text('Dashboard')")
+      page.wait_for_selector('text=Sign in with passkey')
+      expect(URI(page.url).path).to eq('/login')
+    end
+  end
+
+  it 'renders register page from grouped route' do
+    with_page do |page|
+      page.goto("#{e2e_base_url}/register")
+      page.wait_for_selector('text=Create account')
+      page.wait_for_selector('text=Create account with passkey')
     end
   end
 

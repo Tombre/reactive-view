@@ -1,20 +1,15 @@
 require_relative 'e2e_helper'
 
 RSpec.describe 'ReactiveView nested layouts', type: :e2e do
-  it 'keeps the dashboard layout while navigating child routes' do
+  it 'requires authentication before entering dashboard layout routes' do
     with_page do |page|
       page.goto("#{e2e_base_url}/dashboard")
-      page.wait_for_selector('text=Dashboard Overview')
-      page.wait_for_selector('text=Nested Layout Example')
-      page.wait_for_timeout(500)
+      page.wait_for_selector('text=Sign in with passkey')
+      expect(URI(page.url).path).to eq('/login')
 
-      page.click("a:has-text('Analytics')")
-      page.wait_for_selector('text=Analytics')
-      page.wait_for_selector('text=Nested Layout Example')
-
-      page.click("a:has-text('Settings')")
-      page.wait_for_selector('text=Settings')
-      page.wait_for_selector('text=Nested Layout Example')
+      page.goto("#{e2e_base_url}/dashboard/analytics")
+      page.wait_for_selector('text=Sign in with passkey')
+      expect(URI(page.url).path).to eq('/login')
     end
   end
 end

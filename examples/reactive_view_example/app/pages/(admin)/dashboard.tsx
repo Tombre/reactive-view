@@ -1,7 +1,10 @@
 import { A, useLocation, createSignal, Show, type ParentProps } from "@reactive-view/core";
+import { useForm, useLoaderData } from "#loaders/(admin)/dashboard";
 import "../_styles/tailwind.css";
 
 export default function DashboardLayout(props: ParentProps) {
+  const data = useLoaderData();
+  const [LogoutForm, logoutSubmission] = useForm("logout");
   const [sidebarOpen, setSidebarOpen] = createSignal(true);
   const location = useLocation();
 
@@ -20,6 +23,9 @@ export default function DashboardLayout(props: ParentProps) {
     }
     return `${base} text-gray-600 hover:bg-gray-100 hover:text-gray-900`;
   };
+
+  const userName = () => data()?.name || "User";
+  const userInitial = () => userName().trim().charAt(0).toUpperCase() || "U";
 
   return (
     <div class="flex min-h-screen bg-gray-50">
@@ -199,9 +205,20 @@ export default function DashboardLayout(props: ParentProps) {
           </button>
 
           <div class="flex items-center gap-4">
-            <span class="text-sm text-gray-500">Nested Layout Example</span>
+            <span class="text-sm text-gray-500">Signed in as {userName()}</span>
+            <LogoutForm class="inline">
+              <button
+                type="submit"
+                disabled={logoutSubmission.pending}
+                class="inline-flex items-center justify-center px-3 py-2 text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-60"
+              >
+                <Show when={logoutSubmission.pending} fallback="Sign out">
+                  Signing out...
+                </Show>
+              </button>
+            </LogoutForm>
             <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-semibold">
-              U
+              {userInitial()}
             </div>
           </div>
         </header>

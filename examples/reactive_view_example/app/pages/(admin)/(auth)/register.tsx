@@ -1,40 +1,40 @@
 import { A, Show, createSignal } from "@reactive-view/core";
 import { createJsonMutation, useAction } from "@reactive-view/core";
-import { useLoaderData } from "#loaders/(admin)/(auth)/login";
+import { useLoaderData } from "#loaders/(admin)/(auth)/register";
 import "../../_styles/tailwind.css";
 
-type BeginSignInInput = {
+type BeginRegisterInput = {
+  name: string;
   email: string;
 };
 
-type BeginSignInResult = {
+type BeginRegisterResult = {
   success: boolean;
   errors?: Record<string, string[]>;
-  public_key?: PublicKeyCredentialRequestOptionsJSON;
+  public_key?: PublicKeyCredentialCreationOptionsJSON;
   challenge?: string;
   challenge_hmac?: string;
 };
 
-type FinishSignInInput = {
-  email: string;
+type FinishRegisterInput = {
   credential_json: unknown;
   challenge: string;
   challenge_hmac: string;
 };
 
-type FinishSignInResult = {
+type FinishRegisterResult = {
   success: boolean;
   errors?: Record<string, string[]>;
 };
 
-const beginSignInAction = createJsonMutation<BeginSignInInput, BeginSignInResult>(
-  "(admin)/(auth)/login",
-  "begin_sign_in"
+const beginRegisterAction = createJsonMutation<BeginRegisterInput, BeginRegisterResult>(
+  "(admin)/(auth)/register",
+  "begin_register"
 );
 
-const finishSignInAction = createJsonMutation<FinishSignInInput, FinishSignInResult>(
-  "(admin)/(auth)/login",
-  "finish_sign_in"
+const finishRegisterAction = createJsonMutation<FinishRegisterInput, FinishRegisterResult>(
+  "(admin)/(auth)/register",
+  "finish_register"
 );
 
 function formatErrors(errors?: Record<string, string[]>): string | null {
@@ -44,11 +44,12 @@ function formatErrors(errors?: Record<string, string[]>): string | null {
   return messages.length > 0 ? messages.join(" ") : null;
 }
 
-export default function AdminAuthLogin() {
+export default function AdminAuthRegister() {
   const data = useLoaderData();
-  const beginSignIn = useAction(beginSignInAction);
-  const finishSignIn = useAction(finishSignInAction);
+  const beginRegister = useAction(beginRegisterAction);
+  const finishRegister = useAction(finishRegisterAction);
 
+  const [name, setName] = createSignal("");
   const [email, setEmail] = createSignal("");
   const [pending, setPending] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
@@ -59,18 +60,20 @@ export default function AdminAuthLogin() {
 
     return Boolean(
       window.PublicKeyCredential &&
-        "parseRequestOptionsFromJSON" in window.PublicKeyCredential &&
-        typeof navigator.credentials?.get === "function"
+        "parseCreationOptionsFromJSON" in window.PublicKeyCredential &&
+        typeof navigator.credentials?.create === "function"
     );
   };
 
-  const handleSignIn = async (event: SubmitEvent) => {
+  const handleCreateAccount = async (event: SubmitEvent) => {
     event.preventDefault();
     setError(null);
 
+    const normalizedName = name().trim();
     const normalizedEmail = email().trim().toLowerCase();
-    if (!normalizedEmail) {
-      setError("Email is required");
+
+    if (!normalizedName || !normalizedEmail) {
+      setError("Name and email are required");
       return;
     }
 
@@ -82,42 +85,41 @@ export default function AdminAuthLogin() {
     setPending(true);
 
     try {
-      const beginResult = await beginSignIn({ email: normalizedEmail });
-      const beginPayload = beginResult as BeginSignInResult;
+      const beginResult = await beginRegister({
+        name: normalizedName,
+        email: normalizedEmail,
+      });
+      const beginPayload = beginResult as BeginRegisterResult;
 
       if (!beginPayload.success || !beginPayload.public_key || !beginPayload.challenge || !beginPayload.challenge_hmac) {
-        setError(formatErrors(beginPayload.errors) || "Could not start sign-in");
+        setError(formatErrors(beginPayload.errors) || "Could not start account creation");
         return;
       }
 
-      const requestOptions = PublicKeyCredential.parseRequestOptionsFromJSON(beginPayload.public_key);
-      const credential = await navigator.credentials.get({ publicKey: requestOptions });
+      const createOptions = PublicKeyCredential.parseCreationOptionsFromJSON(beginPayload.public_key);
+      const credential = await navigator.credentials.create({ publicKey: createOptions });
       if (!(credential instanceof PublicKeyCredential)) {
-        setError("Passkey sign-in was cancelled");
+        setError("Passkey registration was cancelled");
         return;
       }
 
-      const credentialJson = credential.toJSON();
-
-      const finishResult = await finishSignIn({
-        email: normalizedEmail,
-        credential_json: credentialJson,
+      const finishResult = await finishRegister({
+        credential_json: credential.toJSON(),
         challenge: beginPayload.challenge,
         challenge_hmac: beginPayload.challenge_hmac,
       });
-
-      const finishPayload = finishResult as FinishSignInResult;
+      const finishPayload = finishResult as FinishRegisterResult;
 
       if (!finishPayload.success) {
-        setError(formatErrors(finishPayload.errors) || "Sign-in failed");
+        setError(formatErrors(finishPayload.errors) || "Could not finish account creation");
       }
     } catch (caught) {
       if (caught instanceof DOMException && caught.name === "NotAllowedError") {
-        setError("Passkey sign-in was cancelled");
+        setError("Passkey registration was cancelled");
         return;
       }
 
-      const message = caught instanceof Error ? caught.message : "Sign-in failed";
+      const message = caught instanceof Error ? caught.message : "Could not create account";
       setError(message);
     } finally {
       setPending(false);
@@ -128,14 +130,28 @@ export default function AdminAuthLogin() {
     <div class="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-10">
       <div class="w-full max-w-md">
         <div class="mb-8 text-center">
-          <h1 class="text-3xl font-semibold text-gray-900">Sign in with passkey</h1>
-          <p class="mt-2 text-sm text-gray-600">
-            Enter your email, then confirm with your passkey.
-          </p>
+          <h1 class="text-3xl font-semibold text-gray-900">Create account</h1>
+          <p class="mt-2 text-sm text-gray-600">Register with your email and create your first passkey.</p>
         </div>
 
         <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-          <form onSubmit={handleSignIn} class="space-y-4">
+          <form onSubmit={handleCreateAccount} class="space-y-4">
+            <div>
+              <label for="name" class="block mb-2 font-medium text-gray-700 text-sm">
+                Full name
+              </label>
+              <input
+                id="name"
+                type="text"
+                value={name()}
+                onInput={(event) => setName(event.currentTarget.value)}
+                placeholder="Alex Johnson"
+                autocomplete="name"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
             <div>
               <label for="email" class="block mb-2 font-medium text-gray-700 text-sm">
                 Email
@@ -146,7 +162,7 @@ export default function AdminAuthLogin() {
                 value={email()}
                 onInput={(event) => setEmail(event.currentTarget.value)}
                 placeholder="you@example.com"
-                autocomplete="email webauthn"
+                autocomplete="email"
                 required
                 class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
@@ -164,7 +180,7 @@ export default function AdminAuthLogin() {
                 disabled={pending()}
                 class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-60"
               >
-                <Show when={pending()} fallback="Continue with passkey">
+                <Show when={pending()} fallback="Create account with passkey">
                   Waiting for passkey...
                 </Show>
               </button>
@@ -172,9 +188,9 @@ export default function AdminAuthLogin() {
           </form>
 
           <p class="mt-5 text-sm text-center text-gray-600">
-            New here?{" "}
-            <A href="/register" class="text-blue-700 hover:text-blue-800 font-medium">
-              Create an account
+            Already have an account?{" "}
+            <A href="/login" class="text-blue-700 hover:text-blue-800 font-medium">
+              Sign in
             </A>
           </p>
         </div>

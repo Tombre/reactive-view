@@ -116,7 +116,7 @@ async function fetchLoaderData(loaderPath, params) {
     if (ssrCookies) {
         headers["Cookie"] = ssrCookies;
     }
-    return requestLoaderData(url, headers);
+    return requestLoaderData(url, headers, "response");
 }
 /**
  * Create a cached query function for a loader.
@@ -188,11 +188,11 @@ export function useLoaderData(route, explicitParams) {
         if (ssrCookies) {
             headers["Cookie"] = ssrCookies;
         }
-        return requestLoaderData(url, headers);
+        return requestLoaderData(url, headers, "window");
     });
     return data;
 }
-async function requestLoaderData(url, headers) {
+async function requestLoaderData(url, headers, redirectHandling) {
     let lastError = null;
     let requestUrl = new URL(url.toString());
     for (let attempt = 1; attempt <= LOADER_REQUEST_MAX_ATTEMPTS; attempt += 1) {
@@ -231,6 +231,14 @@ async function requestLoaderData(url, headers) {
         try {
             const data = parseResponseJson(response, contentType, bodyText);
             if (!response.ok) {
+                const redirectPath = extractRedirectPath(data);
+                if (redirectPath && redirectHandling === "response") {
+                    return createRedirectResponse(redirectPath);
+                }
+                if (redirectPath && redirectHandling === "window" && !isServer) {
+                    window.location.assign(redirectPath);
+                    return new Promise(() => { });
+                }
                 throw new Error(data.error ||
                     `Loader request failed: ${response.status} ${response.statusText}`);
             }
@@ -294,6 +302,24 @@ function parseResponseJson(response, contentType, bodyText) {
     catch {
         throw new Error(`Invalid JSON response from ${response.url}. Body starts with: ${bodyText.slice(0, 120)}`);
     }
+}
+function extractRedirectPath(data) {
+    if (!data || typeof data !== "object") {
+        return null;
+    }
+    const redirectValue = data.redirect;
+    if (typeof redirectValue !== "string" || redirectValue.length === 0) {
+        return null;
+    }
+    return redirectValue;
+}
+function createRedirectResponse(path) {
+    return new Response(null, {
+        status: 302,
+        headers: {
+            Location: path
+        }
+    });
 }
 function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
