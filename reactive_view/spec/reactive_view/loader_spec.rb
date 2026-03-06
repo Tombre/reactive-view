@@ -90,6 +90,34 @@ RSpec.describe ReactiveView::Loader do
 
       expect(loader_class._params_shapes[:update]).to eq(shape_class)
     end
+
+    it 'defines and assigns an inline shape for an action' do
+      loader_class.params_shape :update do
+        param :name
+      end
+
+      shape_name = loader_class._params_shapes[:update]
+      expect(shape_name).to eq(:__reactive_view_params_update)
+      expect(loader_class._shapes[shape_name]).to be < ReactiveView::Shape
+    end
+
+    it 'supports inline shape with explicit name' do
+      loader_class.params_shape :update, :update_params do
+        param :name
+      end
+
+      expect(loader_class._params_shapes[:update]).to eq(:update_params)
+      expect(loader_class._shapes[:update_params]).to be < ReactiveView::Shape
+    end
+
+    it 'defaults to :load when only a block is provided' do
+      loader_class.params_shape do
+        param :id, :integer
+      end
+
+      expect(loader_class._params_shapes[:load]).to eq(:__reactive_view_params_load)
+      expect(loader_class._shapes[:__reactive_view_params_load]).to be < ReactiveView::Shape
+    end
   end
 
   describe '.response_shape' do
@@ -113,6 +141,43 @@ RSpec.describe ReactiveView::Loader do
       loader_class.response_shape :load, shape_class
 
       expect(loader_class._response_shapes[:load]).to eq(shape_class)
+    end
+
+    it 'defines and assigns an inline response shape for an action' do
+      loader_class.response_shape :logout do
+        param :success, :boolean
+      end
+
+      shape_name = loader_class._response_shapes[:logout]
+      expect(shape_name).to eq(:__reactive_view_response_logout)
+      expect(loader_class._shapes[shape_name]).to be < ReactiveView::Shape
+    end
+
+    it 'supports inline response shape with explicit name' do
+      loader_class.response_shape :logout, :logout_result do
+        param :success, :boolean
+      end
+
+      expect(loader_class._response_shapes[:logout]).to eq(:logout_result)
+      expect(loader_class._shapes[:logout_result]).to be < ReactiveView::Shape
+    end
+
+    it 'defaults inline response shape to :load when only a block is provided' do
+      loader_class.response_shape do
+        param :authenticated, :boolean
+      end
+
+      expect(loader_class._response_shapes[:load]).to eq(:__reactive_view_response_load)
+      expect(loader_class._shapes[:__reactive_view_response_load]).to be < ReactiveView::Shape
+    end
+
+    it 'supports inline response shape with stream mode' do
+      loader_class.response_shape :generate, mode: :stream do
+        param :word, :string
+      end
+
+      expect(loader_class._response_shapes[:generate]).to eq(:__reactive_view_response_generate)
+      expect(loader_class.response_shape_mode(:generate)).to eq(:stream)
     end
 
     it 'supports response_shape in shape-first order' do
@@ -140,6 +205,12 @@ RSpec.describe ReactiveView::Loader do
       expect do
         loader_class.response_shape :load, :load, mode: :invalid
       end.to raise_error(ArgumentError, /mode must be :single or :stream/)
+    end
+
+    it 'raises when no block and missing shape reference' do
+      expect do
+        loader_class.response_shape :load
+      end.to raise_error(ArgumentError, /requires both action and shape reference unless a block is given/)
     end
   end
 

@@ -26,6 +26,9 @@ module ReactiveView
       # Instantiate and configure the loader
       loader = build_loader(loader_class)
 
+      # Validate and coerce params for the load action when configured
+      validate_and_coerce_action_params!(loader_class, loader, :load)
+
       # Call the load method
       data = loader.load
 
@@ -66,6 +69,8 @@ module ReactiveView
         }, status: :not_found
       end
 
+      validate_and_coerce_action_params!(loader_class, loader, mutation_method)
+
       # Call the mutation method and get the result
       result = loader.public_send(mutation_method)
 
@@ -73,6 +78,8 @@ module ReactiveView
       render_mutation_result(result)
     rescue LoaderNotFoundError => e
       render json: { success: false, error: e.message }, status: :not_found
+    rescue ValidationError => e
+      render json: { success: false, error: e.message }, status: :unprocessable_entity
     rescue ArgumentError => e
       # Wrong number of arguments or other argument issues
       handle_argument_error(e, mutation_name)
@@ -101,6 +108,8 @@ module ReactiveView
         response.stream.close
         return
       end
+
+      validate_and_coerce_action_params!(loader_class, loader, mutation_method)
 
       result = loader.public_send(mutation_method)
 
@@ -149,6 +158,12 @@ module ReactiveView
       end
     rescue LoaderNotFoundError => e
       response.headers['Content-Type'] = 'application/json'
+      response.status = :not_found
+      response.stream.write({ error: e.message }.to_json)
+      response.stream.close
+    rescue ValidationError => e
+      response.headers['Content-Type'] = 'application/json'
+      response.status = :unprocessable_entity
       response.stream.write({ error: e.message }.to_json)
       response.stream.close
     rescue StandardError => e
@@ -223,6 +238,17 @@ module ReactiveView
     # Excludes internal routing params
     def loader_params
       params.to_unsafe_h.except('controller', 'action', 'path', '_mutation')
+    end
+
+    def validate_and_coerce_action_params!(loader_class, loader, action)
+      shape_class = loader_class.resolve_params_shape(action)
+      return unless shape_class
+
+      result = shape_class.call(loader.params)
+      raise ValidationError, result.errors.inspect unless result.valid?
+
+      merged_params = loader.params.to_unsafe_h.merge(result.data.deep_stringify_keys)
+      loader.params = ActionController::Parameters.new(merged_params)
     end
 
     def validate_response!(loader_class, data)
