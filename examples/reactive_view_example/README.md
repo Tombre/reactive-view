@@ -161,15 +161,17 @@ Example loader (`app/pages/users/[id].loader.rb`):
 module Pages
   module Users
     class IdLoader < ReactiveView::Loader
-      shape :load do
+      params_shape do
+        param :id, :integer
+      end
+
+      response_shape do
         hash :user do
           param :id, :integer
           param :name
           param :email
         end
       end
-
-      response_shape :load, :load
 
       def load
         {

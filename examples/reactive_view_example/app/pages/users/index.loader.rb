@@ -3,11 +3,8 @@
 module Pages
   module Users
     class IndexLoader < ReactiveView::Loader
-      # Define the type shape for this loader's response
-      # This is used to:
-      # 1. Generate TypeScript types for the frontend
-      # 2. Validate the response in development/test modes
-      shape :load do
+      # Inline response shape definition for the load action.
+      response_shape do
         collection :users do
           param :id, :integer
           param :name
@@ -15,8 +12,6 @@ module Pages
         end
         param :total, :integer
       end
-
-      response_shape :load, :load
 
       # Load the data for this page
       # This is called when SolidStart requests data during SSR

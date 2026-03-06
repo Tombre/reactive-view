@@ -3,23 +3,18 @@
 module Pages
   module Ai
     class ChatLoader < ReactiveView::Loader
-      shape :load do
-        param :greeting, ReactiveView::Types::String
-        param :model, ReactiveView::Types::String
+      response_shape do
+        param :greeting, :string
+        param :model, :string
       end
 
-      shape :generate do
-        param :prompt, ReactiveView::Types::String
+      params_shape :generate do
+        param :prompt, :string
       end
 
-      shape :generate_response do
-        param :word, ReactiveView::Types::String
+      response_shape :generate, :generate_response, mode: :stream do
+        param :word, :string
       end
-
-      response_shape :generate_response, :generate, mode: :stream
-
-      response_shape :load, :load
-      params_shape :generate, :generate
 
       def load
         {
@@ -29,7 +24,7 @@ module Pages
       end
 
       def generate
-        prompt = shapes.generate.call!(params).data[:prompt]
+        prompt = params[:prompt]
 
         render_stream do |out|
           response_text = generate_response(prompt)
