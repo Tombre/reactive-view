@@ -17,10 +17,13 @@ RSpec.describe 'ReactiveView example app', type: :e2e do
   it 'renders nested and grouped routes' do
     with_page do |page|
       page.goto("#{e2e_base_url}/dashboard")
-      page.wait_for_selector('text=Dashboard Overview')
+      page.wait_for_selector('text=Sign in with passkey')
 
       page.goto("#{e2e_base_url}/login")
-      page.wait_for_selector('text=Admin Login')
+      page.wait_for_selector('text=Sign in with passkey')
+
+      page.goto("#{e2e_base_url}/register")
+      page.wait_for_selector('text=Create account')
     end
   end
 end

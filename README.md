@@ -135,7 +135,8 @@ bin/dev
 bundle exec reactiveview dev
 ```
 
-If startup fails due to stale locks, pid files, or occupied daemon ports, run:
+`bundle exec reactiveview dev` now runs a quiet `doctor --fix` preflight automatically.
+If startup still fails, run doctor manually for full diagnostics:
 
 ```bash
 bundle exec reactiveview doctor
@@ -354,12 +355,13 @@ docker compose build
 docker compose run --rm app bin/e2e
 ```
 
-`bin/reactive-view-dev` shells out to `bundle exec reactiveview dev`, which runs preflight checks, syncs generated files, and keeps the Node daemon tied to the orchestrator lifecycle.
+`bin/reactive-view-dev` shells out to `bundle exec reactiveview dev`, which runs preflight checks (including safe automatic conflict cleanup), syncs generated files, and keeps the Node daemon tied to the orchestrator lifecycle.
 
 ### ReactiveView CLI
 
 ```bash
 # Start and supervise the development daemon
+# (runs quiet safe cleanup first; set REACTIVE_VIEW_DEV_SKIP_DOCTOR_FIX=1 to skip)
 bundle exec reactiveview dev
 
 # Diagnose local startup conflicts (ports, stale pids, locks)

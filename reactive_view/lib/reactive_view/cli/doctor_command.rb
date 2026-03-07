@@ -13,11 +13,16 @@ module ReactiveView
       FOREMAN_DEFAULT_RAILS_PORT = 5000
       SHUTDOWN_TIMEOUT_SECONDS = 3
 
-      def initialize(argv, stdout: $stdout, stderr: $stderr)
+      AUTO_FIX_WARNING_MESSAGE = '[ReactiveView] Warning: found startup conflicts; resolving automatically...'
+      AUTO_FIX_FAILURE_MESSAGE = '[ReactiveView] Automatic startup cleanup could not resolve all issues.'
+
+      def initialize(argv, stdout: $stdout, stderr: $stderr, boot_rails_environment: true, quiet: false)
         @argv = argv.dup
         @stdout = stdout
         @stderr = stderr
         @options = { fix: false }
+        @boot_rails_environment = boot_rails_environment
+        @quiet = quiet
       end
 
       # @return [Integer] process exit code
@@ -26,27 +31,36 @@ module ReactiveView
 
         return 0 if @options[:help]
 
-        boot_rails_environment!
+        boot_rails_environment! if @boot_rails_environment
 
         report = collect_report
-        print_report(report)
+        print_report(report) unless @quiet
 
         if @options[:fix]
+          @stdout.puts(AUTO_FIX_WARNING_MESSAGE) if @quiet && report[:issues].any?(&:fixable?)
+
           fix_passes = 0
 
           while report[:issues].any?(&:fixable?) && fix_passes < 3
             apply_fixes(report)
             fix_passes += 1
 
-            @stdout.puts
-            @stdout.puts '[ReactiveView] Re-running checks after fixes...'
+            unless @quiet
+              @stdout.puts
+              @stdout.puts '[ReactiveView] Re-running checks after fixes...'
+            end
 
             report = collect_report
-            print_report(report)
+            print_report(report) unless @quiet
           end
         elsif report[:issues].any?(&:fixable?)
           @stdout.puts
           @stdout.puts '[ReactiveView] Run `bundle exec reactiveview doctor --fix` to apply safe automatic cleanup.'
+        end
+
+        if @quiet && report[:blocking_issues].any?
+          @stdout.puts(AUTO_FIX_FAILURE_MESSAGE)
+          print_report(report)
         end
 
         report[:blocking_issues].empty? ? 0 : 1
@@ -219,14 +233,16 @@ module ReactiveView
         fixes = report[:issues].map(&:fix).compact.uniq
         return if fixes.empty?
 
-        @stdout.puts
-        @stdout.puts '[ReactiveView] Applying fixes...'
+        unless @quiet
+          @stdout.puts
+          @stdout.puts '[ReactiveView] Applying fixes...'
+        end
 
         fixes.each do |fix|
           case fix[:type]
           when :remove_file
             remove_file(fix[:path])
-            @stdout.puts "- removed #{fix[:path]}"
+            @stdout.puts "- removed #{fix[:path]}" unless @quiet
           when :terminate_pid
             terminate_reactive_view_process(fix[:pid])
           end
@@ -238,12 +254,12 @@ module ReactiveView
 
         command = command_for_pid(pid)
         unless reactive_view_command?(command)
-          @stdout.puts "- skipped PID #{pid}; not a ReactiveView process (#{command})"
+          @stdout.puts "- skipped PID #{pid}; not a ReactiveView process (#{command})" unless @quiet
           return
         end
 
         terminate_pid(pid)
-        @stdout.puts "- stopped PID #{pid}"
+        @stdout.puts "- stopped PID #{pid}" unless @quiet
       end
 
       def terminate_pid(pid)

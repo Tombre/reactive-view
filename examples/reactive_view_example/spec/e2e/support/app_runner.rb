@@ -54,6 +54,7 @@ module E2E
       )
 
       wait_for_http("http://#{APP_HOST}:#{app_port}/up")
+      wait_for_http("http://#{APP_HOST}:#{app_port}/")
     end
 
     def stop

@@ -23,6 +23,7 @@ obvious. The new model moves process management into an explicit CLI command.
 - Boots Rails environment to read app configuration.
 - Verifies single-instance lock.
 - Ensures daemon port is free.
+- Runs a quiet safe cleanup preflight equivalent to `reactiveview doctor --fix`.
 - Loads loaders and runs `ReactiveView::FileSync.sync_all`.
 - Starts file watcher (`ReactiveView::FileSync.start_watching`).
 - Spawns `npx reactiveview dev --port <configured-port>` as child process.

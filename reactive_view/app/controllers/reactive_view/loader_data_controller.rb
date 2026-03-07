@@ -283,6 +283,13 @@ module ReactiveView
     end
 
     def handle_loader_error(error)
+      if error.respond_to?(:redirect_path)
+        return render json: {
+          error: error.message,
+          redirect: error.redirect_path
+        }, status: :unauthorized
+      end
+
       ReactiveView.logger.error "[ReactiveView] Loader error: #{error.message}"
       ReactiveView.logger.error error.backtrace.join("\n") if error.backtrace
 
