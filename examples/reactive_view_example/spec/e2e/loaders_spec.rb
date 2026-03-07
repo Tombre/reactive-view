@@ -1,4 +1,6 @@
 require_relative 'e2e_helper'
+require 'json'
+require 'net/http'
 
 RSpec.describe 'ReactiveView loaders', type: :e2e do
   it 'renders users data from the index loader' do
@@ -33,5 +35,12 @@ RSpec.describe 'ReactiveView loaders', type: :e2e do
       page.wait_for_selector('text=Traffic Sources')
       page.wait_for_selector('text=Direct')
     end
+  end
+
+  it 'returns 422 when load params are missing for a typed loader' do
+    response = Net::HTTP.get_response(URI("#{e2e_base_url}/_reactive_view/loaders/users/%5Bid%5D/load"))
+
+    expect(response.code).to eq('422')
+    expect(JSON.parse(response.body)['error']).to include("doesn't conform schema")
   end
 end

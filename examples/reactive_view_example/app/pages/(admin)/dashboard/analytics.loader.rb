@@ -4,7 +4,7 @@ module Pages
   module Admin
     module Dashboard
       class AnalyticsLoader < ReactiveView::Loader
-        shape :load do
+        response_shape do
           collection :chart_data do
             param :label
             param :value, :integer
@@ -20,8 +20,6 @@ module Pages
           param :total_views, :integer
           param :period
         end
-
-        response_shape :load, :load
 
         def load
           period = params[:period] || 'week'

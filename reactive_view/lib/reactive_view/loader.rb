@@ -154,18 +154,34 @@ module ReactiveView
 
       # Assign a shape as the params validator for an action.
       # The shape will be used to validate and coerce incoming params
-      # when the action is called as a mutation.
+      # before the action method is invoked.
       #
-      # @param action [Symbol] The action (mutation) name
-      # @param shape_ref [Symbol, Class] A symbol key referencing a shape in `_shapes`,
-      #   or a Shape class directly
+      # @param action [Symbol] The action name (defaults to :load when omitted)
+      # @param shape_ref [Symbol, Class, nil] A symbol key referencing a shape in `_shapes`,
+      #   or a Shape class directly. When omitted and a block is given, an inline
+      #   shape is defined and auto-named.
       #
       # @example Using a symbol key
       #   params_shape :update, :update
       #
       # @example Using a Shape class
       #   params_shape :update, UserUpdateShape
-      def params_shape(action, shape_ref)
+      #
+      # @example Defining an inline params shape for :load
+      #   params_shape do
+      #     param :id, :integer
+      #   end
+      def params_shape(action = :load, shape_ref = nil, &block)
+        action = normalize_action_name(action)
+
+        if block_given?
+          shape_name = register_inline_shape!(:params, action, shape_ref, &block)
+          self._params_shapes = _params_shapes.merge(action => shape_name)
+          return
+        end
+
+        raise ArgumentError, 'params_shape requires a shape reference or a block' if shape_ref.nil?
+
         self._params_shapes = _params_shapes.merge(action => shape_ref)
       end
 
@@ -173,8 +189,8 @@ module ReactiveView
       # The shape will be used to validate outgoing response data
       # and to generate TypeScript interfaces for the loader data.
       #
-      # @param arg1 [Symbol, Class] Action name or shape reference (both orders supported)
-      # @param arg2 [Symbol, Class] Shape reference or action name
+      # @param arg1 [Symbol, Class, nil] Action name or shape reference (both orders supported)
+      # @param arg2 [Symbol, Class, nil] Shape reference or action name
       # @param mode [Symbol] :single (default) or :stream
       # @return [void]
       #
@@ -192,11 +208,25 @@ module ReactiveView
       #
       # @example Using a Shape class
       #   response_shape :load, UserResponseShape
-      def response_shape(arg1, arg2, mode: :single)
+      #
+      # @example Defining an inline response shape for :load
+      #   response_shape do
+      #     param :authenticated, :boolean
+      #   end
+      def response_shape(arg1 = nil, arg2 = nil, mode: :single, &block)
         mode = mode.to_sym
         raise ArgumentError, 'response_shape mode must be :single or :stream' unless %i[single stream].include?(mode)
 
-        action, shape_ref = resolve_response_shape_arguments(arg1, arg2)
+        action, shape_ref = if block_given?
+                              resolve_inline_response_shape_arguments(arg1, arg2, &block)
+                            else
+                              if arg1.nil? || arg2.nil?
+                                raise ArgumentError,
+                                      'response_shape requires both action and shape reference unless a block is given'
+                              end
+
+                              resolve_response_shape_arguments(arg1, arg2)
+                            end
 
         self._response_shapes = _response_shapes.merge(action => shape_ref)
         self._response_shape_modes = _response_shape_modes.merge(action => mode)
@@ -243,6 +273,38 @@ module ReactiveView
       end
 
       private
+
+      def normalize_action_name(action)
+        return :load if action.nil?
+
+        action.to_sym
+      end
+
+      def register_inline_shape!(kind, action, shape_name = nil, &block)
+        if shape_name
+          raise ArgumentError, "#{kind}_shape block form expects shape name as a Symbol" unless shape_name.is_a?(Symbol)
+        else
+          shape_name = inferred_inline_shape_name(kind, action)
+        end
+
+        shape(shape_name, &block)
+        shape_name
+      end
+
+      def inferred_inline_shape_name(kind, action)
+        "__reactive_view_#{kind}_#{action}".to_sym
+      end
+
+      def resolve_inline_response_shape_arguments(arg1, arg2, &block)
+        if arg1.nil? && arg2
+          raise ArgumentError, 'response_shape block form expects action first, then optional shape name'
+        end
+
+        action = normalize_action_name(arg1)
+        shape_name = register_inline_shape!(:response, action, arg2, &block)
+
+        [action, shape_name]
+      end
 
       def resolve_response_shape_arguments(arg1, arg2)
         arg1_is_shape_ref = arg1.is_a?(Class) && arg1 <= ReactiveView::Shape

@@ -3,8 +3,13 @@
 module Pages
   module Users
     class IdLoader < ReactiveView::Loader
-      # Define the type shape for this loader's response
-      shape :load do
+      # Validate and coerce params for the load action.
+      params_shape do
+        param :id, :integer
+      end
+
+      # Define the type shape for this loader's response.
+      response_shape do
         hash :user do
           param :id, :integer
           param :name
@@ -13,20 +18,17 @@ module Pages
         end
       end
 
-      # Define the shape for update mutation params
-      shape :update do
+      # Validate and coerce params for update mutation.
+      params_shape :update do
+        param :id, :integer
         param :name
         param :email
       end
 
-      # Define the shape for delete mutation (no params needed)
-      shape :delete do
+      # Validate and coerce params for delete mutation.
+      params_shape :delete do
+        param :id, :integer
       end
-
-      # Assign shapes to actions
-      response_shape :load, :load
-      params_shape :update, :update
-      params_shape :delete, :delete
 
       # Load the data for this page
       def load
@@ -42,9 +44,7 @@ module Pages
 
       # Update the user
       def update
-        result = shapes.update.call!(params)
-
-        if user.update(result.data)
+        if user.update(name: params[:name], email: params[:email])
           render_success(
             user: {
               id: user.id,

@@ -581,7 +581,7 @@ export default function BlogLayout(props: RouteSectionProps) {
 
 ## Type System
 
-ReactiveView uses [Dry::Types](https://dry-rb.org/gems/dry-types/) for type definitions. Use the `shape` method to define named type signatures, then assign them to actions with `params_shape` and `response_shape`:
+ReactiveView uses [Dry::Types](https://dry-rb.org/gems/dry-types/) for type definitions. You can define named shapes with `shape` and assign them with `params_shape` / `response_shape`:
 
 ```ruby
 shape :load do
@@ -598,7 +598,25 @@ end
 response_shape :load, :load
 ```
 
-The `shape` method registers a named shape definition. Use `response_shape` to assign a shape as the response type for an action, and `params_shape` to assign it as the params type for a mutation. Symbol shortcuts (`:integer`, `:string`, `:boolean`, `:float`, `:date`, `:date_time`, `:time`, `:any`) and the `collection`/`hash` DSL helpers make definitions concise:
+You can also define shapes inline directly on `params_shape` / `response_shape` (with optional explicit shape names):
+
+```ruby
+# Implicit :load action with auto-generated shape names
+response_shape do
+  param :authenticated, :boolean
+end
+
+params_shape do
+  param :name
+end
+
+# Explicit action + explicit shape name
+response_shape :logout, :logout_result do
+  param :success, :boolean
+end
+```
+
+`response_shape` sets the response type for an action, and `params_shape` sets the input params type for an action. Symbol shortcuts (`:integer`, `:string`, `:boolean`, `:float`, `:date`, `:date_time`, `:time`, `:any`) and the `collection`/`hash` DSL helpers make definitions concise:
 
 ```ruby
 # Response shape for the load action
@@ -774,6 +792,8 @@ module Pages
   end
 end
 ```
+
+Any action with `params_shape` assigned (including `load`) is validated and coerced before the action runs. Invalid input returns `422 Unprocessable Entity`.
 
 The `shapes.update` call returns the Shape **class** (not validated data). Call `.call!(params)` for raising validation or `.call(params)` for non-raising. The result is a Shape instance with `.valid?`, `.data`, and `.errors`:
 
