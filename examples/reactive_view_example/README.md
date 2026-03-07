@@ -36,11 +36,17 @@ Start the app (installs dependencies, prepares the database, runs setup if neede
 bin/start
 ```
 
-Already set up and want to run processes manually?
+Or, from within this app, run all dev processes via Procfile.dev:
+
+```bash
+bin/dev
+```
+
+Already set up and want to run processes manually (without Procfile)?
 
 ```bash
 # Terminal 1: Rails
-bin/dev
+bin/web
 
 # Terminal 2: ReactiveView daemon orchestrator
 bin/reactive-view-dev

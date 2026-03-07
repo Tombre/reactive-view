@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+# Starts only the Rails web process.
+
+set -euo pipefail
+
+exec bin/rails server -b 0.0.0.0 -p "${PORT:-3000}" "$@"

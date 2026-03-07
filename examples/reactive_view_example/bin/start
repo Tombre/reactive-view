@@ -26,41 +26,5 @@ bin/rails reactive_view:sync 2>/dev/null || true
 echo "Preparing database..."
 bin/rails db:prepare
 
-echo "Starting ReactiveView example (Rails + daemon)..."
-
-bin/dev "$@" &
-web_pid=$!
-
-bin/reactive-view-dev &
-daemon_pid=$!
-
-cleanup() {
-  for pid in "$web_pid" "$daemon_pid"; do
-    if kill -0 "$pid" 2>/dev/null; then
-      kill "$pid" 2>/dev/null || true
-    fi
-  done
-
-  wait "$web_pid" 2>/dev/null || true
-  wait "$daemon_pid" 2>/dev/null || true
-}
-
-trap cleanup INT TERM EXIT
-
-exit_status=0
-
-while true; do
-  if ! kill -0 "$web_pid" 2>/dev/null; then
-    wait "$web_pid" || exit_status=$?
-    break
-  fi
-
-  if ! kill -0 "$daemon_pid" 2>/dev/null; then
-    wait "$daemon_pid" || exit_status=$?
-    break
-  fi
-
-  sleep 1
-done
-
-exit "$exit_status"
+echo "Starting ReactiveView example (Procfile via bin/dev)..."
+exec bin/dev "$@"

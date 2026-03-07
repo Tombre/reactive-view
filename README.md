@@ -168,11 +168,8 @@ bin/rails db:create db:migrate db:seed
 # Setup ReactiveView (creates .reactive_view directory, installs required root npm packages)
 bin/rails reactive_view:setup
 
-# Start Rails
+# Start Rails + daemon via Procfile.dev
 bin/dev
-
-# Start ReactiveView daemon (separate terminal)
-bundle exec reactiveview dev
 ```
 
 Visit http://localhost:3000 to see the example application.

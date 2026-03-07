@@ -2,7 +2,8 @@
 
 # Starts the ReactiveView daemon orchestrator.
 #
-# Run this in a separate terminal from `bin/dev` during development.
+# `bin/dev` already starts this via Procfile.dev.
+# Run this directly only when you are starting Rails separately with `bin/web`.
 
 set -euo pipefail
 
@@ -12,4 +13,8 @@ if [ ! -d ".reactive_view" ]; then
 fi
 
 echo "Starting ReactiveView dev orchestrator..."
+
+echo "Running ReactiveView doctor --fix preflight..."
+bundle exec reactiveview doctor --fix || true
+
 exec bundle exec reactiveview dev "$@"

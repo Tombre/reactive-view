@@ -1,9 +1,72 @@
 #!/usr/bin/env bash
 
-# Starts only the Rails web process.
-#
-# Run `bin/reactive-view-dev` in a second terminal to start the daemon.
+# Starts all development processes via Procfile.dev (Rails + ReactiveView daemon).
 
 set -euo pipefail
 
-exec bin/rails server -b 0.0.0.0 -p "${PORT:-3000}" "$@"
+port_in_use() {
+  local port="$1"
+  lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1
+}
+
+next_available_port() {
+  local start="$1"
+  local blocked_port="${2:-}"
+  local port
+
+  for ((port = start; port <= start + 200; port += 1)); do
+    if [ -n "$blocked_port" ] && [ "$port" -eq "$blocked_port" ]; then
+      continue
+    fi
+
+    if ! port_in_use "$port"; then
+      printf '%s\n' "$port"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+if command -v forman >/dev/null 2>&1; then
+  DEV_RUNNER="forman"
+elif command -v foreman >/dev/null 2>&1; then
+  DEV_RUNNER="foreman"
+else
+  echo "Neither 'forman' nor 'foreman' is installed." >&2
+  echo "Install one of them and run this command again." >&2
+  exit 1
+fi
+
+if [ -z "${PORT+x}" ]; then
+  PORT=3000
+  if port_in_use "$PORT"; then
+    fallback_port="$(next_available_port 3200)"
+    if [ -z "$fallback_port" ]; then
+      echo "Could not find a free fallback web port in 3200-3400." >&2
+      exit 1
+    fi
+
+    echo "Port 3000 is busy; using PORT=$fallback_port for this session."
+    PORT="$fallback_port"
+  fi
+fi
+export PORT
+
+if [ -z "${REACTIVE_VIEW_DAEMON_PORT+x}" ]; then
+  REACTIVE_VIEW_DAEMON_PORT=3001
+
+  if [ "$REACTIVE_VIEW_DAEMON_PORT" -eq "$PORT" ] || port_in_use "$REACTIVE_VIEW_DAEMON_PORT"; then
+    fallback_daemon_port="$(next_available_port 3301 "$PORT")"
+    if [ -z "$fallback_daemon_port" ]; then
+      echo "Could not find a free fallback daemon port in 3301-3501." >&2
+      exit 1
+    fi
+
+    echo "Daemon default port 3001 is unavailable; using REACTIVE_VIEW_DAEMON_PORT=$fallback_daemon_port."
+    REACTIVE_VIEW_DAEMON_PORT="$fallback_daemon_port"
+  fi
+fi
+export REACTIVE_VIEW_DAEMON_PORT
+
+exec "$DEV_RUNNER" start -f Procfile.dev "$@"
