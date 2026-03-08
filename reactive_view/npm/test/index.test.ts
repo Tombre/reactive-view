@@ -36,7 +36,6 @@ describe("core entrypoint exports", () => {
     expect(core.useLoaderData).toBeTypeOf("function");
     expect(core.createLoaderQuery).toBeTypeOf("function");
     expect(core.createMutation).toBeTypeOf("function");
-    expect(core.createJsonMutation).toBeTypeOf("function");
     expect(core.createStream).toBeTypeOf("function");
     expect(core.useStreamData).toBeTypeOf("function");
     expect(core.getCSRFToken).toBeTypeOf("function");

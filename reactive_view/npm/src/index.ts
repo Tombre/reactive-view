@@ -128,7 +128,6 @@ export { useLoaderData, createLoaderQuery } from "./loader.js";
 
 export {
   createMutation,
-  createJsonMutation,
   useAction,
   useSubmission,
   useSubmissions,

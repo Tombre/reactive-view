@@ -1,5 +1,5 @@
 import { A, Show, createSignal } from "@reactive-view/core";
-import { createJsonMutation, useAction } from "@reactive-view/core";
+import { createMutation, useAction } from "@reactive-view/core";
 import { useLoaderData } from "#loaders/(admin)/(auth)/register";
 import "../../_styles/tailwind.css";
 
@@ -27,12 +27,12 @@ type FinishRegisterResult = {
   errors?: Record<string, string[]>;
 };
 
-const beginRegisterAction = createJsonMutation<BeginRegisterInput, BeginRegisterResult>(
+const beginRegisterAction = createMutation<BeginRegisterResult, BeginRegisterInput>(
   "(admin)/(auth)/register",
   "begin_register"
 );
 
-const finishRegisterAction = createJsonMutation<FinishRegisterInput, FinishRegisterResult>(
+const finishRegisterAction = createMutation<FinishRegisterResult, FinishRegisterInput>(
   "(admin)/(auth)/register",
   "finish_register"
 );

@@ -51,7 +51,7 @@ export { useLoaderData, createLoaderQuery } from "./loader.js";
 // ============================================================================
 // ReactiveView — Mutations
 // ============================================================================
-export { createMutation, createJsonMutation, useAction, useSubmission, useSubmissions, } from "./mutation.js";
+export { createMutation, useAction, useSubmission, useSubmissions, } from "./mutation.js";
 // ============================================================================
 // ReactiveView — Streaming
 // ============================================================================
