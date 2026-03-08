@@ -174,7 +174,7 @@ describe("mutation utilities", () => {
     });
   });
 
-  it("creates JSON mutations with JSON payload and client-side CSRF token", async () => {
+  it("creates JSON mutations with createMutation and client-side CSRF token", async () => {
     (globalThis as Record<string, unknown>).window = {
       location: { origin: "https://client.test" },
     };
@@ -195,12 +195,14 @@ describe("mutation utilities", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const { module } = await importMutationModule({ isServer: false });
-    const mutation = module.createJsonMutation<{ name: string }>("users/index") as unknown as ((input: {
-      name: string;
-    }) => Promise<unknown>) & { __key: string };
+    const mutation = module.createMutation<{ success: boolean }, { name: string }>(
+      "users/index"
+    ) as unknown as ((input: { name: string }) => Promise<unknown>) & {
+      __key: string;
+    };
 
     await expect(mutation({ name: "New name" })).resolves.toEqual({ success: true });
-    expect(mutation.__key).toBe("users/index:mutate:json");
+    expect(mutation.__key).toBe("users/index:mutate");
     expect(fetchMock).toHaveBeenCalledWith(
       "https://client.test/_reactive_view/loaders/users/index/mutate?_mutation=mutate",
       expect.objectContaining({
@@ -215,5 +217,20 @@ describe("mutation utilities", () => {
         }),
       })
     );
+  });
+
+  it("throws when mutation input is not FormData or JSON object", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { module } = await importMutationModule({ isServer: true });
+    const mutation = module.createMutation("users/index") as (
+      input: unknown
+    ) => Promise<unknown>;
+
+    await expect(mutation("invalid")).rejects.toThrow(
+      "Mutation input must be FormData or a JSON object"
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

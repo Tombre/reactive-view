@@ -14,6 +14,7 @@ export interface MutationResult<T = unknown> {
     /** Any additional data returned by the mutation */
     [key: string]: unknown;
 }
+type MutationJsonInput = Record<string, unknown>;
 /**
  * Create a mutation action for a loader route.
  *
@@ -39,26 +40,15 @@ export interface MutationResult<T = unknown> {
  * </form>
  *
  * @example
- * // Programmatic usage:
+ * // Programmatic usage with FormData:
  * const update = useAction(updateAction);
  * await update(new FormData(formElement));
- */
-export declare function createMutation<TResult = unknown>(loaderPath: string, mutationName?: string): import("@solidjs/router").Action<[formData: FormData], MutationResult<TResult>, [formData: FormData]>;
-/**
- * Create a mutation action that sends JSON instead of FormData.
- * Useful for programmatic mutations where you want type-safe input.
- *
- * @param loaderPath - The loader path (e.g., "users/[id]")
- * @param mutationName - The mutation method name (defaults to "mutate")
- * @returns A Solid Router action that accepts a typed object
  *
  * @example
- * const updateAction = createJsonMutation<UpdateParams>("users/[id]", "update");
- *
- * // Programmatic usage:
+ * // Programmatic usage with JSON:
  * const update = useAction(updateAction);
  * await update({ name: "New Name", email: "new@example.com" });
  */
-export declare function createJsonMutation<TInput = Record<string, unknown>, TResult = unknown>(loaderPath: string, mutationName?: string): import("@solidjs/router").Action<[input: TInput], MutationResult<TResult>, [input: TInput]>;
+export declare function createMutation<TResult = unknown, TInput extends MutationJsonInput = MutationJsonInput>(loaderPath: string, mutationName?: string): import("@solidjs/router").Action<[input: FormData | TInput], MutationResult<TResult>, [input: FormData | TInput]>;
 export { useAction, useSubmission, useSubmissions } from "@solidjs/router";
 //# sourceMappingURL=mutation.d.ts.map
