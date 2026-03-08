@@ -174,6 +174,51 @@ describe("mutation utilities", () => {
     });
   });
 
+  it("creates JSON mutations with createMutation and client-side CSRF token", async () => {
+    (globalThis as Record<string, unknown>).window = {
+      location: { origin: "https://client.test" },
+    };
+    (globalThis as Record<string, unknown>).document = {
+      querySelector: vi.fn((selector: string) => {
+        if (selector === 'meta[name="csrf-token"]') {
+          return { getAttribute: vi.fn(() => "meta-csrf") };
+        }
+        return null;
+      }),
+    };
+
+    const fetchMock = vi.fn(async () => {
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { "content-type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { module } = await importMutationModule({ isServer: false });
+    const mutation = module.createMutation<{ success: boolean }, { name: string }>(
+      "users/index"
+    ) as unknown as ((input: { name: string }) => Promise<unknown>) & {
+      __key: string;
+    };
+
+    await expect(mutation({ name: "New name" })).resolves.toEqual({ success: true });
+    expect(mutation.__key).toBe("users/index:mutate");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://client.test/_reactive_view/loaders/users/index/mutate?_mutation=mutate",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "include",
+        body: JSON.stringify({ name: "New name" }),
+        headers: expect.objectContaining({
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "X-Reactive-View-Client": "true",
+          "X-CSRF-Token": "meta-csrf",
+        }),
+      })
+    );
+  });
+
   it("creates JSON mutations with JSON payload and client-side CSRF token", async () => {
     (globalThis as Record<string, unknown>).window = {
       location: { origin: "https://client.test" },

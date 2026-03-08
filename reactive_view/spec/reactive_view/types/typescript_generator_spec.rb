@@ -153,6 +153,12 @@ RSpec.describe ReactiveView::Types::TypescriptGenerator do
       }
     end
 
+    let(:snake_case_mutation_data) do
+      {
+        begin_sign_in: { params_schema: update_params_schema, response_schema: nil, response_mode: :single }
+      }
+    end
+
     it 'generates a MutationName union type from mutation names' do
       result = generator.send(:build_use_form_hook, update_mutation_data, false)
       expect(result).to include('type MutationName = "update";')
@@ -167,6 +173,14 @@ RSpec.describe ReactiveView::Types::TypescriptGenerator do
       result = generator.send(:build_use_form_hook, multi_mutation_data, false)
       expect(result).to include('update: { action: updateAction, Form: UpdateForm }')
       expect(result).to include('delete: { action: deleteAction, Form: DeleteForm }')
+    end
+
+    it 'maps snake_case mutation names to camelCase actions and PascalCase forms' do
+      result = generator.send(:build_use_form_hook, snake_case_mutation_data, false)
+
+      expect(result).to include('type MutationName = "begin_sign_in";')
+      expect(result).to include('begin_sign_in: { action: beginSignInAction, Form: BeginSignInForm }')
+      expect(result).not_to include('begin_sign_inAction')
     end
 
     it 'generates useForm overload for stream handles when streams exist' do
@@ -229,7 +243,7 @@ RSpec.describe ReactiveView::Types::TypescriptGenerator do
       data = { params_schema: params_schema, response_schema: nil }
       result = generator.send(:build_mutation, 'users/[id]', :update, data)
 
-      expect(result).to include('export const updateAction = createMutation<unknown>("users/[id]", "update")')
+      expect(result).to include('export const updateAction = createMutation<unknown, UpdateParams>("users/[id]", "update")')
     end
 
     it 'generates Form component' do
@@ -237,7 +251,7 @@ RSpec.describe ReactiveView::Types::TypescriptGenerator do
       result = generator.send(:build_mutation, 'users/[id]', :update, data)
 
       expect(result).to include('export function UpdateForm(')
-      expect(result).to include('action={updateAction}')
+      expect(result).to include('action={updateAction as unknown as JSX.FormHTMLAttributes<HTMLFormElement>["action"]}')
     end
 
     it 'generates response interface when response_schema differs from params_schema' do
@@ -250,7 +264,7 @@ RSpec.describe ReactiveView::Types::TypescriptGenerator do
 
       expect(result).to include('export interface UpdateParams')
       expect(result).to include('export interface UpdateResponse')
-      expect(result).to include('export const updateAction = createMutation<UpdateResponse>("users/[id]", "update")')
+      expect(result).to include('export const updateAction = createMutation<UpdateResponse, UpdateParams>("users/[id]", "update")')
       expect(result).to include('id: number')
     end
 
@@ -258,7 +272,17 @@ RSpec.describe ReactiveView::Types::TypescriptGenerator do
       data = { params_schema: params_schema, response_schema: params_schema }
       result = generator.send(:build_mutation, 'users/[id]', :update, data)
 
-      expect(result).to include('export const updateAction = createMutation<UpdateParams>("users/[id]", "update")')
+      expect(result).to include('export const updateAction = createMutation<UpdateParams, UpdateParams>("users/[id]", "update")')
+    end
+
+    it 'generates camelCase action and form identifiers for snake_case mutations' do
+      data = { params_schema: params_schema, response_schema: nil }
+      result = generator.send(:build_mutation, 'users/[id]', :begin_sign_in, data)
+
+      expect(result).to include('export const beginSignInAction = createMutation<unknown, BeginSignInParams>("users/[id]", "begin_sign_in")')
+      expect(result).to include('export function BeginSignInForm(')
+      expect(result).to include('export const beginSignInForm = BeginSignInForm;')
+      expect(result).not_to include('begin_sign_inAction')
     end
 
     it 'does not generate response interface when response_schema is nil' do

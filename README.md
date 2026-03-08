@@ -844,6 +844,17 @@ export default function UserPage() {
 }
 ```
 
+Generated mutation exports are ready for both forms and programmatic calls. Mutation method names stay Ruby-native (for example `begin_sign_in`), while generated TypeScript action names are camelCased (for example `beginSignInAction`):
+
+```tsx
+import { beginSignInAction, useAction } from "#loaders/(admin)/(auth)/login";
+
+const beginSignIn = useAction(beginSignInAction);
+await beginSignIn({ email: "admin@example.com" });
+```
+
+Generated form helpers continue to be available as components (`BeginSignInForm`) and camelCase aliases (`beginSignInForm`).
+
 For the full guide on mutations including response helpers, programmatic submissions, CSRF handling, and error patterns, see [docs/guides/data/mutations.md](docs/guides/data/mutations.md).
 
 For a detailed guide on data loading, see [docs/guides/data/loaders.md](docs/guides/data/loaders.md).
