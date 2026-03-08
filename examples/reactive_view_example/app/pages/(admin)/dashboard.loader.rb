@@ -2,7 +2,9 @@
 
 module Pages
   module Admin
-    class DashboardLoader < BaseDashboardLoader
+    class DashboardLoader < ReactiveView::Loader
+      include RodauthLoaderAuthentication
+
       shape :load do
         param :name
         param :email
@@ -21,7 +23,7 @@ module Pages
 
       response_shape :logout, :logout_result
 
-      def dashboard_load
+      def load
         {
           name: current_user.name,
           email: current_user.email

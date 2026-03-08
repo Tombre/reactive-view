@@ -144,6 +144,54 @@ RSpec.describe ReactiveView::LoaderDataController do
     end
   end
 
+  describe 'guard enforcement' do
+    let(:controller) { described_class.new }
+    let(:loader_class) { Class.new(ReactiveView::Loader) }
+
+    before do
+      allow(ReactiveView::LoaderRegistry).to receive(:class_for_path).and_return(loader_class)
+      allow(controller).to receive(:loader_path).and_return('dashboard/settings')
+    end
+
+    it 'returns unauthorized JSON with redirect for load requests' do
+      rejection = ReactiveView::GuardRejectedError.new('Authentication required', redirect_path: '/login')
+      allow(ReactiveView::GuardRunner).to receive(:run!).and_raise(rejection)
+      allow(controller).to receive(:render)
+
+      controller.show
+
+      expect(controller).to have_received(:render).with(
+        json: { error: 'Authentication required', redirect: '/login' },
+        status: :unauthorized
+      )
+    end
+
+    it 'returns unauthorized mutation payload with _redirect' do
+      rejection = ReactiveView::GuardRejectedError.new('Authentication required', redirect_path: '/login')
+      allow(ReactiveView::GuardRunner).to receive(:run!).and_raise(rejection)
+      allow(controller).to receive(:params).and_return(ActionController::Parameters.new({ '_mutation' => 'update' }))
+      allow(controller).to receive(:render)
+
+      controller.mutate
+
+      expect(controller).to have_received(:render).with(
+        json: { success: false, error: 'Authentication required', _redirect: '/login' },
+        status: :unauthorized
+      )
+    end
+
+    it 'handles guard rejection before stream setup' do
+      rejection = ReactiveView::GuardRejectedError.new('Authentication required', redirect_path: '/login')
+      allow(ReactiveView::GuardRunner).to receive(:run!).and_raise(rejection)
+      allow(controller).to receive(:params).and_return(ActionController::Parameters.new({ '_mutation' => 'stream' }))
+      allow(controller).to receive(:render_guard_rejection_for_stream)
+
+      controller.stream
+
+      expect(controller).to have_received(:render_guard_rejection_for_stream).with(rejection)
+    end
+  end
+
   describe '#mutate' do
     let(:controller) { described_class.new }
 

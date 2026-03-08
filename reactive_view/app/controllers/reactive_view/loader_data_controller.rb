@@ -23,6 +23,8 @@ module ReactiveView
       # Get the loader class from the path
       loader_class = LoaderRegistry.class_for_path(loader_path)
 
+      run_route_guards!(context: :load)
+
       # Instantiate and configure the loader
       loader = build_loader(loader_class)
 
@@ -40,6 +42,8 @@ module ReactiveView
       render json: { error: e.message }, status: :unprocessable_entity
     rescue LoaderNotFoundError => e
       render json: { error: e.message }, status: :not_found
+    rescue GuardRejectedError => e
+      render_guard_rejection_for_load(e)
     rescue StandardError => e
       handle_loader_error(e)
     end
@@ -55,6 +59,9 @@ module ReactiveView
     #   POST /_reactive_view/loaders/users/[id]/mutate?_mutation=delete
     def mutate
       loader_class = LoaderRegistry.class_for_path(loader_path)
+
+      run_route_guards!(context: :mutate)
+
       loader = build_loader(loader_class)
 
       # Determine which mutation method to call
@@ -80,6 +87,8 @@ module ReactiveView
       render json: { success: false, error: e.message }, status: :not_found
     rescue ValidationError => e
       render json: { success: false, error: e.message }, status: :unprocessable_entity
+    rescue GuardRejectedError => e
+      render_guard_rejection_for_mutation(e)
     rescue ArgumentError => e
       # Wrong number of arguments or other argument issues
       handle_argument_error(e, mutation_name)
@@ -97,6 +106,9 @@ module ReactiveView
     # If it returns a regular value, falls back to JSON response.
     def stream
       loader_class = LoaderRegistry.class_for_path(loader_path)
+
+      run_route_guards!(context: :stream)
+
       loader = build_loader(loader_class)
 
       mutation_name = params[:_mutation].presence || 'stream'
@@ -166,6 +178,8 @@ module ReactiveView
       response.status = :unprocessable_entity
       response.stream.write({ error: e.message }.to_json)
       response.stream.close
+    rescue GuardRejectedError => e
+      render_guard_rejection_for_stream(e)
     rescue StandardError => e
       handle_stream_error(e)
     end
@@ -249,6 +263,45 @@ module ReactiveView
 
       merged_params = loader.params.to_unsafe_h.merge(result.data.deep_stringify_keys)
       loader.params = ActionController::Parameters.new(merged_params)
+    end
+
+    def run_route_guards!(context:)
+      GuardRunner.run!(
+        loader_path: loader_path,
+        context: context,
+        request: request,
+        params: guard_params
+      )
+    end
+
+    def guard_params
+      params
+    rescue StandardError
+      ActionController::Parameters.new({})
+    end
+
+    def render_guard_rejection_for_load(error)
+      payload = { error: error.message }
+      payload[:redirect] = error.redirect_path if error.redirect_path.present?
+
+      render json: payload, status: :unauthorized
+    end
+
+    def render_guard_rejection_for_mutation(error)
+      payload = { success: false, error: error.message }
+      payload[:_redirect] = error.redirect_path if error.redirect_path.present?
+
+      render json: payload, status: :unauthorized
+    end
+
+    def render_guard_rejection_for_stream(error)
+      payload = { error: error.message }
+      payload[:redirect] = error.redirect_path if error.redirect_path.present?
+
+      response.headers['Content-Type'] = 'application/json'
+      response.status = :unauthorized
+      response.stream.write(payload.to_json)
+      response.stream.close
     end
 
     def validate_response!(loader_class, data)

@@ -3,7 +3,7 @@
 module Pages
   module Admin
     module Dashboard
-      class AnalyticsLoader < Pages::Admin::BaseDashboardLoader
+      class AnalyticsLoader < ReactiveView::Loader
         shape :load do
           collection :chart_data do
             param :label
@@ -23,7 +23,7 @@ module Pages
 
         response_shape :load, :load
 
-        def dashboard_load
+        def load
           period = params[:period] || 'week'
 
           # Simulate fetching analytics data from database

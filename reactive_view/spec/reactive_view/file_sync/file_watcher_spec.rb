@@ -161,7 +161,7 @@ RSpec.describe ReactiveView::FileSync::FileWatcher do
       allow(ReactiveView::FileSync::WrapperGenerator).to receive(:remove_wrapper)
       allow(ReactiveView::FileSync::WrapperGenerator).to receive(:regenerate_parent_layout)
       allow(ReactiveView::FileSync::ViteNotifier).to receive(:notify)
-      allow(ReactiveView::FileSync::ViteNotifier).to receive(:loader_path_to_route)
+      allow(ReactiveView::FileSync::ViteNotifier).to receive(:path_to_routes)
       allow(ReactiveView::Types::TypescriptGenerator).to receive(:generate)
     end
 
@@ -201,7 +201,17 @@ RSpec.describe ReactiveView::FileSync::FileWatcher do
 
     it 'regenerates types for loader file changes' do
       modified = ["#{pages_path}/index.loader.rb"]
-      allow(ReactiveView::FileSync::ViteNotifier).to receive(:loader_path_to_route).and_return('index')
+      allow(ReactiveView::FileSync::ViteNotifier).to receive(:path_to_routes).and_return(['index'])
+
+      expect(ReactiveView::Types::TypescriptGenerator).to receive(:generate)
+      expect(ReactiveView::FileSync::ViteNotifier).to receive(:notify)
+
+      described_class.send(:handle_changes, modified, [], [])
+    end
+
+    it 'regenerates types for guard file changes' do
+      modified = ["#{pages_path}/(admin)/dashboard/_guard.rb"]
+      allow(ReactiveView::FileSync::ViteNotifier).to receive(:path_to_routes).and_return(['(admin)/dashboard'])
 
       expect(ReactiveView::Types::TypescriptGenerator).to receive(:generate)
       expect(ReactiveView::FileSync::ViteNotifier).to receive(:notify)

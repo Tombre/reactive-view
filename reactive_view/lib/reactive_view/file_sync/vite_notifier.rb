@@ -39,22 +39,29 @@ module ReactiveView
           end
         end
 
-        # Convert a loader file path to its route identifier
+        # Convert a runtime file path to route identifiers used for invalidation.
         #
-        # @param path [String] Full path to the loader file
+        # @param path [String] Full path to a loader or guard file
         # @param pages_path [Pathname] Base pages directory path
-        # @return [String, nil] Route path (e.g., "users/index", "users/[id]")
+        # @return [Array<String>] Route identifiers
         #
         # @example
-        #   loader_path_to_route("/app/pages/users/index.loader.rb", pages_path) #=> "users/index"
-        #   loader_path_to_route("/app/pages/users/[id].loader.rb", pages_path) #=> "users/[id]"
-        def loader_path_to_route(path, pages_path)
+        #   path_to_routes("/app/pages/users/index.loader.rb", pages_path) #=> ["users/index"]
+        #   path_to_routes("/app/pages/(admin)/dashboard/_guard.rb", pages_path) #=> ["(admin)/dashboard"]
+        def path_to_routes(path, pages_path)
           relative = Pathname.new(path).relative_path_from(pages_path).to_s
 
-          # Remove .loader.rb extension to get route path
-          route = relative.sub(/\.loader\.rb$/, '')
+          if relative.end_with?('.loader.rb')
+            route = relative.sub(/\.loader\.rb$/, '')
+            return route.empty? ? [] : [route]
+          end
 
-          route.empty? ? nil : route
+          if relative.end_with?('/_guard.rb') || relative == '_guard.rb'
+            guard_scope = relative.sub(%r{/_guard\.rb$}, '').sub(/^_guard\.rb$/, '')
+            return guard_scope.empty? ? ['index'] : [guard_scope]
+          end
+
+          []
         end
       end
     end
