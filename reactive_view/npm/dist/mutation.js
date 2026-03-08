@@ -71,12 +71,17 @@ function getSSRCookies() {
  * </form>
  *
  * @example
- * // Programmatic usage:
+ * // Programmatic usage with FormData:
  * const update = useAction(updateAction);
  * await update(new FormData(formElement));
+ *
+ * @example
+ * // Programmatic usage with JSON:
+ * const update = useAction(updateAction);
+ * await update({ name: "New Name", email: "new@example.com" });
  */
 export function createMutation(loaderPath, mutationName = "mutate") {
-    return action(async (formData) => {
+    return action(async (input) => {
         const railsBaseUrl = getRailsBaseUrl();
         const url = new URL(`/_reactive_view/loaders/${loaderPath}/mutate`, railsBaseUrl);
         // Add mutation name as query param
@@ -96,10 +101,21 @@ export function createMutation(loaderPath, mutationName = "mutate") {
         if (ssrCookies) {
             headers["Cookie"] = ssrCookies;
         }
+        let body;
+        if (isFormDataInput(input)) {
+            body = input;
+        }
+        else if (isJsonInput(input)) {
+            headers["Content-Type"] = "application/json";
+            body = JSON.stringify(input);
+        }
+        else {
+            throw new Error("Mutation input must be FormData or a JSON object");
+        }
         const response = await fetch(url.toString(), {
             method: "POST",
             headers,
-            body: formData,
+            body,
             credentials: "include",
         });
         // Parse the response
@@ -184,6 +200,12 @@ export function createJsonMutation(loaderPath, mutationName = "mutate") {
 }
 // Re-export Solid Router action primitives for convenience
 export { useAction, useSubmission, useSubmissions } from "@solidjs/router";
+function isFormDataInput(input) {
+    return typeof FormData !== "undefined" && input instanceof FormData;
+}
+function isJsonInput(input) {
+    return input !== null && typeof input === "object" && !Array.isArray(input);
+}
 async function parseResponseJson(response) {
     const contentType = response.headers.get("content-type") || "";
     const bodyText = await response.text();

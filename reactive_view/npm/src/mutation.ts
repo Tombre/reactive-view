@@ -24,6 +24,8 @@ export interface MutationResult<T = unknown> {
   [key: string]: unknown;
 }
 
+type MutationJsonInput = Record<string, unknown>;
+
 // ============================================================================
 // Shared Utilities (same as loader.ts)
 // ============================================================================
@@ -97,16 +99,24 @@ function getSSRCookies(): string | undefined {
  * </form>
  *
  * @example
- * // Programmatic usage:
+ * // Programmatic usage with FormData:
  * const update = useAction(updateAction);
  * await update(new FormData(formElement));
+ *
+ * @example
+ * // Programmatic usage with JSON:
+ * const update = useAction(updateAction);
+ * await update({ name: "New Name", email: "new@example.com" });
  */
-export function createMutation<TResult = unknown>(
+export function createMutation<
+  TResult = unknown,
+  TInput = MutationJsonInput,
+>(
   loaderPath: string,
   mutationName: string = "mutate"
 ) {
   return action(
-    async (formData: FormData): Promise<MutationResult<TResult>> => {
+    async (input: FormData | TInput): Promise<MutationResult<TResult>> => {
       const railsBaseUrl = getRailsBaseUrl();
       const url = new URL(
         `/_reactive_view/loaders/${loaderPath}/mutate`,
@@ -134,10 +144,22 @@ export function createMutation<TResult = unknown>(
         headers["Cookie"] = ssrCookies;
       }
 
+      let body: BodyInit;
+      if (isFormDataInput(input)) {
+        body = input;
+      } else if (isJsonInput(input)) {
+        headers["Content-Type"] = "application/json";
+        body = JSON.stringify(input);
+      } else {
+        throw new Error(
+          "Mutation input must be FormData or a JSON object"
+        );
+      }
+
       const response = await fetch(url.toString(), {
         method: "POST",
         headers,
-        body: formData,
+        body,
         credentials: "include",
       });
 
@@ -254,6 +276,14 @@ export function createJsonMutation<TInput = Record<string, unknown>, TResult = u
 
 // Re-export Solid Router action primitives for convenience
 export { useAction, useSubmission, useSubmissions } from "@solidjs/router";
+
+function isFormDataInput(input: unknown): input is FormData {
+  return typeof FormData !== "undefined" && input instanceof FormData;
+}
+
+function isJsonInput(input: unknown): input is MutationJsonInput {
+  return input !== null && typeof input === "object" && !Array.isArray(input);
+}
 
 async function parseResponseJson(response: Response): Promise<unknown> {
   const contentType = response.headers.get("content-type") || "";

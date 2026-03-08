@@ -363,27 +363,20 @@ module ReactiveView
 
       # Build a single mutation (interface, action, form)
       def build_mutation(loader_path, mutation_name, data)
-        # Use the original mutation name for compound identifiers (e.g., deleteAction, DeleteForm)
-        # These are safe because they're combined with suffixes that make them valid identifiers
         base_name = mutation_name.to_s
         capitalized_name = base_name.camelize
-        action_name = "#{base_name}Action"
-        form_name = "#{capitalized_name}Form"
-
-        # Validate the resulting identifiers are valid JS (they should be, given the suffixes)
-        unless valid_js_identifier?(action_name)
-          action_name = sanitize_js_identifier(action_name)
-          ReactiveView.logger.warn "[ReactiveView] Action name sanitized to '#{action_name}'"
-        end
-
-        unless valid_js_identifier?(form_name)
-          form_name = sanitize_js_identifier(form_name)
-          ReactiveView.logger.warn "[ReactiveView] Form name sanitized to '#{form_name}'"
-        end
+        action_name = mutation_action_identifier(mutation_name)
+        form_name = mutation_form_identifier(mutation_name)
+        form_alias_name = mutation_form_alias_identifier(mutation_name)
 
         params_schema = data[:params_schema]
         response_schema = data[:response_schema]
         response_type = mutation_response_type(capitalized_name, params_schema, response_schema)
+        form_alias_export = if form_alias_name != form_name
+                              "\nexport const #{form_alias_name} = #{form_name};"
+                            else
+                              ''
+                            end
 
         # Generate params interface
         params_interface = if params_schema&.respond_to?(:keys) && params_schema.keys.any?
@@ -421,7 +414,7 @@ module ReactiveView
            * Action for the #{mutation_name} mutation.
            * Use with forms or useAction() for programmatic calls.
            */
-          export const #{action_name} = createMutation<#{response_type}>("#{loader_path}", "#{mutation_name}");
+          export const #{action_name} = createMutation<#{response_type}, #{capitalized_name}Params>("#{loader_path}", "#{mutation_name}");
 
           /**
            * Form component pre-configured for the #{mutation_name} mutation.
@@ -436,8 +429,9 @@ module ReactiveView
           export function #{form_name}(
             props: Omit<JSX.FormHTMLAttributes<HTMLFormElement>, "action" | "method">
           ) {
-            return <form action={#{action_name}} method="post" {...props} />;
+            return <form action={#{action_name} as unknown as JSX.FormHTMLAttributes<HTMLFormElement>["action"]} method="post" {...props} />;
           }
+          #{form_alias_export}
         TYPESCRIPT
 
         result
@@ -457,13 +451,9 @@ module ReactiveView
         entries = mutation_data.map do |mutation_name, _data|
           base_name = mutation_name.to_s
           capitalized_name = base_name.camelize
-          action_name = "#{base_name}Action"
-          form_name = "#{capitalized_name}Form"
+          action_name = mutation_action_identifier(mutation_name)
+          form_name = mutation_form_identifier(mutation_name)
           response_type = mutation_response_type(capitalized_name, _data[:params_schema], _data[:response_schema])
-
-          # Apply same sanitization as build_mutation
-          action_name = sanitize_js_identifier(action_name) unless valid_js_identifier?(action_name)
-          form_name = sanitize_js_identifier(form_name) unless valid_js_identifier?(form_name)
 
           { name: base_name, action_name: action_name, form_name: form_name, response_type: response_type }
         end
@@ -602,6 +592,33 @@ module ReactiveView
         return "#{capitalized_name}Params" if response_schema == params_schema
 
         "#{capitalized_name}Response"
+      end
+
+      def mutation_action_identifier(mutation_name)
+        identifier = "#{mutation_name.to_s.camelize(:lower)}Action"
+        return identifier if valid_js_identifier?(identifier)
+
+        sanitized = sanitize_js_identifier(identifier)
+        ReactiveView.logger.warn "[ReactiveView] Action name sanitized to '#{sanitized}'"
+        sanitized
+      end
+
+      def mutation_form_identifier(mutation_name)
+        identifier = "#{mutation_name.to_s.camelize}Form"
+        return identifier if valid_js_identifier?(identifier)
+
+        sanitized = sanitize_js_identifier(identifier)
+        ReactiveView.logger.warn "[ReactiveView] Form name sanitized to '#{sanitized}'"
+        sanitized
+      end
+
+      def mutation_form_alias_identifier(mutation_name)
+        identifier = "#{mutation_name.to_s.camelize(:lower)}Form"
+        return identifier if valid_js_identifier?(identifier)
+
+        sanitized = sanitize_js_identifier(identifier)
+        ReactiveView.logger.warn "[ReactiveView] Form alias name sanitized to '#{sanitized}'"
+        sanitized
       end
 
       # Build the streaming section (useStream hook for mutations)
