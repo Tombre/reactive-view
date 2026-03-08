@@ -338,6 +338,9 @@ module ReactiveView
       # Determine the loader path from the request
       loader_path = extract_loader_path
 
+      run_route_guards!(loader_path, context: :page)
+      return if performed?
+
       # Determine Rails base URL for callbacks
       rails_base_url = ReactiveView.configuration.rails_base_url || request.base_url
 
@@ -357,6 +360,8 @@ module ReactiveView
       handle_daemon_error(e)
     rescue ReactiveView::RenderError => e
       handle_render_error(e)
+    rescue ReactiveView::GuardRejectedError => e
+      handle_guard_rejection(e)
     end
 
     # Provides data to the page component.
@@ -519,6 +524,15 @@ module ReactiveView
       @renderer ||= ReactiveView::Renderer.new
     end
 
+    def run_route_guards!(loader_path, context:)
+      GuardRunner.run!(
+        loader_path: loader_path,
+        context: context,
+        request: request,
+        params: params
+      )
+    end
+
     # Extract the loader path from the request
     # This maps the URL to the corresponding loader file path
     def extract_loader_path
@@ -560,6 +574,17 @@ module ReactiveView
       render html: render_error_html(error), status: :internal_server_error, layout: false
 
       # Let Rails error handling take over
+    end
+
+    def handle_guard_rejection(error)
+      if error.redirect_path.present?
+        response.status = :found
+        response.location = error.redirect_path
+        self.response_body = ''
+      else
+        response.status = :unauthorized
+        self.response_body = ''
+      end
     end
 
     def daemon_error_html(error)

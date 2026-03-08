@@ -135,7 +135,8 @@ bin/dev
 bundle exec reactiveview dev
 ```
 
-If startup fails due to stale locks, pid files, or occupied daemon ports, run:
+`bundle exec reactiveview dev` now runs a quiet `doctor --fix` preflight automatically.
+If startup still fails, run doctor manually for full diagnostics:
 
 ```bash
 bundle exec reactiveview doctor
@@ -238,7 +239,14 @@ The `#loaders/*` import path maps to auto-generated TypeScript files that provid
 
 ### Authentication
 
-Loaders are regular Rails controllers - use `before_action` for auth:
+ReactiveView supports two authentication styles:
+
+1. Loader-level auth (good for route-specific checks)
+2. Folder-level guards (recommended for securing route trees)
+
+#### Loader-level auth
+
+Loaders are regular Rails controllers, so you can use `before_action`:
 
 ```ruby
 class Pages::Admin::DashboardLoader < ReactiveView::Loader
@@ -255,6 +263,30 @@ class Pages::Admin::DashboardLoader < ReactiveView::Loader
   end
 end
 ```
+
+#### Folder-level guards (recommended)
+
+Define `_guard.rb` in a folder under `app/pages/` to protect the entire subtree.
+This avoids adding placeholder loaders just for auth.
+
+```ruby
+# app/pages/(admin)/dashboard/_guard.rb
+module Pages
+  module Admin
+    module Dashboard
+      class Guard < ReactiveView::RouteGuard
+        include RodauthLoaderAuthentication
+
+        guard :require_authenticated_user!
+      end
+    end
+  end
+end
+```
+
+All guards apply to page render, loader data, mutations, and streaming by default.
+Nested guards compose from root to leaf (for example: `app/pages/_guard.rb` and
+`app/pages/(admin)/dashboard/_guard.rb` both run for `/dashboard/*` routes).
 
 ## Development
 
@@ -354,12 +386,13 @@ docker compose build
 docker compose run --rm app bin/e2e
 ```
 
-`bin/reactive-view-dev` shells out to `bundle exec reactiveview dev`, which runs preflight checks, syncs generated files, and keeps the Node daemon tied to the orchestrator lifecycle.
+`bin/reactive-view-dev` shells out to `bundle exec reactiveview dev`, which runs preflight checks (including safe automatic conflict cleanup), syncs generated files, and keeps the Node daemon tied to the orchestrator lifecycle.
 
 ### ReactiveView CLI
 
 ```bash
 # Start and supervise the development daemon
+# (runs quiet safe cleanup first; set REACTIVE_VIEW_DEV_SKIP_DOCTOR_FIX=1 to skip)
 bundle exec reactiveview dev
 
 # Diagnose local startup conflicts (ports, stale pids, locks)

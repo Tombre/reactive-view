@@ -161,7 +161,7 @@ module ReactiveView
 
           # Categorize changes
           (modified + added).each do |source|
-            if source.end_with?('.loader.rb')
+            if source.end_with?('.loader.rb') || source.end_with?('_guard.rb')
               type = modified.include?(source) ? :modified : :added
               loader_changes[type] << source
             elsif modified.include?(source)
@@ -173,7 +173,7 @@ module ReactiveView
           end
 
           removed.each do |source|
-            if source.end_with?('.loader.rb')
+            if source.end_with?('.loader.rb') || source.end_with?('_guard.rb')
               loader_changes[:removed] << source
             else
               asset_removed << source
@@ -183,7 +183,7 @@ module ReactiveView
           # Handle asset file changes - sync to working directory
           handle_asset_changes(asset_modified, asset_added, asset_removed, pages_path)
 
-          # Handle loader file changes - regenerate types and notify Vite
+          # Handle loader/guard file changes - regenerate types and notify Vite
           handle_loader_changes(loader_changes, pages_path)
         end
 
@@ -227,7 +227,7 @@ module ReactiveView
           end
         end
 
-        # Handle loader file changes - regenerate types and notify Vite for HMR.
+        # Handle loader/guard file changes - regenerate types and notify Vite for HMR.
         #
         # @param changes [Hash] Hash with :modified, :added, :removed keys containing file paths
         # @param pages_path [Pathname] Source pages directory
@@ -238,8 +238,8 @@ module ReactiveView
           # Regenerate TypeScript types
           sync_loader_types
 
-          # Build route paths from loader file paths
-          routes = all_changes.map { |path| ViteNotifier.loader_path_to_route(path, pages_path) }.compact
+          # Build route identifiers from runtime file paths
+          routes = all_changes.flat_map { |path| ViteNotifier.path_to_routes(path, pages_path) }.uniq
 
           # Determine the change type (use most significant: removed > added > modified)
           type = if changes[:removed].any?

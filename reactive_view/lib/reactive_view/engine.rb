@@ -34,9 +34,10 @@ module ReactiveView
       end
     end
 
-    initializer 'reactive_view.load_loaders', before: :load_config_initializers do |app|
-      # Load all loader files from app/pages
+    initializer 'reactive_view.load_page_runtime_files', before: :load_config_initializers do |app|
+      # Load all loader and guard files from app/pages
       app.config.after_initialize do
+        ReactiveView::GuardRegistry.load_all
         ReactiveView::LoaderRegistry.load_all
       end
     end

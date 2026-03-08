@@ -3,10 +3,13 @@
 require 'optparse'
 require 'pathname'
 
+require_relative 'doctor_command'
+
 module ReactiveView
   module CLI
     class DevCommand
       CommandError = Class.new(StandardError)
+      AUTO_DOCTOR_FIX_SKIP_ENV = 'REACTIVE_VIEW_DEV_SKIP_DOCTOR_FIX'
 
       def initialize(argv, stdout: $stdout, stderr: $stderr)
         @argv = argv.dup
@@ -22,8 +25,11 @@ module ReactiveView
         return 0 if @options[:help]
 
         boot_rails_environment!
-        require 'reactive_view/dev_orchestrator'
         apply_overrides!
+        doctor_status = run_auto_doctor_fix
+        return doctor_status unless doctor_status.zero?
+
+        require 'reactive_view/dev_orchestrator'
 
         ReactiveView::DevOrchestrator.new(stdout: @stdout, stderr: @stderr).run
       rescue OptionParser::ParseError => e
@@ -75,6 +81,29 @@ module ReactiveView
         return unless @options[:port]
 
         ReactiveView.configuration.daemon_port = @options[:port]
+      end
+
+      def run_auto_doctor_fix
+        return 0 unless auto_doctor_fix_enabled?
+
+        ReactiveView::CLI::DoctorCommand.new(
+          ['--fix'],
+          stdout: @stdout,
+          stderr: @stderr,
+          boot_rails_environment: false,
+          quiet: true
+        ).run
+      end
+
+      def auto_doctor_fix_enabled?
+        value = ENV[AUTO_DOCTOR_FIX_SKIP_ENV]
+        return true if value.nil?
+
+        !truthy?(value)
+      end
+
+      def truthy?(value)
+        %w[1 true yes on].include?(value.strip.downcase)
       end
 
       def locate_rails_root

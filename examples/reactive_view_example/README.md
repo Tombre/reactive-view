@@ -53,9 +53,10 @@ bin/reactive-view-dev
 ```
 
 `bin/reactive-view-dev` runs `bundle exec reactiveview dev`, which performs
-startup checks, syncs generated files, and starts the SolidStart daemon.
+startup checks, applies safe automatic cleanup for common stale conflicts,
+syncs generated files, and starts the SolidStart daemon.
 
-If startup fails due to stale pid/lock files or an existing daemon process:
+If startup still fails, run doctor manually for full diagnostics:
 
 ```bash
 bundle exec reactiveview doctor

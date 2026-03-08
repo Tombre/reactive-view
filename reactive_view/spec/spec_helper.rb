@@ -60,6 +60,16 @@ module ReactiveView
   class DaemonUnavailableError < Error; end
   class ValidationError < Error; end
   class LoaderNotFoundError < Error; end
+
+  class GuardRejectedError < Error
+    attr_reader :redirect_path
+
+    def initialize(message = 'Access denied', redirect_path: nil)
+      @redirect_path = redirect_path
+      super(message)
+    end
+  end
+
   class BenchmarkError < Error; end
 
   class << self
@@ -94,6 +104,9 @@ require 'reactive_view/shapes_accessor'
 require 'reactive_view/mutation_result'
 require 'reactive_view/stream_response'
 require 'reactive_view/stream_writer'
+require 'reactive_view/route_guard'
+require 'reactive_view/guard_registry'
+require 'reactive_view/guard_runner'
 require 'reactive_view/dev_proxy'
 require 'reactive_view/dev_orchestrator'
 require 'reactive_view/autoload_ignorer'

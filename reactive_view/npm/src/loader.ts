@@ -6,6 +6,7 @@ import { getSSRRequestContext } from "./request-context.js";
 
 const LOADER_REQUEST_MAX_ATTEMPTS = 2;
 const LOADER_RETRY_DELAY_MS = 150;
+type RedirectHandling = "window" | "response";
 
 // Get the Rails base URL from environment or default
 const getRailsBaseUrl = (): string => {
@@ -143,7 +144,7 @@ async function fetchLoaderData<T>(
     headers["Cookie"] = ssrCookies;
   }
 
-  return requestLoaderData<T>(url, headers);
+  return requestLoaderData<T>(url, headers, "response");
 }
 
 /**
@@ -298,7 +299,7 @@ export function useLoaderData<T>(
         headers["Cookie"] = ssrCookies;
       }
 
-      return requestLoaderData<T>(url, headers);
+      return requestLoaderData<T>(url, headers, "window");
     }
   );
 
@@ -307,7 +308,8 @@ export function useLoaderData<T>(
 
 async function requestLoaderData<T>(
   url: URL,
-  headers: Record<string, string>
+  headers: Record<string, string>,
+  redirectHandling: RedirectHandling
 ): Promise<T> {
   let lastError: Error | null = null;
   let requestUrl = new URL(url.toString());
@@ -362,6 +364,17 @@ async function requestLoaderData<T>(
       const data = parseResponseJson(response, contentType, bodyText);
 
       if (!response.ok) {
+        const redirectPath = extractRedirectPath(data);
+
+        if (redirectPath && redirectHandling === "response") {
+          return createRedirectResponse(redirectPath) as T;
+        }
+
+        if (redirectPath && redirectHandling === "window" && !isServer) {
+          window.location.assign(redirectPath);
+          return new Promise<T>(() => {});
+        }
+
         throw new Error(
           (data as Record<string, unknown>).error as string ||
             `Loader request failed: ${response.status} ${response.statusText}`
@@ -462,6 +475,28 @@ function parseResponseJson(
       )}`
     );
   }
+}
+
+function extractRedirectPath(data: unknown): string | null {
+  if (!data || typeof data !== "object") {
+    return null;
+  }
+
+  const redirectValue = (data as Record<string, unknown>).redirect;
+  if (typeof redirectValue !== "string" || redirectValue.length === 0) {
+    return null;
+  }
+
+  return redirectValue;
+}
+
+function createRedirectResponse(path: string): Response {
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: path
+    }
+  });
 }
 
 function sleep(ms: number): Promise<void> {

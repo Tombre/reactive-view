@@ -21,15 +21,18 @@ RSpec.describe ReactiveView::AutoloadIgnorer do
       grouped_dir = pages_path.join('(admin)')
       loader_file = pages_path.join('ai/chat.loader.rb')
       nested_loader_file = pages_path.join('users/[id].loader.rb')
+      guard_file = pages_path.join('(admin)/dashboard/_guard.rb')
       regular_ruby_file = pages_path.join('models/user.rb')
 
       FileUtils.mkdir_p(grouped_dir)
       FileUtils.mkdir_p(loader_file.dirname)
       FileUtils.mkdir_p(nested_loader_file.dirname)
+      FileUtils.mkdir_p(guard_file.dirname)
       FileUtils.mkdir_p(regular_ruby_file.dirname)
 
       loader_file.write("# frozen_string_literal: true\n")
       nested_loader_file.write("# frozen_string_literal: true\n")
+      guard_file.write("# frozen_string_literal: true\n")
       regular_ruby_file.write("# frozen_string_literal: true\n")
 
       main_autoloader = AutoloaderStub.new([])
@@ -43,12 +46,15 @@ RSpec.describe ReactiveView::AutoloadIgnorer do
 
       expect(result[:grouped_dirs]).to contain_exactly(grouped_dir.to_s)
       expect(result[:loader_files]).to contain_exactly(loader_file.to_s, nested_loader_file.to_s)
+      expect(result[:guard_files]).to contain_exactly(guard_file.to_s)
 
       loader_glob = pages_path.join('**/*.loader.rb').to_s
+      guard_glob = pages_path.join('**/_guard.rb').to_s
 
       [main_autoloader, once_autoloader].each do |autoloader|
         expect(autoloader.ignored_paths).to include(grouped_dir.to_s)
         expect(autoloader.ignored_paths).to include(loader_glob)
+        expect(autoloader.ignored_paths).to include(guard_glob)
         expect(autoloader.ignored_paths).not_to include(regular_ruby_file.to_s)
       end
     ensure
@@ -62,7 +68,7 @@ RSpec.describe ReactiveView::AutoloadIgnorer do
 
       result = described_class.ignore_pages_paths!(pages_path: pages_path, autoloaders: [autoloader], logger: logger)
 
-      expect(result).to eq(grouped_dirs: [], loader_files: [])
+      expect(result).to eq(grouped_dirs: [], loader_files: [], guard_files: [])
       expect(autoloader.ignored_paths).to be_empty
     ensure
       FileUtils.rm_rf(tmp_dir)

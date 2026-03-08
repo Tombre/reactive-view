@@ -10,7 +10,21 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_01_06_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_05_050000) do
+  create_table "account_webauthn_keys", id: false, force: :cascade do |t|
+    t.integer "account_id", null: false
+    t.string "webauthn_id", null: false
+    t.string "public_key", null: false
+    t.integer "sign_count", null: false
+    t.datetime "last_use"
+    t.index ["account_id", "webauthn_id"], name: "index_account_webauthn_keys_on_account_id_and_webauthn_id", unique: true
+  end
+
+  create_table "account_webauthn_user_ids", force: :cascade do |t|
+    t.string "webauthn_id", null: false
+    t.index ["webauthn_id"], name: "index_account_webauthn_user_ids_on_webauthn_id", unique: true
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "name", null: false
     t.string "email", null: false
@@ -18,4 +32,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_06_000001) do
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
   end
+
+  add_foreign_key "account_webauthn_keys", "users", column: "account_id", on_delete: :cascade
+  add_foreign_key "account_webauthn_user_ids", "users", column: "id", on_delete: :cascade
 end

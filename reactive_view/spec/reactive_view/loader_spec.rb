@@ -358,6 +358,44 @@ RSpec.describe ReactiveView::Loader do
     end
   end
 
+  describe '#call guard enforcement' do
+    let(:request) do
+      ActionDispatch::Request.new(Rack::MockRequest.env_for('/dashboard/settings', method: 'GET'))
+    end
+    let(:response) { ActionDispatch::Response.new }
+    let(:loader) { loader_class.new }
+
+    before do
+      loader.request = request
+      loader.response = response
+      loader.params = ActionController::Parameters.new({ reactive_view_loader_path: 'dashboard/settings' })
+      allow(loader).to receive(:renderer)
+    end
+
+    it 'redirects to guard redirect_path and skips rendering' do
+      allow(ReactiveView::GuardRunner).to receive(:run!).and_raise(
+        ReactiveView::GuardRejectedError.new('Authentication required', redirect_path: '/login')
+      )
+
+      loader.call
+
+      expect(loader.response.status).to eq(302)
+      expect(loader.response.location).to end_with('/login')
+      expect(loader).not_to have_received(:renderer)
+    end
+
+    it 'returns unauthorized when guard rejects without redirect' do
+      allow(ReactiveView::GuardRunner).to receive(:run!).and_raise(
+        ReactiveView::GuardRejectedError.new('Access denied')
+      )
+
+      loader.call
+
+      expect(loader.response.status).to eq(401)
+      expect(loader).not_to have_received(:renderer)
+    end
+  end
+
   describe 'full integration: shape + params_shape + response_shape' do
     it 'supports a typical loader pattern with load and mutation shapes' do
       loader = Class.new(described_class)

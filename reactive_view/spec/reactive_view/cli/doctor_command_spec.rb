@@ -46,5 +46,57 @@ RSpec.describe ReactiveView::CLI::DoctorCommand do
       expect(command.run).to eq(0)
       expect(stdout.string).to include('Re-running checks after fixes')
     end
+
+    it 'prints a warning and stays quiet in auto-fix mode when issues are resolved' do
+      command = described_class.new(['--fix'], stdout: stdout, stderr: stderr,
+                                               boot_rails_environment: false, quiet: true)
+
+      initial_report = {
+        rails_root: Pathname.new('/tmp/app'),
+        rails_port: 3000,
+        daemon_port: 3001,
+        procfile_web_explicit_port: true,
+        blocking_issues: [described_class::Issue.new(message: 'Daemon in use', blocking: true,
+                                                     fix: { type: :terminate_pid, pid: 111 })],
+        issues: [described_class::Issue.new(message: 'Daemon in use', blocking: true,
+                                            fix: { type: :terminate_pid, pid: 111 })]
+      }
+
+      healthy_report = {
+        rails_root: Pathname.new('/tmp/app'),
+        rails_port: 3000,
+        daemon_port: 3001,
+        procfile_web_explicit_port: true,
+        blocking_issues: [],
+        issues: []
+      }
+
+      allow(command).to receive(:collect_report).and_return(initial_report, healthy_report)
+      allow(command).to receive(:apply_fixes).and_return(true)
+
+      expect(command.run).to eq(0)
+      expect(stdout.string).to include('resolving automatically')
+      expect(stdout.string).not_to include('Doctor report')
+    end
+
+    it 'prints the full report in auto-fix mode when blocking issues remain' do
+      command = described_class.new(['--fix'], stdout: stdout, stderr: stderr,
+                                               boot_rails_environment: false, quiet: true)
+
+      stuck_report = {
+        rails_root: Pathname.new('/tmp/app'),
+        rails_port: 3000,
+        daemon_port: 3001,
+        procfile_web_explicit_port: false,
+        blocking_issues: [described_class::Issue.new(message: 'Port 5000 is in use', blocking: true, fix: nil)],
+        issues: [described_class::Issue.new(message: 'Port 5000 is in use', blocking: true, fix: nil)]
+      }
+
+      allow(command).to receive(:collect_report).and_return(stuck_report)
+
+      expect(command.run).to eq(1)
+      expect(stdout.string).to include('Automatic startup cleanup could not resolve all issues')
+      expect(stdout.string).to include('Doctor report')
+    end
   end
 end
